@@ -1,0 +1,29 @@
+{
+  "project_info": {
+    "project_number": "382033508368",
+    "project_id": "goserve-50b3b",
+    "storage_bucket": "goserve-50b3b.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:382033508368:android:9ef112de2ff466c9313295",
+        "android_client_info": {
+          "package_name": "com.example.gooservee"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyAa5sVp6l2jb36csbDO3XwUxPx7w7342I0"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}

@@ -1,0 +1,14 @@
+﻿Doctor summary (to see all details, run flutter doctor -v):
+[ΓêÜ] Flutter (Channel stable, 3.29.0, on Microsoft Windows [Version 10.0.26200.7840], locale en-MY)
+[ΓêÜ] Windows Version (11 Home Single Language 64-bit, 25H2, 2009)
+[!] Android toolchain - develop for Android devices (Android SDK version 35.0.1)
+    ! Some Android licenses not accepted. To resolve this, run: flutter doctor --android-licenses
+[ΓêÜ] Chrome - develop for the web
+[ΓêÜ] Visual Studio - develop Windows apps (Visual Studio Community 2022 17.13.2)
+[ΓêÜ] Android Studio (version 2024.3)
+[ΓêÜ] VS Code (version unknown)
+    X Unable to determine VS Code version.
+[ΓêÜ] Connected device (4 available)
+[ΓêÜ] Network resources
+
+! Doctor found issues in 1 category.

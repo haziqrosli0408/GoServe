@@ -1,0 +1,500 @@
+[  +15 ms] executing: sysctl hw.optional.arm64
+[   +5 ms] Exit code 0 from: sysctl hw.optional.arm64
+[        ] hw.optional.arm64: 1
+[  +19 ms] executing: sw_vers -productName
+[   +7 ms] Exit code 0 from: sw_vers -productName
+[        ] macOS
+[        ] executing: sw_vers -productVersion
+[  +13 ms] Exit code 0 from: sw_vers -productVersion
+[        ] 26.2
+[        ] executing: sw_vers -buildVersion
+[   +8 ms] Exit code 0 from: sw_vers -buildVersion
+[        ] 25C56
+[        ] executing: uname -m
+[   +3 ms] Exit code 0 from: uname -m
+[        ] arm64
+[  +12 ms] Artifact Instance of 'AndroidGenSnapshotArtifacts' is not required, skipping update.
+[        ] Artifact Instance of 'AndroidInternalBuildArtifacts' is not required, skipping update.
+[        ] Artifact Instance of 'IOSEngineArtifacts' is not required, skipping update.
+[        ] Artifact Instance of 'FlutterWebSdk' is not required, skipping update.
+[        ] Artifact Instance of 'LegacyCanvasKitRemover' is not required, skipping update.
+[        ] Artifact Instance of 'WindowsEngineArtifacts' is not required, skipping update.
+[        ] Artifact Instance of 'MacOSEngineArtifacts' is not required, skipping update.
+[        ] Artifact Instance of 'LinuxEngineArtifacts' is not required, skipping update.
+[        ] Artifact Instance of 'LinuxFuchsiaSDKArtifacts' is not required, skipping update.
+[        ] Artifact Instance of 'MacOSFuchsiaSDKArtifacts' is not required, skipping update.
+[        ] Artifact Instance of 'FlutterRunnerSDKArtifacts' is not required, skipping update.
+[        ] Artifact Instance of 'FlutterRunnerDebugSymbols' is not required, skipping update.
+[  +15 ms] Artifact Instance of 'MaterialFonts' is not required, skipping update.
+[        ] Artifact Instance of 'GradleWrapper' is not required, skipping update.
+[   +1 ms] Artifact Instance of 'AndroidInternalBuildArtifacts' is not required, skipping update.
+[        ] Artifact Instance of 'IOSEngineArtifacts' is not required, skipping update.
+[        ] Artifact Instance of 'FlutterWebSdk' is not required, skipping update.
+[        ] Artifact Instance of 'LegacyCanvasKitRemover' is not required, skipping update.
+[        ] Artifact Instance of 'FlutterSdk' is not required, skipping update.
+[        ] Artifact Instance of 'WindowsEngineArtifacts' is not required, skipping update.
+[        ] Artifact Instance of 'MacOSEngineArtifacts' is not required, skipping update.
+[        ] Artifact Instance of 'LinuxEngineArtifacts' is not required, skipping update.
+[        ] Artifact Instance of 'LinuxFuchsiaSDKArtifacts' is not required, skipping update.
+[        ] Artifact Instance of 'MacOSFuchsiaSDKArtifacts' is not required, skipping update.
+[        ] Artifact Instance of 'FlutterRunnerSDKArtifacts' is not required, skipping update.
+[        ] Artifact Instance of 'FlutterRunnerDebugSymbols' is not required, skipping update.
+[        ] Artifact Instance of 'IosUsbArtifacts' is not required, skipping update.
+[        ] Artifact Instance of 'IosUsbArtifacts' is not required, skipping update.
+[        ] Artifact Instance of 'IosUsbArtifacts' is not required, skipping update.
+[        ] Artifact Instance of 'IosUsbArtifacts' is not required, skipping update.
+[        ] Artifact Instance of 'IosUsbArtifacts' is not required, skipping update.
+[        ] Artifact Instance of 'FontSubsetArtifacts' is not required, skipping update.
+[        ] Artifact Instance of 'PubDependencies' is not required, skipping update.
+[  +40 ms] Skipping pub get: version match.
+[  +15 ms] Found plugin cloud_firestore at /Users/haziqrosli/.pub-cache/hosted/pub.dev/cloud_firestore-6.1.1/
+[   +3 ms] Found plugin cloud_firestore_web at /Users/haziqrosli/.pub-cache/hosted/pub.dev/cloud_firestore_web-5.1.1/
+[   +6 ms] Found plugin file_selector_linux at /Users/haziqrosli/.pub-cache/hosted/pub.dev/file_selector_linux-0.9.3+2/
+[   +1 ms] Found plugin file_selector_macos at /Users/haziqrosli/.pub-cache/hosted/pub.dev/file_selector_macos-0.9.4+4/
+[   +1 ms] Found plugin file_selector_windows at /Users/haziqrosli/.pub-cache/hosted/pub.dev/file_selector_windows-0.9.3+4/
+[   +1 ms] Found plugin firebase_auth at /Users/haziqrosli/.pub-cache/hosted/pub.dev/firebase_auth-6.1.3/
+[   +1 ms] Found plugin firebase_auth_web at /Users/haziqrosli/.pub-cache/hosted/pub.dev/firebase_auth_web-6.1.1/
+[        ] Found plugin firebase_core at /Users/haziqrosli/.pub-cache/hosted/pub.dev/firebase_core-4.6.0/
+[   +1 ms] Found plugin firebase_core_web at /Users/haziqrosli/.pub-cache/hosted/pub.dev/firebase_core_web-3.5.1/
+[        ] Found plugin firebase_storage at /Users/haziqrosli/.pub-cache/hosted/pub.dev/firebase_storage-13.2.0/
+[   +1 ms] Found plugin firebase_storage_web at /Users/haziqrosli/.pub-cache/hosted/pub.dev/firebase_storage_web-3.11.4/
+[   +1 ms] Found plugin flutter_plugin_android_lifecycle at /Users/haziqrosli/.pub-cache/hosted/pub.dev/flutter_plugin_android_lifecycle-2.0.31/
+[   +1 ms] Found plugin geocoding at /Users/haziqrosli/.pub-cache/hosted/pub.dev/geocoding-4.0.0/
+[        ] Found plugin geocoding_android at /Users/haziqrosli/.pub-cache/hosted/pub.dev/geocoding_android-4.0.1/
+[        ] Found plugin geocoding_ios at /Users/haziqrosli/.pub-cache/hosted/pub.dev/geocoding_ios-3.1.0/
+[   +1 ms] Found plugin geolocator at /Users/haziqrosli/.pub-cache/hosted/pub.dev/geolocator-14.0.2/
+[   +1 ms] Found plugin geolocator_android at /Users/haziqrosli/.pub-cache/hosted/pub.dev/geolocator_android-5.0.2/
+[        ] Found plugin geolocator_apple at /Users/haziqrosli/.pub-cache/hosted/pub.dev/geolocator_apple-2.3.13/
+[        ] Found plugin geolocator_linux at /Users/haziqrosli/.pub-cache/hosted/pub.dev/geolocator_linux-0.2.4/
+[   +1 ms] Found plugin geolocator_web at /Users/haziqrosli/.pub-cache/hosted/pub.dev/geolocator_web-4.1.3/
+[   +1 ms] Found plugin geolocator_windows at /Users/haziqrosli/.pub-cache/hosted/pub.dev/geolocator_windows-0.2.5/
+[   +2 ms] Found plugin google_maps_flutter at /Users/haziqrosli/.pub-cache/hosted/pub.dev/google_maps_flutter-2.14.0/
+[        ] Found plugin google_maps_flutter_android at /Users/haziqrosli/.pub-cache/hosted/pub.dev/google_maps_flutter_android-2.18.3/
+[        ] Found plugin google_maps_flutter_ios at /Users/haziqrosli/.pub-cache/hosted/pub.dev/google_maps_flutter_ios-2.15.5/
+[   +1 ms] Found plugin google_maps_flutter_web at /Users/haziqrosli/.pub-cache/hosted/pub.dev/google_maps_flutter_web-0.5.14+3/
+[   +2 ms] Found plugin image_picker at /Users/haziqrosli/.pub-cache/hosted/pub.dev/image_picker-1.2.1/
+[        ] Found plugin image_picker_android at /Users/haziqrosli/.pub-cache/hosted/pub.dev/image_picker_android-0.8.13+1/
+[        ] Found plugin image_picker_for_web at /Users/haziqrosli/.pub-cache/hosted/pub.dev/image_picker_for_web-3.1.0/
+[        ] Found plugin image_picker_ios at /Users/haziqrosli/.pub-cache/hosted/pub.dev/image_picker_ios-0.8.13/
+[        ] Found plugin image_picker_linux at /Users/haziqrosli/.pub-cache/hosted/pub.dev/image_picker_linux-0.2.2/
+[        ] Found plugin image_picker_macos at /Users/haziqrosli/.pub-cache/hosted/pub.dev/image_picker_macos-0.2.2/
+[   +1 ms] Found plugin image_picker_windows at /Users/haziqrosli/.pub-cache/hosted/pub.dev/image_picker_windows-0.2.2/
+[   +4 ms] Found plugin package_info_plus at /Users/haziqrosli/.pub-cache/hosted/pub.dev/package_info_plus-9.0.0/
+[   +1 ms] Found plugin path_provider at /Users/haziqrosli/.pub-cache/hosted/pub.dev/path_provider-2.1.5/
+[        ] Found plugin path_provider_android at /Users/haziqrosli/.pub-cache/hosted/pub.dev/path_provider_android-2.2.19/
+[        ] Found plugin path_provider_foundation at /Users/haziqrosli/.pub-cache/hosted/pub.dev/path_provider_foundation-2.4.2/
+[        ] Found plugin path_provider_linux at /Users/haziqrosli/.pub-cache/hosted/pub.dev/path_provider_linux-2.2.1/
+[        ] Found plugin path_provider_windows at /Users/haziqrosli/.pub-cache/hosted/pub.dev/path_provider_windows-2.3.0/
+[  +22 ms] Found plugin cloud_firestore at /Users/haziqrosli/.pub-cache/hosted/pub.dev/cloud_firestore-6.1.1/
+[   +1 ms] Found plugin cloud_firestore_web at /Users/haziqrosli/.pub-cache/hosted/pub.dev/cloud_firestore_web-5.1.1/
+[   +3 ms] Found plugin file_selector_linux at /Users/haziqrosli/.pub-cache/hosted/pub.dev/file_selector_linux-0.9.3+2/
+[        ] Found plugin file_selector_macos at /Users/haziqrosli/.pub-cache/hosted/pub.dev/file_selector_macos-0.9.4+4/
+[        ] Found plugin file_selector_windows at /Users/haziqrosli/.pub-cache/hosted/pub.dev/file_selector_windows-0.9.3+4/
+[        ] Found plugin firebase_auth at /Users/haziqrosli/.pub-cache/hosted/pub.dev/firebase_auth-6.1.3/
+[        ] Found plugin firebase_auth_web at /Users/haziqrosli/.pub-cache/hosted/pub.dev/firebase_auth_web-6.1.1/
+[        ] Found plugin firebase_core at /Users/haziqrosli/.pub-cache/hosted/pub.dev/firebase_core-4.6.0/
+[        ] Found plugin firebase_core_web at /Users/haziqrosli/.pub-cache/hosted/pub.dev/firebase_core_web-3.5.1/
+[        ] Found plugin firebase_storage at /Users/haziqrosli/.pub-cache/hosted/pub.dev/firebase_storage-13.2.0/
+[        ] Found plugin firebase_storage_web at /Users/haziqrosli/.pub-cache/hosted/pub.dev/firebase_storage_web-3.11.4/
+[        ] Found plugin flutter_plugin_android_lifecycle at /Users/haziqrosli/.pub-cache/hosted/pub.dev/flutter_plugin_android_lifecycle-2.0.31/
+[        ] Found plugin geocoding at /Users/haziqrosli/.pub-cache/hosted/pub.dev/geocoding-4.0.0/
+[        ] Found plugin geocoding_android at /Users/haziqrosli/.pub-cache/hosted/pub.dev/geocoding_android-4.0.1/
+[        ] Found plugin geocoding_ios at /Users/haziqrosli/.pub-cache/hosted/pub.dev/geocoding_ios-3.1.0/
+[        ] Found plugin geolocator at /Users/haziqrosli/.pub-cache/hosted/pub.dev/geolocator-14.0.2/
+[        ] Found plugin geolocator_android at /Users/haziqrosli/.pub-cache/hosted/pub.dev/geolocator_android-5.0.2/
+[        ] Found plugin geolocator_apple at /Users/haziqrosli/.pub-cache/hosted/pub.dev/geolocator_apple-2.3.13/
+[        ] Found plugin geolocator_linux at /Users/haziqrosli/.pub-cache/hosted/pub.dev/geolocator_linux-0.2.4/
+[        ] Found plugin geolocator_web at /Users/haziqrosli/.pub-cache/hosted/pub.dev/geolocator_web-4.1.3/
+[        ] Found plugin geolocator_windows at /Users/haziqrosli/.pub-cache/hosted/pub.dev/geolocator_windows-0.2.5/
+[        ] Found plugin google_maps_flutter at /Users/haziqrosli/.pub-cache/hosted/pub.dev/google_maps_flutter-2.14.0/
+[        ] Found plugin google_maps_flutter_android at /Users/haziqrosli/.pub-cache/hosted/pub.dev/google_maps_flutter_android-2.18.3/
+[        ] Found plugin google_maps_flutter_ios at /Users/haziqrosli/.pub-cache/hosted/pub.dev/google_maps_flutter_ios-2.15.5/
+[        ] Found plugin google_maps_flutter_web at /Users/haziqrosli/.pub-cache/hosted/pub.dev/google_maps_flutter_web-0.5.14+3/
+[   +1 ms] Found plugin image_picker at /Users/haziqrosli/.pub-cache/hosted/pub.dev/image_picker-1.2.1/
+[        ] Found plugin image_picker_android at /Users/haziqrosli/.pub-cache/hosted/pub.dev/image_picker_android-0.8.13+1/
+[        ] Found plugin image_picker_for_web at /Users/haziqrosli/.pub-cache/hosted/pub.dev/image_picker_for_web-3.1.0/
+[        ] Found plugin image_picker_ios at /Users/haziqrosli/.pub-cache/hosted/pub.dev/image_picker_ios-0.8.13/
+[        ] Found plugin image_picker_linux at /Users/haziqrosli/.pub-cache/hosted/pub.dev/image_picker_linux-0.2.2/
+[        ] Found plugin image_picker_macos at /Users/haziqrosli/.pub-cache/hosted/pub.dev/image_picker_macos-0.2.2/
+[        ] Found plugin image_picker_windows at /Users/haziqrosli/.pub-cache/hosted/pub.dev/image_picker_windows-0.2.2/
+[   +2 ms] Found plugin package_info_plus at /Users/haziqrosli/.pub-cache/hosted/pub.dev/package_info_plus-9.0.0/
+[        ] Found plugin path_provider at /Users/haziqrosli/.pub-cache/hosted/pub.dev/path_provider-2.1.5/
+[        ] Found plugin path_provider_android at /Users/haziqrosli/.pub-cache/hosted/pub.dev/path_provider_android-2.2.19/
+[        ] Found plugin path_provider_foundation at /Users/haziqrosli/.pub-cache/hosted/pub.dev/path_provider_foundation-2.4.2/
+[        ] Found plugin path_provider_linux at /Users/haziqrosli/.pub-cache/hosted/pub.dev/path_provider_linux-2.2.1/
+[        ] Found plugin path_provider_windows at /Users/haziqrosli/.pub-cache/hosted/pub.dev/path_provider_windows-2.3.0/
+[  +11 ms] Found plugin cloud_firestore at /Users/haziqrosli/.pub-cache/hosted/pub.dev/cloud_firestore-6.1.1/
+[        ] Found plugin cloud_firestore_web at /Users/haziqrosli/.pub-cache/hosted/pub.dev/cloud_firestore_web-5.1.1/
+[   +1 ms] Found plugin file_selector_linux at /Users/haziqrosli/.pub-cache/hosted/pub.dev/file_selector_linux-0.9.3+2/
+[        ] Found plugin file_selector_macos at /Users/haziqrosli/.pub-cache/hosted/pub.dev/file_selector_macos-0.9.4+4/
+[        ] Found plugin file_selector_windows at /Users/haziqrosli/.pub-cache/hosted/pub.dev/file_selector_windows-0.9.3+4/
+[        ] Found plugin firebase_auth at /Users/haziqrosli/.pub-cache/hosted/pub.dev/firebase_auth-6.1.3/
+[        ] Found plugin firebase_auth_web at /Users/haziqrosli/.pub-cache/hosted/pub.dev/firebase_auth_web-6.1.1/
+[        ] Found plugin firebase_core at /Users/haziqrosli/.pub-cache/hosted/pub.dev/firebase_core-4.6.0/
+[        ] Found plugin firebase_core_web at /Users/haziqrosli/.pub-cache/hosted/pub.dev/firebase_core_web-3.5.1/
+[        ] Found plugin firebase_storage at /Users/haziqrosli/.pub-cache/hosted/pub.dev/firebase_storage-13.2.0/
+[        ] Found plugin firebase_storage_web at /Users/haziqrosli/.pub-cache/hosted/pub.dev/firebase_storage_web-3.11.4/
+[        ] Found plugin flutter_plugin_android_lifecycle at /Users/haziqrosli/.pub-cache/hosted/pub.dev/flutter_plugin_android_lifecycle-2.0.31/
+[        ] Found plugin geocoding at /Users/haziqrosli/.pub-cache/hosted/pub.dev/geocoding-4.0.0/
+[        ] Found plugin geocoding_android at /Users/haziqrosli/.pub-cache/hosted/pub.dev/geocoding_android-4.0.1/
+[        ] Found plugin geocoding_ios at /Users/haziqrosli/.pub-cache/hosted/pub.dev/geocoding_ios-3.1.0/
+[        ] Found plugin geolocator at /Users/haziqrosli/.pub-cache/hosted/pub.dev/geolocator-14.0.2/
+[        ] Found plugin geolocator_android at /Users/haziqrosli/.pub-cache/hosted/pub.dev/geolocator_android-5.0.2/
+[        ] Found plugin geolocator_apple at /Users/haziqrosli/.pub-cache/hosted/pub.dev/geolocator_apple-2.3.13/
+[        ] Found plugin geolocator_linux at /Users/haziqrosli/.pub-cache/hosted/pub.dev/geolocator_linux-0.2.4/
+[        ] Found plugin geolocator_web at /Users/haziqrosli/.pub-cache/hosted/pub.dev/geolocator_web-4.1.3/
+[        ] Found plugin geolocator_windows at /Users/haziqrosli/.pub-cache/hosted/pub.dev/geolocator_windows-0.2.5/
+[        ] Found plugin google_maps_flutter at /Users/haziqrosli/.pub-cache/hosted/pub.dev/google_maps_flutter-2.14.0/
+[        ] Found plugin google_maps_flutter_android at /Users/haziqrosli/.pub-cache/hosted/pub.dev/google_maps_flutter_android-2.18.3/
+[        ] Found plugin google_maps_flutter_ios at /Users/haziqrosli/.pub-cache/hosted/pub.dev/google_maps_flutter_ios-2.15.5/
+[        ] Found plugin google_maps_flutter_web at /Users/haziqrosli/.pub-cache/hosted/pub.dev/google_maps_flutter_web-0.5.14+3/
+[   +1 ms] Found plugin image_picker at /Users/haziqrosli/.pub-cache/hosted/pub.dev/image_picker-1.2.1/
+[        ] Found plugin image_picker_android at /Users/haziqrosli/.pub-cache/hosted/pub.dev/image_picker_android-0.8.13+1/
+[        ] Found plugin image_picker_for_web at /Users/haziqrosli/.pub-cache/hosted/pub.dev/image_picker_for_web-3.1.0/
+[        ] Found plugin image_picker_ios at /Users/haziqrosli/.pub-cache/hosted/pub.dev/image_picker_ios-0.8.13/
+[        ] Found plugin image_picker_linux at /Users/haziqrosli/.pub-cache/hosted/pub.dev/image_picker_linux-0.2.2/
+[        ] Found plugin image_picker_macos at /Users/haziqrosli/.pub-cache/hosted/pub.dev/image_picker_macos-0.2.2/
+[        ] Found plugin image_picker_windows at /Users/haziqrosli/.pub-cache/hosted/pub.dev/image_picker_windows-0.2.2/
+[   +1 ms] Found plugin package_info_plus at /Users/haziqrosli/.pub-cache/hosted/pub.dev/package_info_plus-9.0.0/
+[        ] Found plugin path_provider at /Users/haziqrosli/.pub-cache/hosted/pub.dev/path_provider-2.1.5/
+[        ] Found plugin path_provider_android at /Users/haziqrosli/.pub-cache/hosted/pub.dev/path_provider_android-2.2.19/
+[        ] Found plugin path_provider_foundation at /Users/haziqrosli/.pub-cache/hosted/pub.dev/path_provider_foundation-2.4.2/
+[        ] Found plugin path_provider_linux at /Users/haziqrosli/.pub-cache/hosted/pub.dev/path_provider_linux-2.2.1/
+[        ] Found plugin path_provider_windows at /Users/haziqrosli/.pub-cache/hosted/pub.dev/path_provider_windows-2.3.0/
+[   +9 ms] Generating /Users/haziqrosli/Documents/Fyp/GoServe-main/android/app/src/main/java/io/flutter/plugins/GeneratedPluginRegistrant.java
+[  +12 ms] executing: sysctl hw.optional.arm64
+[   +2 ms] Exit code 0 from: sysctl hw.optional.arm64
+[        ] hw.optional.arm64: 1
+[        ] executing: /usr/bin/arch -arm64e xcrun xcodebuild -version
+[ +105 ms] Exit code 0 from: /usr/bin/arch -arm64e xcrun xcodebuild -version
+[        ] Xcode 26.4
+           Build version 17E192
+[  +51 ms] executing: /usr/bin/plutil -convert xml1 -o - /Applications/Android Studio.app/Contents/Info.plist
+[   +6 ms] Exit code 0 from: /usr/bin/plutil -convert xml1 -o - /Applications/Android Studio.app/Contents/Info.plist
+[        ] <?xml version="1.0" encoding="UTF-8"?>
+           <!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+           <plist version="1.0">
+           <dict>
+           	<key>CFBundleDevelopmentRegion</key>
+           	<string>English</string>
+           	<key>CFBundleDocumentTypes</key>
+           	<array>
+           		<dict>
+           			<key>CFBundleTypeExtensions</key>
+           			<array>
+           				<string>ipr</string>
+           			</array>
+           			<key>CFBundleTypeIconFile</key>
+           			<string>studio.icns</string>
+           			<key>CFBundleTypeName</key>
+           			<string>Android Studio Project File</string>
+           			<key>CFBundleTypeRole</key>
+           			<string>Editor</string>
+           		</dict>
+           		<dict>
+           			<key>CFBundleTypeExtensions</key>
+           			<array>
+           				<string>*</string>
+           			</array>
+           			<key>CFBundleTypeName</key>
+           			<string>All documents</string>
+           			<key>CFBundleTypeOSTypes</key>
+           			<array>
+           				<string>****</string>
+           			</array>
+           			<key>CFBundleTypeRole</key>
+           			<string>Editor</string>
+           			<key>LSTypeIsPackage</key>
+           			<false/>
+           		</dict>
+           	</array>
+           	<key>CFBundleExecutable</key>
+           	<string>studio</string>
+           	<key>CFBundleGetInfoString</key>
+           	<string>Android Studio 2025.3, build AI-253.30387.90.2532.14935130. Copyright JetBrains s.r.o., (c) 2000-2026</string>
+           	<key>CFBundleIconFile</key>
+           	<string>studio.icns</string>
+           	<key>CFBundleIdentifier</key>
+           	<string>com.google.android.studio</string>
+           	<key>CFBundleInfoDictionaryVersion</key>
+           	<string>6.0</string>
+           	<key>CFBundleName</key>
+           	<string>Android Studio</string>
+           	<key>CFBundlePackageType</key>
+           	<string>APPL</string>
+           	<key>CFBundleShortVersionString</key>
+           	<string>2025.3</string>
+           	<key>CFBundleURLTypes</key>
+           	<array>
+           		<dict>
+           			<key>CFBundleTypeRole</key>
+           			<string>Editor</string>
+           			<key>CFBundleURLName</key>
+           			<string>Stacktrace</string>
+           			<key>CFBundleURLSchemes</key>
+           			<array>
+           				<string>idea</string>
+           			</array>
+           		</dict>
+           	</array>
+           	<key>CFBundleVersion</key>
+           	<string>AI-253.30387.90.2532.14935130</string>
+           	<key>LSApplicationCategoryType</key>
+           	<string>public.app-category.developer-tools</string>
+           	<key>LSArchitecturePriority</key>
+           	<array>
+           		<string>arm64</string>
+           	</array>
+           	<key>LSMinimumSystemVersion</key>
+           	<string>10.13</string>
+           	<key>LSRequiresNativeExecution</key>
+           	<string>YES</string>
+           	<key>NSAppleEventsUsageDescription</key>
+           	<string>An application in Android Studio requests the ability to send Apple events.</string>
+           	<key>NSBluetoothAlwaysUsageDescription</key>
+           	<string>An application in Android Studio requests access to Bluetooth.</string>
+           	<key>NSCameraUsageDescription</key>
+           	<string>An application in Android Studio requests access to the device's camera.</string>
+           	<key>NSDesktopFolderUsageDescription</key>
+           	<string>An application in Android Studio requests access to the user's Desktop folder.</string>
+           	<key>NSDocumentsFolderUsageDescription</key>
+           	<string>An application in Android Studio requests access to the user's Documents folder.</string>
+           	<key>NSDownloadsFolderUsageDescription</key>
+           	<string>An application in Android Studio requests access to the user's Downloads folder.</string>
+           	<key>NSHighResolutionCapable</key>
+           	<true/>
+           	<key>NSLocalNetworkUsageDescription</key>
+           	<string>Android Studio's features, such as SSH and database connectivity, require permissions for accessing the local network and sending broadcast requests.</string>
+           	<key>NSLocationUsageDescription</key>
+           	<string>An application in Android Studio requests access to the user's location information.</string>
+           	<key>NSMicrophoneUsageDescription</key>
+           	<string>An application in Android Studio requests access to the device's microphone.</string>
+           	<key>NSNetworkVolumesUsageDescription</key>
+           	<string>An application in Android Studio requests access to files on a network volume.</string>
+           	<key>NSRemovableVolumesUsageDescription</key>
+           	<string>An application in Android Studio requests access to files on a removable volume.</string>
+           	<key>NSSupportsAutomaticGraphicsSwitching</key>
+           	<true/>
+           </dict>
+           </plist>
+[   +3 ms] executing: /Applications/Android Studio.app/Contents/jbr/Contents/Home/bin/java -version
+[  +96 ms] Exit code 0 from: /Applications/Android Studio.app/Contents/jbr/Contents/Home/bin/java -version
+[        ] openjdk version "21.0.9" 2025-10-21
+           OpenJDK Runtime Environment (build 21.0.9+-14787801-b1163.94)
+           OpenJDK 64-Bit Server VM (build 21.0.9+-14787801-b1163.94, mixed mode)
+[   +1 ms] Top-level Gradle build file not found, skipping migration of task "clean".
+[        ] executing: /Applications/Android Studio.app/Contents/jbr/Contents/Home/bin/java --version
+[  +39 ms] Exit code 0 from: /Applications/Android Studio.app/Contents/jbr/Contents/Home/bin/java --version
+[        ] openjdk 21.0.9 2025-10-21
+           OpenJDK Runtime Environment (build 21.0.9+-14787801-b1163.94)
+           OpenJDK 64-Bit Server VM (build 21.0.9+-14787801-b1163.94, mixed mode)
+[        ] Version of Java is different than impacted version, no migration attempted.
+[   +3 ms] CMake project not found, skipping support Android 15 16k page size migration.
+[   +2 ms] Using gradle from /Users/haziqrosli/Documents/Fyp/GoServe-main/android/gradlew.
+[   +6 ms] Running Gradle task 'assembleDebug'...
+[        ] executing: [/Users/haziqrosli/Documents/Fyp/GoServe-main/android/] /Users/haziqrosli/Documents/Fyp/GoServe-main/android/gradlew --full-stacktrace --info -Pverbose=true -Ptarget-platform=android-arm,android-arm64,android-x86,android-x64 -Ptarget=lib/main.dart -Pbase-application-name=android.app.Application -Pdart-obfuscation=false -Ptrack-widget-creation=true -Ptree-shake-icons=false assembleDebug
+[ +278 ms] Initialized native services in: /Users/haziqrosli/.gradle/native
+[        ] Initialized jansi services in: /Users/haziqrosli/.gradle/native
+[ +107 ms] Received JVM installation metadata from '/Applications/Android Studio.app/Contents/jbr/Contents/Home': {JAVA_HOME=/Applications/Android Studio.app/Contents/jbr/Contents/Home, JAVA_VERSION=21.0.9, JAVA_VENDOR=JetBrains s.r.o., RUNTIME_NAME=OpenJDK Runtime Environment, RUNTIME_VERSION=21.0.9+-14787801-b1163.94, VM_NAME=OpenJDK 64-Bit Server VM, VM_VERSION=21.0.9+-14787801-b1163.94, VM_VENDOR=JetBrains s.r.o., OS_ARCH=aarch64}
+[        ] Found daemon DaemonInfo{pid=9429, address=[bb5df2a6-c2d5-42d0-815c-7ac8c18bc7c6 port:52378, addresses:[/127.0.0.1]], state=Idle, lastBusy=1774959473304, context=DefaultDaemonContext[uid=0818c0e7-16e3-4b3d-938b-d9eb81a87e48,javaHome=/Users/haziqrosli/.antigravity/extensions/redhat.java-1.53.0-darwin-arm64/jre/21.0.10-macosx-aarch64,javaVersion=21,javaVendor=Eclipse Adoptium,daemonRegistryDir=/Users/haziqrosli/.gradle/daemon,pid=9429,idleTimeout=10800000,priority=NORMAL,applyInstrumentationAgent=true,nativeServicesMode=ENABLED,daemonOpts=-XX:MaxMetaspaceSize=4G,-XX:ReservedCodeCacheSize=512m,-XX:+HeapDumpOnOutOfMemoryError,--add-opens=java.base/java.util=ALL-UNNAMED,--add-opens=java.base/java.lang=ALL-UNNAMED,--add-opens=java.base/java.lang.invoke=ALL-UNNAMED,--add-opens=java.prefs/java.util.prefs=ALL-UNNAMED,--add-exports=jdk.compiler/com.sun.tools.javac.api=ALL-UNNAMED,--add-exports=jdk.compiler/com.sun.tools.javac.util=ALL-UNNAMED,--add-opens=java.base/java.nio.charset=ALL-UNNAMED,--add-opens=java.base/java.net=ALL-UNNAMED,--add-opens=java.base/java.util.concurrent.atomic=ALL-UNNAMED,-Xmx8G,-Dfile.encoding=utf8,-Duser.country=MY,-Duser.language=en,-Duser.variant]} however its context does not match the desired criteria.
+[        ] JVM is incompatible.
+[        ] Wanted: DaemonRequestContext{jvmCriteria=/Applications/Android Studio.app/Contents/jbr/Contents/Home (no JDK specified, using current Java home), daemonOpts=[-XX:MaxMetaspaceSize=4G, -XX:ReservedCodeCacheSize=512m, -XX:+HeapDumpOnOutOfMemoryError, --add-opens=java.base/java.util=ALL-UNNAMED, --add-opens=java.base/java.lang=ALL-UNNAMED, --add-opens=java.base/java.lang.invoke=ALL-UNNAMED, --add-opens=java.prefs/java.util.prefs=ALL-UNNAMED, --add-exports=jdk.compiler/com.sun.tools.javac.api=ALL-UNNAMED, --add-exports=jdk.compiler/com.sun.tools.javac.util=ALL-UNNAMED, --add-opens=java.base/java.nio.charset=ALL-UNNAMED, --add-opens=java.base/java.net=ALL-UNNAMED, --add-opens=java.base/java.util.concurrent.atomic=ALL-UNNAMED, -Xmx8G, -Dfile.encoding=UTF-8, -Duser.country=MY, -Duser.language=en, -Duser.variant], applyInstrumentationAgent=true, nativeServicesMode=ENABLED, priority=NORMAL}
+[        ] Actual: DefaultDaemonContext[uid=0818c0e7-16e3-4b3d-938b-d9eb81a87e48,javaHome=/Users/haziqrosli/.antigravity/extensions/redhat.java-1.53.0-darwin-arm64/jre/21.0.10-macosx-aarch64,javaVersion=21,javaVendor=Eclipse Adoptium,daemonRegistryDir=/Users/haziqrosli/.gradle/daemon,pid=9429,idleTimeout=10800000,priority=NORMAL,applyInstrumentationAgent=true,nativeServicesMode=ENABLED,daemonOpts=-XX:MaxMetaspaceSize=4G,-XX:ReservedCodeCacheSize=512m,-XX:+HeapDumpOnOutOfMemoryError,--add-opens=java.base/java.util=ALL-UNNAMED,--add-opens=java.base/java.lang=ALL-UNNAMED,--add-opens=java.base/java.lang.invoke=ALL-UNNAMED,--add-opens=java.prefs/java.util.prefs=ALL-UNNAMED,--add-exports=jdk.compiler/com.sun.tools.javac.api=ALL-UNNAMED,--add-exports=jdk.compiler/com.sun.tools.javac.util=ALL-UNNAMED,--add-opens=java.base/java.nio.charset=ALL-UNNAMED,--add-opens=java.base/java.net=ALL-UNNAMED,--add-opens=java.base/java.util.concurrent.atomic=ALL-UNNAMED,-Xmx8G,-Dfile.encoding=utf8,-Duser.country=MY,-Duser.language=en,-Duser.variant]
+[        ]   Looking for a different daemon...
+[        ] Found daemon DaemonInfo{pid=38160, address=[bc2ec670-48e7-498c-8f23-e8412ead1be3 port:60840, addresses:[/127.0.0.1]], state=Idle, lastBusy=1774959671154, context=DefaultDaemonContext[uid=c3542c19-dbc7-47e9-8986-2f8a42787623,javaHome=/Library/Java/JavaVirtualMachines/temurin-25.jdk/Contents/Home,javaVersion=25,javaVendor=Eclipse Adoptium,daemonRegistryDir=/Users/haziqrosli/.gradle/daemon,pid=38160,idleTimeout=10800000,priority=NORMAL,applyInstrumentationAgent=true,nativeServicesMode=ENABLED,daemonOpts=-XX:MaxMetaspaceSize=4G,-XX:ReservedCodeCacheSize=512m,-XX:+HeapDumpOnOutOfMemoryError,--add-opens=java.base/java.util=ALL-UNNAMED,--add-opens=java.base/java.lang=ALL-UNNAMED,--add-opens=java.base/java.lang.invoke=ALL-UNNAMED,--add-opens=java.prefs/java.util.prefs=ALL-UNNAMED,--add-exports=jdk.compiler/com.sun.tools.javac.api=ALL-UNNAMED,--add-exports=jdk.compiler/com.sun.tools.javac.util=ALL-UNNAMED,--add-opens=java.base/java.nio.charset=ALL-UNNAMED,--add-opens=java.base/java.net=ALL-UNNAMED,--add-opens=java.base/java.util.concurrent.atomic=ALL-UNNAMED,-Xmx8G,-Dfile.encoding=UTF-8,-Duser.country=MY,-Duser.language=en,-Duser.variant]} however its context does not match the desired criteria.
+[        ] JVM is incompatible.
+[        ] Wanted: DaemonRequestContext{jvmCriteria=/Applications/Android Studio.app/Contents/jbr/Contents/Home (no JDK specified, using current Java home), daemonOpts=[-XX:MaxMetaspaceSize=4G, -XX:ReservedCodeCacheSize=512m, -XX:+HeapDumpOnOutOfMemoryError, --add-opens=java.base/java.util=ALL-UNNAMED, --add-opens=java.base/java.lang=ALL-UNNAMED, --add-opens=java.base/java.lang.invoke=ALL-UNNAMED, --add-opens=java.prefs/java.util.prefs=ALL-UNNAMED, --add-exports=jdk.compiler/com.sun.tools.javac.api=ALL-UNNAMED, --add-exports=jdk.compiler/com.sun.tools.javac.util=ALL-UNNAMED, --add-opens=java.base/java.nio.charset=ALL-UNNAMED, --add-opens=java.base/java.net=ALL-UNNAMED, --add-opens=java.base/java.util.concurrent.atomic=ALL-UNNAMED, -Xmx8G, -Dfile.encoding=UTF-8, -Duser.country=MY, -Duser.language=en, -Duser.variant], applyInstrumentationAgent=true, nativeServicesMode=ENABLED, priority=NORMAL}
+[        ] Actual: DefaultDaemonContext[uid=c3542c19-dbc7-47e9-8986-2f8a42787623,javaHome=/Library/Java/JavaVirtualMachines/temurin-25.jdk/Contents/Home,javaVersion=25,javaVendor=Eclipse Adoptium,daemonRegistryDir=/Users/haziqrosli/.gradle/daemon,pid=38160,idleTimeout=10800000,priority=NORMAL,applyInstrumentationAgent=true,nativeServicesMode=ENABLED,daemonOpts=-XX:MaxMetaspaceSize=4G,-XX:ReservedCodeCacheSize=512m,-XX:+HeapDumpOnOutOfMemoryError,--add-opens=java.base/java.util=ALL-UNNAMED,--add-opens=java.base/java.lang=ALL-UNNAMED,--add-opens=java.base/java.lang.invoke=ALL-UNNAMED,--add-opens=java.prefs/java.util.prefs=ALL-UNNAMED,--add-exports=jdk.compiler/com.sun.tools.javac.api=ALL-UNNAMED,--add-exports=jdk.compiler/com.sun.tools.javac.util=ALL-UNNAMED,--add-opens=java.base/java.nio.charset=ALL-UNNAMED,--add-opens=java.base/java.net=ALL-UNNAMED,--add-opens=java.base/java.util.concurrent.atomic=ALL-UNNAMED,-Xmx8G,-Dfile.encoding=UTF-8,-Duser.country=MY,-Duser.language=en,-Duser.variant]
+[        ]   Looking for a different daemon...
+[        ] Removing 0 daemon stop events from registry
+[        ] Starting a Gradle Daemon, 2 incompatible Daemons could not be reused, use --status for details
+[  +94 ms] Starting process 'Gradle build daemon'. Working directory: /Users/haziqrosli/.gradle/daemon/8.10.2 Command: /Applications/Android Studio.app/Contents/jbr/Contents/Home/bin/java -XX:MaxMetaspaceSize=4G -XX:ReservedCodeCacheSize=512m -XX:+HeapDumpOnOutOfMemoryError --add-opens=java.base/java.util=ALL-UNNAMED --add-opens=java.base/java.lang=ALL-UNNAMED --add-opens=java.base/java.lang.invoke=ALL-UNNAMED --add-opens=java.prefs/java.util.prefs=ALL-UNNAMED --add-exports=jdk.compiler/com.sun.tools.javac.api=ALL-UNNAMED --add-exports=jdk.compiler/com.sun.tools.javac.util=ALL-UNNAMED --add-opens=java.base/java.nio.charset=ALL-UNNAMED --add-opens=java.base/java.net=ALL-UNNAMED --add-opens=java.base/java.util.concurrent.atomic=ALL-UNNAMED -Xmx8G -Dfile.encoding=UTF-8 -Duser.country=MY -Duser.language=en -Duser.variant -cp /Users/haziqrosli/.gradle/wrapper/dists/gradle-8.10.2-all/7iv73wktx1xtkvlq19urqw1wm/gradle-8.10.2/lib/gradle-daemon-main-8.10.2.jar -javaagent:/Users/haziqrosli/.gradle/wrapper/dists/gradle-8.10.2-all/7iv73wktx1xtkvlq19urqw1wm/gradle-8.10.2/lib/agents/gradle-instrumentation-agent-8.10.2.jar org.gradle.launcher.daemon.bootstrap.GradleDaemon 8.10.2
+[        ] Successfully started process 'Gradle build daemon'
+[ +403 ms] An attempt to start the daemon took 0.491 secs.
+[ +100 ms] The client will now receive all logging from the daemon (pid: 39777). The daemon log file: /Users/haziqrosli/.gradle/daemon/8.10.2/daemon-39777.out.log
+[        ] Starting build in new daemon [memory: 8 GiB]
+[  +98 ms] Using 10 worker leases.
+[  +96 ms] Received JVM installation metadata from '/Applications/Android Studio.app/Contents/jbr/Contents/Home': {JAVA_HOME=/Applications/Android Studio.app/Contents/jbr/Contents/Home, JAVA_VERSION=21.0.9, JAVA_VENDOR=JetBrains s.r.o., RUNTIME_NAME=OpenJDK Runtime Environment, RUNTIME_VERSION=21.0.9+-14787801-b1163.94, VM_NAME=OpenJDK 64-Bit Server VM, VM_VERSION=21.0.9+-14787801-b1163.94, VM_VENDOR=JetBrains s.r.o., OS_ARCH=aarch64}
+[ +100 ms] Watching the file system is configured to be enabled if available
+[        ] Now considering [/Users/haziqrosli/Documents/Fyp/GoServe-main/android] as hierarchies to watch
+[        ] File system watching is active
+[ +300 ms] Starting Build
+[ +101 ms] Now considering [/Users/haziqrosli/Dev/flutter/packages/flutter_tools/gradle, /Users/haziqrosli/Documents/Fyp/GoServe-main/android] as hierarchies to watch
+[+1201 ms] > Configure project :gradle
+[        ] Evaluating project ':gradle' using build file '/Users/haziqrosli/Dev/flutter/packages/flutter_tools/gradle/build.gradle.kts'.
+[        ] Transforming gradle-kotlin-dsl-plugins-4.5.0.jar (org.gradle.kotlin:gradle-kotlin-dsl-plugins:4.5.0) with InstrumentationAnalysisTransform
+[        ] Transforming kotlin-stdlib-1.9.24.jar (org.jetbrains.kotlin:kotlin-stdlib:1.9.24) with InstrumentationAnalysisTransform
+[        ] Transforming annotations-13.0.jar (org.jetbrains:annotations:13.0) with InstrumentationAnalysisTransform
+[        ] Transforming kotlin-sam-with-receiver-1.9.24-gradle82.jar (org.jetbrains.kotlin:kotlin-sam-with-receiver:1.9.24) with InstrumentationAnalysisTransform
+[        ] Transforming kotlin-assignment-1.9.24-gradle82.jar (org.jetbrains.kotlin:kotlin-assignment:1.9.24) with InstrumentationAnalysisTransform
+[        ] Transforming kotlin-gradle-plugin-model-1.9.24.jar (org.jetbrains.kotlin:kotlin-gradle-plugin-model:1.9.24) with InstrumentationAnalysisTransform
+[        ] Transforming kotlin-gradle-plugin-api-1.9.24.jar (org.jetbrains.kotlin:kotlin-gradle-plugin-api:1.9.24) with InstrumentationAnalysisTransform
+[        ] Transforming kotlin-gradle-plugin-api-1.9.24-gradle82.jar (org.jetbrains.kotlin:kotlin-gradle-plugin-api:1.9.24) with InstrumentationAnalysisTransform
+[        ] Transforming kotlin-gradle-plugin-1.9.24-gradle82.jar (org.jetbrains.kotlin:kotlin-gradle-plugin:1.9.24) with InstrumentationAnalysisTransform
+[        ] Transforming kotlin-gradle-plugin-idea-proto-1.9.24.jar (org.jetbrains.kotlin:kotlin-gradle-plugin-idea-proto:1.9.24) with InstrumentationAnalysisTransform
+[        ] Transforming kotlin-gradle-plugin-idea-1.9.24.jar (org.jetbrains.kotlin:kotlin-gradle-plugin-idea:1.9.24) with InstrumentationAnalysisTransform
+[        ] Transforming kotlin-klib-commonizer-api-1.9.24.jar (org.jetbrains.kotlin:kotlin-klib-commonizer-api:1.9.24) with InstrumentationAnalysisTransform
+[        ] Transforming kotlin-native-utils-1.9.24.jar (org.jetbrains.kotlin:kotlin-native-utils:1.9.24) with InstrumentationAnalysisTransform
+[        ] Transforming kotlin-util-klib-1.9.24.jar (org.jetbrains.kotlin:kotlin-util-klib:1.9.24) with InstrumentationAnalysisTransform
+[        ] Transforming kotlin-build-tools-api-1.9.24.jar (org.jetbrains.kotlin:kotlin-build-tools-api:1.9.24) with InstrumentationAnalysisTransform
+[        ] Transforming kotlin-android-extensions-1.9.24.jar (org.jetbrains.kotlin:kotlin-android-extensions:1.9.24) with InstrumentationAnalysisTransform
+[        ] Transforming kotlin-compiler-runner-1.9.24.jar (org.jetbrains.kotlin:kotlin-compiler-runner:1.9.24) with InstrumentationAnalysisTransform
+[        ] Transforming kotlin-compiler-embeddable-1.9.24.jar (org.jetbrains.kotlin:kotlin-compiler-embeddable:1.9.24) with InstrumentationAnalysisTransform
+[        ] Transforming kotlin-scripting-compiler-embeddable-1.9.24.jar (org.jetbrains.kotlin:kotlin-scripting-compiler-embeddable:1.9.24) with InstrumentationAnalysisTransform
+[        ] Transforming kotlin-scripting-compiler-impl-embeddable-1.9.24.jar (org.jetbrains.kotlin:kotlin-scripting-compiler-impl-embeddable:1.9.24) with InstrumentationAnalysisTransform
+[        ] Transforming kotlin-gradle-plugin-annotations-1.9.24.jar (org.jetbrains.kotlin:kotlin-gradle-plugin-annotations:1.9.24) with InstrumentationAnalysisTransform
+[        ] Transforming kotlin-project-model-1.9.24.jar (org.jetbrains.kotlin:kotlin-project-model:1.9.24) with InstrumentationAnalysisTransform
+[        ] Transforming kotlin-tooling-core-1.9.24.jar (org.jetbrains.kotlin:kotlin-tooling-core:1.9.24) with InstrumentationAnalysisTransform
+[        ] Transforming kotlin-util-io-1.9.24.jar (org.jetbrains.kotlin:kotlin-util-io:1.9.24) with InstrumentationAnalysisTransform
+[        ] Transforming kotlin-daemon-embeddable-1.9.24.jar (org.jetbrains.kotlin:kotlin-daemon-embeddable:1.9.24) with InstrumentationAnalysisTransform
+[        ] Transforming trove4j-1.0.20200330.jar (org.jetbrains.intellij.deps:trove4j:1.0.20200330) with InstrumentationAnalysisTransform
+[        ] Transforming kotlin-daemon-client-1.9.24.jar (org.jetbrains.kotlin:kotlin-daemon-client:1.9.24) with InstrumentationAnalysisTransform
+[        ] Transforming kotlinx-coroutines-core-jvm-1.5.0.jar (org.jetbrains.kotlinx:kotlinx-coroutines-core-jvm:1.5.0) with InstrumentationAnalysisTransform
+[        ] Transforming kotlin-scripting-jvm-1.9.24.jar (org.jetbrains.kotlin:kotlin-scripting-jvm:1.9.24) with InstrumentationAnalysisTransform
+[        ] Transforming kotlin-scripting-common-1.9.24.jar (org.jetbrains.kotlin:kotlin-scripting-common:1.9.24) with InstrumentationAnalysisTransform
+[        ] Transforming gradle-kotlin-dsl-plugins-4.5.0.jar (org.gradle.kotlin:gradle-kotlin-dsl-plugins:4.5.0) with InstrumentationAnalysisTransform
+[        ] Transforming gradle-kotlin-dsl-plugins-4.5.0.jar (org.gradle.kotlin:gradle-kotlin-dsl-plugins:4.5.0) with MergeInstrumentationAnalysisTransform
+[        ] Transforming kotlin-stdlib-1.9.24.jar (org.jetbrains.kotlin:kotlin-stdlib:1.9.24) with InstrumentationAnalysisTransform
+[        ] Transforming kotlin-stdlib-1.9.24.jar (org.jetbrains.kotlin:kotlin-stdlib:1.9.24) with MergeInstrumentationAnalysisTransform
+[        ] Transforming annotations-13.0.jar (org.jetbrains:annotations:13.0) with InstrumentationAnalysisTransform
+[        ] Transforming annotations-13.0.jar (org.jetbrains:annotations:13.0) with MergeInstrumentationAnalysisTransform
+[        ] Transforming kotlin-sam-with-receiver-1.9.24-gradle82.jar (org.jetbrains.kotlin:kotlin-sam-with-receiver:1.9.24) with InstrumentationAnalysisTransform
+[        ] Transforming kotlin-sam-with-receiver-1.9.24-gradle82.jar (org.jetbrains.kotlin:kotlin-sam-with-receiver:1.9.24) with MergeInstrumentationAnalysisTransform
+[        ] Transforming kotlin-assignment-1.9.24-gradle82.jar (org.jetbrains.kotlin:kotlin-assignment:1.9.24) with InstrumentationAnalysisTransform
+[        ] Transforming kotlin-assignment-1.9.24-gradle82.jar (org.jetbrains.kotlin:kotlin-assignment:1.9.24) with MergeInstrumentationAnalysisTransform
+[        ] Transforming kotlin-gradle-plugin-model-1.9.24.jar (org.jetbrains.kotlin:kotlin-gradle-plugin-model:1.9.24) with InstrumentationAnalysisTransform
+[        ] Transforming kotlin-gradle-plugin-model-1.9.24.jar (org.jetbrains.kotlin:kotlin-gradle-plugin-model:1.9.24) with MergeInstrumentationAnalysisTransform
+[        ] Transforming kotlin-gradle-plugin-api-1.9.24.jar (org.jetbrains.kotlin:kotlin-gradle-plugin-api:1.9.24) with InstrumentationAnalysisTransform
+[        ] Transforming kotlin-gradle-plugin-api-1.9.24.jar (org.jetbrains.kotlin:kotlin-gradle-plugin-api:1.9.24) with MergeInstrumentationAnalysisTransform
+[        ] Transforming kotlin-gradle-plugin-api-1.9.24-gradle82.jar (org.jetbrains.kotlin:kotlin-gradle-plugin-api:1.9.24) with InstrumentationAnalysisTransform
+[        ] Transforming kotlin-gradle-plugin-api-1.9.24-gradle82.jar (org.jetbrains.kotlin:kotlin-gradle-plugin-api:1.9.24) with MergeInstrumentationAnalysisTransform
+[        ] Transforming kotlin-gradle-plugin-1.9.24-gradle82.jar (org.jetbrains.kotlin:kotlin-gradle-plugin:1.9.24) with InstrumentationAnalysisTransform
+[        ] Transforming kotlin-gradle-plugin-1.9.24-gradle82.jar (org.jetbrains.kotlin:kotlin-gradle-plugin:1.9.24) with MergeInstrumentationAnalysisTransform
+[        ] Transforming kotlin-gradle-plugin-idea-proto-1.9.24.jar (org.jetbrains.kotlin:kotlin-gradle-plugin-idea-proto:1.9.24) with InstrumentationAnalysisTransform
+[        ] Transforming kotlin-gradle-plugin-idea-proto-1.9.24.jar (org.jetbrains.kotlin:kotlin-gradle-plugin-idea-proto:1.9.24) with MergeInstrumentationAnalysisTransform
+[        ] Transforming kotlin-gradle-plugin-idea-1.9.24.jar (org.jetbrains.kotlin:kotlin-gradle-plugin-idea:1.9.24) with InstrumentationAnalysisTransform
+[        ] Transforming kotlin-gradle-plugin-idea-1.9.24.jar (org.jetbrains.kotlin:kotlin-gradle-plugin-idea:1.9.24) with MergeInstrumentationAnalysisTransform
+[        ] Transforming kotlin-klib-commonizer-api-1.9.24.jar (org.jetbrains.kotlin:kotlin-klib-commonizer-api:1.9.24) with InstrumentationAnalysisTransform
+[        ] Transforming kotlin-klib-commonizer-api-1.9.24.jar (org.jetbrains.kotlin:kotlin-klib-commonizer-api:1.9.24) with MergeInstrumentationAnalysisTransform
+[        ] Transforming kotlin-native-utils-1.9.24.jar (org.jetbrains.kotlin:kotlin-native-utils:1.9.24) with InstrumentationAnalysisTransform
+[        ] Transforming kotlin-native-utils-1.9.24.jar (org.jetbrains.kotlin:kotlin-native-utils:1.9.24) with MergeInstrumentationAnalysisTransform
+[        ] Transforming kotlin-util-klib-1.9.24.jar (org.jetbrains.kotlin:kotlin-util-klib:1.9.24) with InstrumentationAnalysisTransform
+[        ] Transforming kotlin-util-klib-1.9.24.jar (org.jetbrains.kotlin:kotlin-util-klib:1.9.24) with MergeInstrumentationAnalysisTransform
+[        ] Transforming kotlin-build-tools-api-1.9.24.jar (org.jetbrains.kotlin:kotlin-build-tools-api:1.9.24) with InstrumentationAnalysisTransform
+[        ] Transforming kotlin-build-tools-api-1.9.24.jar (org.jetbrains.kotlin:kotlin-build-tools-api:1.9.24) with MergeInstrumentationAnalysisTransform
+[        ] Transforming kotlin-android-extensions-1.9.24.jar (org.jetbrains.kotlin:kotlin-android-extensions:1.9.24) with InstrumentationAnalysisTransform
+[        ] Transforming kotlin-android-extensions-1.9.24.jar (org.jetbrains.kotlin:kotlin-android-extensions:1.9.24) with MergeInstrumentationAnalysisTransform
+[        ] Transforming kotlin-compiler-runner-1.9.24.jar (org.jetbrains.kotlin:kotlin-compiler-runner:1.9.24) with InstrumentationAnalysisTransform
+[        ] Transforming kotlin-compiler-runner-1.9.24.jar (org.jetbrains.kotlin:kotlin-compiler-runner:1.9.24) with MergeInstrumentationAnalysisTransform
+[        ] Transforming kotlin-compiler-embeddable-1.9.24.jar (org.jetbrains.kotlin:kotlin-compiler-embeddable:1.9.24) with InstrumentationAnalysisTransform
+[        ] Transforming kotlin-compiler-embeddable-1.9.24.jar (org.jetbrains.kotlin:kotlin-compiler-embeddable:1.9.24) with MergeInstrumentationAnalysisTransform
+[        ] Transforming kotlin-scripting-compiler-embeddable-1.9.24.jar (org.jetbrains.kotlin:kotlin-scripting-compiler-embeddable:1.9.24) with InstrumentationAnalysisTransform
+[        ] Transforming kotlin-scripting-compiler-embeddable-1.9.24.jar (org.jetbrains.kotlin:kotlin-scripting-compiler-embeddable:1.9.24) with MergeInstrumentationAnalysisTransform
+[        ] Transforming kotlin-scripting-compiler-impl-embeddable-1.9.24.jar (org.jetbrains.kotlin:kotlin-scripting-compiler-impl-embeddable:1.9.24) with InstrumentationAnalysisTransform
+[        ] Transforming kotlin-scripting-compiler-impl-embeddable-1.9.24.jar (org.jetbrains.kotlin:kotlin-scripting-compiler-impl-embeddable:1.9.24) with MergeInstrumentationAnalysisTransform
+[        ] Transforming kotlin-gradle-plugin-annotations-1.9.24.jar (org.jetbrains.kotlin:kotlin-gradle-plugin-annotations:1.9.24) with InstrumentationAnalysisTransform
+[        ] Transforming kotlin-gradle-plugin-annotations-1.9.24.jar (org.jetbrains.kotlin:kotlin-gradle-plugin-annotations:1.9.24) with MergeInstrumentationAnalysisTransform
+[        ] Transforming kotlin-project-model-1.9.24.jar (org.jetbrains.kotlin:kotlin-project-model:1.9.24) with InstrumentationAnalysisTransform
+[        ] Transforming kotlin-project-model-1.9.24.jar (org.jetbrains.kotlin:kotlin-project-model:1.9.24) with MergeInstrumentationAnalysisTransform
+[        ] Transforming kotlin-tooling-core-1.9.24.jar (org.jetbrains.kotlin:kotlin-tooling-core:1.9.24) with InstrumentationAnalysisTransform
+[        ] Transforming kotlin-tooling-core-1.9.24.jar (org.jetbrains.kotlin:kotlin-tooling-core:1.9.24) with MergeInstrumentationAnalysisTransform
+[        ] Transforming kotlin-util-io-1.9.24.jar (org.jetbrains.kotlin:kotlin-util-io:1.9.24) with InstrumentationAnalysisTransform
+[        ] Transforming kotlin-util-io-1.9.24.jar (org.jetbrains.kotlin:kotlin-util-io:1.9.24) with MergeInstrumentationAnalysisTransform
+[        ] Transforming kotlin-daemon-embeddable-1.9.24.jar (org.jetbrains.kotlin:kotlin-daemon-embeddable:1.9.24) with InstrumentationAnalysisTransform
+[        ] Transforming kotlin-daemon-embeddable-1.9.24.jar (org.jetbrains.kotlin:kotlin-daemon-embeddable:1.9.24) with MergeInstrumentationAnalysisTransform
+[        ] Transforming trove4j-1.0.20200330.jar (org.jetbrains.intellij.deps:trove4j:1.0.20200330) with InstrumentationAnalysisTransform
+[        ] Transforming trove4j-1.0.20200330.jar (org.jetbrains.intellij.deps:trove4j:1.0.20200330) with MergeInstrumentationAnalysisTransform
+[        ] Transforming kotlin-daemon-client-1.9.24.jar (org.jetbrains.kotlin:kotlin-daemon-client:1.9.24) with InstrumentationAnalysisTransform
+[        ] Transforming kotlin-daemon-client-1.9.24.jar (org.jetbrains.kotlin:kotlin-daemon-client:1.9.24) with MergeInstrumentationAnalysisTransform
+[        ] Transforming kotlinx-coroutines-core-jvm-1.5.0.jar (org.jetbrains.kotlinx:kotlinx-coroutines-core-jvm:1.5.0) with InstrumentationAnalysisTransform
+[        ] Transforming kotlinx-coroutines-core-jvm-1.5.0.jar (org.jetbrains.kotlinx:kotlinx-coroutines-core-jvm:1.5.0) with MergeInstrumentationAnalysisTransform
+[        ] Transforming kotlin-scripting-jvm-1.9.24.jar (org.jetbrains.kotlin:kotlin-scripting-jvm:1.9.24) with InstrumentationAnalysisTransform
+[        ] Transforming kotlin-scripting-jvm-1.9.24.jar (org.jetbrains.kotlin:kotlin-scripting-jvm:1.9.24) with MergeInstrumentationAnalysisTransform
+[        ] Transforming kotlin-scripting-common-1.9.24.jar (org.jetbrains.kotlin:kotlin-scripting-common:1.9.24) with InstrumentationAnalysisTransform
+[        ] Transforming kotlin-scripting-common-1.9.24.jar (org.jetbrains.kotlin:kotlin-scripting-common:1.9.24) with MergeInstrumentationAnalysisTransform
+[        ] Transforming kotlin-gradle-plugin-model-1.9.24.jar (org.jetbrains.kotlin:kotlin-gradle-plugin-model:1.9.24) with ExternalDependencyInstrumentingArtifactTransform
+[        ] Transforming kotlin-stdlib-1.9.24.jar (org.jetbrains.kotlin:kotlin-stdlib:1.9.24) with ExternalDependencyInstrumentingArtifactTransform
+[        ] Transforming kotlin-gradle-plugin-api-1.9.24-gradle82.jar (org.jetbrains.kotlin:kotlin-gradle-plugin-api:1.9.24) with ExternalDependencyInstrumentingArtifactTransform
+[        ] Transforming annotations-13.0.jar (org.jetbrains:annotations:13.0) with ExternalDependencyInstrumentingArtifactTransform
+[        ] Transforming kotlin-gradle-plugin-api-1.9.24.jar (org.jetbrains.kotlin:kotlin-gradle-plugin-api:1.9.24) with ExternalDependencyInstrumentingArtifactTransform
+[        ] Transforming kotlin-assignment-1.9.24-gradle82.jar (org.jetbrains.kotlin:kotlin-assignment:1.9.24) with ExternalDependencyInstrumentingArtifactTransform
+[        ] Transforming kotlin-sam-with-receiver-1.9.24-gradle82.jar (org.jetbrains.kotlin:kotlin-sam-with-receiver:1.9.24) with ExternalDependencyInstrumentingArtifactTransform
+[        ] Transforming gradle-kotlin-dsl-plugins-4.5.0.jar (org.gradle.kotlin:gradle-kotlin-dsl-plugins:4.5.0) with ExternalDependencyInstrumentingArtifactTransform
+[        ] Transforming kotlin-gradle-plugin-1.9.24-gradle82.jar (org.jetbrains.kotlin:kotlin-gradle-plugin:1.9.24) with ExternalDependencyInstrumentingArtifactTransform
+[        ] Transforming kotlin-gradle-plugin-idea-proto-1.9.24.jar (org.jetbrains.kotlin:kotlin-gradle-plugin-idea-proto:1.9.24) with ExternalDependencyInstrumentingArtifactTransform
+[        ] Transforming kotlin-gradle-plugin-idea-1.9.24.jar (org.jetbrains.kotlin:kotlin-gradle-plugin-idea:1.9.24) with ExternalDependencyInstrumentingArtifactTransform
+[        ] Transforming kotlin-build-tools-api-1.9.24.jar (org.jetbrains.kotlin:kotlin-build-tools-api:1.9.24) with ExternalDependencyInstrumentingArtifactTransform
+[        ] Transforming kotlin-klib-commonizer-api-1.9.24.jar (org.jetbrains.kotlin:kotlin-klib-commonizer-api:1.9.24) with ExternalDependencyInstrumentingArtifactTransform
+[        ] Transforming kotlin-android-extensions-1.9.24.jar (org.jetbrains.kotlin:kotlin-android-extensions:1.9.24) with ExternalDependencyInstrumentingArtifactTransform
+[        ] Transforming kotlin-compiler-runner-1.9.24.jar (org.jetbrains.kotlin:kotlin-compiler-runner:1.9.24) with ExternalDependencyInstrumentingArtifactTransform
+[        ] Transforming kotlin-compiler-embeddable-1.9.24.jar (org.jetbrains.kotlin:kotlin-compiler-embeddable:1.9.24) with ExternalDependencyInstrumentingArtifactTransform
+[        ] Transforming kotlin-gradle-plugin-annotations-1.9.24.jar (org.jetbrains.kotlin:kotlin-gradle-plugin-annotations:1.9.24) with ExternalDependencyInstrumentingArtifactTransform
+[        ] Transforming kotlin-scripting-compiler-embeddable-1.9.24.jar (org.jetbrains.kotlin:kotlin-scripting-compiler-embeddable:1.9.24) with ExternalDependencyInstrumentingArtifactTransform
+[        ] Transforming kotlin-project-model-1.9.24.jar (org.jetbrains.kotlin:kotlin-project-model:1.9.24) with ExternalDependencyInstrumentingArtifactTransform
+[        ] Transforming kotlin-tooling-core-1.9.24.jar (org.jetbrains.kotlin:kotlin-tooling-core:1.9.24) with ExternalDependencyInstrumentingArtifactTransform
+[        ] Transforming kotlin-daemon-embeddable-1.9.24.jar (org.jetbrains.kotlin:kotlin-daemon-embeddable:1.9.24) with ExternalDependencyInstrumentingArtifactTransform
+[        ] Transforming trove4j-1.0.20200330.jar (org.jetbrains.intellij.deps:trove4j:1.0.20200330) with ExternalDependencyInstrumentingArtifactTransform
+[        ] Transforming kotlin-daemon-client-1.9.24.jar (org.jetbrains.kotlin:kotlin-daemon-client:1.9.24) with ExternalDependencyInstrumentingArtifactTransform
+[        ] Transforming kotlinx-coroutines-core-jvm-1.5.0.jar (org.jetbrains.kotlinx:kotlinx-coroutines-core-jvm:1.5.0) with ExternalDependencyInstrumentingArtifactTransform
+[        ] Transforming kotlin-scripting-common-1.9.24.jar (org.jetbrains.kotlin:kotlin-scripting-common:1.9.24) with ExternalDependencyInstrumentingArtifactTransform
+[        ] Transforming kotlin-native-utils-1.9.24.jar (org.jetbrains.kotlin:kotlin-native-utils:1.9.24) with ExternalDependencyInstrumentingArtifactTransform
+[        ] Transforming kotlin-util-klib-1.9.24.jar (org.jetbrains.kotlin:kotlin-util-klib:1.9.24) with ExternalDependencyInstrumentingArtifactTransform
+[        ] Transforming kotlin-scripting-compiler-impl-embeddable-1.9.24.jar (org.jetbrains.kotlin:kotlin-scripting-compiler-impl-embeddable:1.9.24) with ExternalDependencyInstrumentingArtifactTransform
+[        ] Transforming kotlin-util-io-1.9.24.jar (org.jetbrains.kotlin:kotlin-util-io:1.9.24) with ExternalDependencyInstrumentingArtifactTransform
+[        ] Transforming kotlin-scripting-jvm-1.9.24.jar (org.jetbrains.kotlin:kotlin-scripting-jvm:1.9.24) with ExternalDependencyInstrumentingArtifactTransform
+[        ] Using Kotlin Gradle Plugin gradle82 variant
+[        ] kotlin scripting plugin: created the scripting discovery configuration: kotlinScriptDef
+[        ] kotlin scripting plugin: created the scripting discovery configuration: testKotlinScriptDef
+[        ] file or directory '/Users/haziqrosli/Dev/flutter/packages/flutter_tools/gradle/src/main/java', not found
+[  +93 ms] Resolve mutations for :gradle:checkKotlinGradlePluginConfigurationErrors (Thread[#84,Execution worker,5,main]) started.
+[        ] :gradle:checkKotlinGradlePluginConfigurationErrors (Thread[#84,Execution worker,5,main]) started.
+[        ] > Task :gradle:checkKotlinGradlePluginConfigurationErrors
+[        ] Caching disabled for task ':gradle:checkKotlinGradlePluginConfigurationErrors' because:
+[        ]   Build cache is disabled
+[        ] Task ':gradle:checkKotlinGradlePluginConfigurationErrors' is not up-to-date because:
+[        ]   Task has not declared any outputs despite executing actions.
+[        ] Resolve mutations for :gradle:compileKotlin (Thread[#84,Execution worker,5,main]) started.
+[        ] :gradle:compileKotlin (Thread[#84,Execution worker,5,main]) started.
+[  +99 ms] > Task :gradle:compileKotlin UP-TO-DATE
+[        ] Transforming gradle-api-8.10.2.jar with ClasspathEntrySnapshotTransform
+[        ] Transforming groovy-3.0.22.jar with ClasspathEntrySnapshotTransform
+[        ] Transforming groovy-ant-3.0.22.jar with ClasspathEntrySnapshotTransform
+[        ] Transforming groovy-astbuilder-3.0.22.jar with ClasspathEntrySnapshotTransform
+[        ] Transforming groovy-console-3.0.22.jar with ClasspathEntrySnapshotTransform
+[        ] Transforming groovy-datetime-3.0.22.jar with ClasspathEntrySnapshotTransform
+[        ] Transforming groovy-dateutil-3.0.22.jar with ClasspathEntrySnapshotTransform
+[        ] Transforming groovy-groovydoc-3.0.22.jar with ClasspathEntrySnapshotTransform
+[        ] Transforming groovy-json-3.0.22.jar with ClasspathEntrySnapshotTransform
+[        ] Transforming groovy-nio-3.0.22.jar with ClasspathEntrySnapshotTransform
+[        ] Transforming groovy-sql-3.0.22.jar with ClasspathEntrySnapshotTransform
+[        ] Transforming groovy-templates-3.0.22.jar with ClasspathEntrySnapshotTransform
+[        ] Transforming groovy-test-3.0.22.jar with ClasspathEntrySnapshotTransform
+[        ] Transforming groovy-xml-3.0.22.jar with ClasspathEntrySnapshotTransform
+[        ] Transforming javaparser-core-3.17.0.jar with ClasspathEntrySnapshotTransform
+[        ] Transforming kotlin-reflect-1.9.24.jar with ClasspathEntrySnapshotTransform
+[        ] Transforming kotlin-stdlib-1.9.24.jar with ClasspathEntrySnapshotTransform
+[        ] Transforming gradle-installation-beacon-8.10.2.jar with ClasspathEntrySnapshotTransform
+[        ] Transforming gradle-kotlin-dsl-extensions-8.10.2.jar with ClasspathEntrySnapshotTransform
+[        ] Transforming gradle-kotlin-dsl-8.10.2.jar with ClasspathEntrySnapshotTransform
+[        ] Transforming gradle-kotlin-dsl-shared-runtime-8.10.2.jar with ClasspathEntrySnapshotTransform
+[        ] Transforming gradle-kotlin-dsl-tooling-models-8.10.2.jar with ClasspathEntrySnapshotTransform
+[        ] Transforming gradle-8.7.3.jar with ClasspathEntrySnapshotTransform
+[        ] Transforming kotlin-reflect-1.9.24.jar with ClasspathEntrySnapshotTransform
+[        ] Transforming kotlin-stdlib-1.9.24.jar with ClasspathEntrySnapshotTransform
+[        ] Transforming builder-8.7.3.jar with ClasspathEntrySnapshotTransform
+[        ] Transforming builder-model-8.7.3.jar with ClasspathEntrySnapshotTransform
+[        ] Transforming gradle-api-8.7.3.jar with ClasspathEntrySnapshotTransform
+[        ] Transforming annotations-13.0.jar with ClasspathEntrySnapshotTransform
+[        ] Transforming manifest-merger-31.7.3.jar with ClasspathEntrySnapshotTransform
+[        ] Transforming zipflinger-8.7.3.jar with ClasspathEntrySnapshotTransform
+[        ] Transforming apksig-8.7.3.jar with ClasspathEntrySnapshotTransform
+[        ] Transforming apkzlib-8.7.3.jar with ClasspathEntrySnapshotTransform
+[        ] Transforming javawriter-2.5.0.jar with ClasspathEntrySnapshotTransform
+[        ] Transforming asm-9.6.jar with ClasspathEntrySnapshotTransform
+[        ] Caching disabled for task ':gradle:compileKotlin' because:
+[        ]   Build cache is disabled
+[        ] Skipping task ':gradle:compileKotlin' as it is up-to-date.
+[        ] Resolve mutations for :gradle:compileJava (Thread[#84,Execution worker,5,main]) started.
+[        ] :gradle:compileJava (Thread[#84,Execution worker,5,main]) started.
+[        ] > Task :gradle:compileJava NO-SOURCE
+[        ] Skipping task ':gradle:compileJava' as it has no source files and no previous output files.
