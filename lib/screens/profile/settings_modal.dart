@@ -252,7 +252,7 @@ class _SettingsModalState extends State<SettingsModal>
             tabs: const [
               Tab(text: "Profile"),
               Tab(text: "Business"),
-              Tab(text: "Notifications"),
+              Tab(text: "Updates"),
               Tab(text: "Privacy"),
             ],
           ),

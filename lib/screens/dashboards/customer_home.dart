@@ -5,7 +5,8 @@ import '../profile/profile_screen.dart';
 import '../chat/chat_screen.dart';
 
 class CustomerHome extends StatefulWidget {
-  const CustomerHome({super.key});
+  final int initialIndex;
+  const CustomerHome({super.key, this.initialIndex = 0});
 
   @override
   State<CustomerHome> createState() => _CustomerHomeState();
@@ -13,11 +14,19 @@ class CustomerHome extends StatefulWidget {
 
 class _CustomerHomeState extends State<CustomerHome>
     with SingleTickerProviderStateMixin {
-  int _index = 0;
+  late int _index;
+  bool _showStatusBarCover = false;
+
+  @override
+  void initState() {
+    super.initState();
+    _index = widget.initialIndex;
+  }
 
   final List<Widget> screens = [
     const HomeScreen(),
     const BookingsScreen(),
+    const Center(child: Text('Updates Screen Coming Soon')),
     const ChatScreen(),
     ProfileScreen(),
   ];
@@ -27,14 +36,45 @@ class _CustomerHomeState extends State<CustomerHome>
     return Scaffold(
       backgroundColor: Colors.white,
       appBar: _buildAppBar(),
-      body: AnimatedSwitcher(
-        duration: const Duration(milliseconds: 300),
-        transitionBuilder: (Widget child, Animation<double> animation) {
-          return FadeTransition(opacity: animation, child: child);
+      body: NotificationListener<ScrollNotification>(
+        onNotification: (notification) {
+          // Detect scroll distance to toggle status bar cover, but only for vertical scrolls
+          if (notification.metrics.axis == Axis.vertical) {
+            if (notification.metrics.pixels > 30) {
+              if (!_showStatusBarCover) setState(() => _showStatusBarCover = true);
+            } else {
+              if (_showStatusBarCover) setState(() => _showStatusBarCover = false);
+            }
+          }
+          return false;
         },
-        child: Container(
-          key: ValueKey<int>(_index), // Required for AnimatedSwitcher to recognize change
-          child: screens[_index],
+        child: Stack(
+          children: [
+            AnimatedSwitcher(
+              duration: const Duration(milliseconds: 300),
+              transitionBuilder: (Widget child, Animation<double> animation) {
+                return FadeTransition(opacity: animation, child: child);
+              },
+              child: Container(
+                key: ValueKey<int>(_index), // Required for AnimatedSwitcher to recognize change
+                child: screens[_index],
+              ),
+            ),
+            // 🔹 ANIMATED STATUS BAR COVER (Visible only when scrolling)
+            Positioned(
+              top: 0,
+              left: 0,
+              right: 0,
+              child: AnimatedOpacity(
+                duration: const Duration(milliseconds: 200),
+                opacity: _showStatusBarCover ? 1.0 : 0.0,
+                child: Container(
+                  height: MediaQuery.of(context).padding.top,
+                  color: _index == 1 ? const Color(0xFFFF6B00) : Colors.white,
+                ),
+              ),
+            ),
+          ],
         ),
       ),
       bottomNavigationBar: _buildBottomNav(),
@@ -71,10 +111,11 @@ class _CustomerHomeState extends State<CustomerHome>
             mainAxisAlignment: MainAxisAlignment.spaceAround,
             crossAxisAlignment: CrossAxisAlignment.center,
             children: [
-              _navItem(0, Icons.home_rounded, 'HOME'),
-              _navItem(1, Icons.calendar_month_rounded, 'BOOKING'),
-              _navItem(2, Icons.chat_rounded, 'CHAT'),
-              _navItem(3, Icons.person_rounded, 'PROFILE'),
+              _navItem(0, Icons.home_rounded, 'Home'),
+              _navItem(1, Icons.calendar_month_rounded, 'Booking'),
+              _navItem(2, Icons.notifications_rounded, 'Updates'),
+              _navItem(3, Icons.chat_rounded, 'Chat'),
+              _navItem(4, Icons.person_rounded, 'Profile'),
             ],
           ),
         ),

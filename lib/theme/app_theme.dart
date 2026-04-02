@@ -6,7 +6,8 @@ class AppTheme {
   static final ThemeData customerTheme = ThemeData(
     primaryColor: const Color(0xFFFF6B00),
     scaffoldBackgroundColor: const Color(0xFFFAF9F6),
-    textTheme: GoogleFonts.interTextTheme(),
+    fontFamily: GoogleFonts.outfit().fontFamily,
+    textTheme: GoogleFonts.outfitTextTheme(),
     elevatedButtonTheme: ElevatedButtonThemeData(
       style: ElevatedButton.styleFrom(
         backgroundColor: const Color(0xFFFF6B00),
@@ -25,7 +26,8 @@ class AppTheme {
   static final ThemeData providerTheme = ThemeData(
     primaryColor: const Color(0xFF8B5CF6),
     scaffoldBackgroundColor: const Color(0xFFF9F7FF),
-    textTheme: GoogleFonts.interTextTheme(),
+    fontFamily: GoogleFonts.outfit().fontFamily,
+    textTheme: GoogleFonts.outfitTextTheme(),
     elevatedButtonTheme: ElevatedButtonThemeData(
       style: ElevatedButton.styleFrom(
         backgroundColor: const Color(0xFF8B5CF6),

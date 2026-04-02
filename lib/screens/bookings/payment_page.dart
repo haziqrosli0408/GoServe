@@ -3,6 +3,7 @@ import 'package:google_fonts/google_fonts.dart';
 import 'package:intl/intl.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
+import 'booking_success_screen.dart';
 
 class PaymentPage extends StatefulWidget {
   final String providerName;
@@ -37,15 +38,16 @@ class _PaymentPageState extends State<PaymentPage> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: const Color(0xFFF8FAF9),
+      backgroundColor: Colors.white,
       appBar: AppBar(
-        backgroundColor: Colors.transparent,
+        backgroundColor: Colors.white,
         elevation: 0,
+        surfaceTintColor: Colors.white,
         leading: IconButton(
           icon: const Icon(Icons.arrow_back, color: Color(0xFF1E293B)),
           onPressed: () => Navigator.pop(context),
         ),
-        title: Text('Payment', style: GoogleFonts.inter(fontSize: 18, fontWeight: FontWeight.bold, color: const Color(0xFF1E293B))),
+        title: Text('Payment', style: GoogleFonts.outfit(fontSize: 18, fontWeight: FontWeight.bold, color: const Color(0xFF1E293B))),
         centerTitle: true,
       ),
       body: SingleChildScrollView(
@@ -53,7 +55,7 @@ class _PaymentPageState extends State<PaymentPage> {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            Text('Payment Method', style: GoogleFonts.inter(fontSize: 16, fontWeight: FontWeight.bold, color: const Color(0xFF1E293B))),
+            Text('Payment Method', style: GoogleFonts.outfit(fontSize: 16, fontWeight: FontWeight.bold, color: const Color(0xFF1E293B))),
             const SizedBox(height: 16),
             _buildPaymentMethodTile('Credit / Debit Card', 'Visa, Mastercard, AMEX', Icons.credit_card, 'card'),
             _buildPaymentMethodTile('Online Banking (FPX)', 'All Malaysian major banks supported', Icons.account_balance, 'fpx'),
@@ -78,7 +80,7 @@ class _PaymentPageState extends State<PaymentPage> {
               child: Text(
                 'By clicking \'Confirm & Pay\', you agree to our Terms of Service and Cancellation Policy.',
                 textAlign: TextAlign.center,
-                style: GoogleFonts.inter(fontSize: 11, color: const Color(0xFF64748B)),
+                style: GoogleFonts.outfit(fontSize: 11, color: const Color(0xFF64748B)),
               ),
             ),
             const SizedBox(height: 40),
@@ -112,8 +114,8 @@ class _PaymentPageState extends State<PaymentPage> {
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  Text(title, style: GoogleFonts.inter(fontSize: 14, fontWeight: FontWeight.bold, color: const Color(0xFF1E293B))),
-                  Text(subtitle, style: GoogleFonts.inter(fontSize: 11, color: const Color(0xFF64748B))),
+                  Text(title, style: GoogleFonts.outfit(fontSize: 14, fontWeight: FontWeight.bold, color: const Color(0xFF1E293B))),
+                  Text(subtitle, style: GoogleFonts.outfit(fontSize: 11, color: const Color(0xFF64748B))),
                 ],
               ),
             ),
@@ -156,7 +158,7 @@ class _PaymentPageState extends State<PaymentPage> {
             children: [
               Container(width: 18, height: 18, decoration: BoxDecoration(borderRadius: BorderRadius.circular(4), border: Border.all(color: Colors.grey.shade300))),
               const SizedBox(width: 10),
-              Text('Save card details for future bookings', style: GoogleFonts.inter(fontSize: 12, color: const Color(0xFF64748B))),
+              Text('Save card details for future bookings', style: GoogleFonts.outfit(fontSize: 12, color: const Color(0xFF64748B))),
             ],
           ),
         ],
@@ -167,7 +169,7 @@ class _PaymentPageState extends State<PaymentPage> {
   Widget _formLabel(String label) {
     return Padding(
       padding: const EdgeInsets.only(bottom: 8),
-      child: Text(label, style: GoogleFonts.inter(fontSize: 10, fontWeight: FontWeight.bold, color: const Color(0xFF64748B), letterSpacing: 0.5)),
+      child: Text(label, style: GoogleFonts.outfit(fontSize: 10, fontWeight: FontWeight.bold, color: const Color(0xFF64748B), letterSpacing: 0.5)),
     );
   }
 
@@ -175,14 +177,14 @@ class _PaymentPageState extends State<PaymentPage> {
     return TextField(
       decoration: InputDecoration(
         hintText: hint,
-        hintStyle: GoogleFonts.inter(color: Colors.grey.shade400, fontSize: 13),
+        hintStyle: GoogleFonts.outfit(color: Colors.grey.shade400, fontSize: 13),
         filled: true,
         fillColor: Colors.white,
         border: OutlineInputBorder(borderRadius: BorderRadius.circular(8), borderSide: BorderSide.none),
         contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
         suffixIcon: suffix,
       ),
-      style: GoogleFonts.inter(fontSize: 14),
+      style: GoogleFonts.outfit(fontSize: 14),
     );
   }
 
@@ -201,7 +203,7 @@ class _PaymentPageState extends State<PaymentPage> {
           Expanded(
             child: Text(
               'Your transaction is secured with 256-bit SSL encryption. We do not store your full card details on our servers.',
-              style: GoogleFonts.inter(fontSize: 10, color: const Color(0xFF64748B), height: 1.4),
+              style: GoogleFonts.outfit(fontSize: 10, color: const Color(0xFF64748B), height: 1.4),
             ),
           ),
         ],
@@ -220,7 +222,7 @@ class _PaymentPageState extends State<PaymentPage> {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Text('Booking Summary', style: GoogleFonts.inter(fontSize: 16, fontWeight: FontWeight.bold, color: const Color(0xFF1E293B))),
+          Text('Booking Summary', style: GoogleFonts.outfit(fontSize: 16, fontWeight: FontWeight.bold, color: const Color(0xFF1E293B))),
           const SizedBox(height: 20),
           Row(
             children: [
@@ -236,15 +238,15 @@ class _PaymentPageState extends State<PaymentPage> {
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    Text(widget.serviceName, style: GoogleFonts.inter(fontSize: 15, fontWeight: FontWeight.bold, color: const Color(0xFF1E293B))),
+                    Text(widget.serviceName, style: GoogleFonts.outfit(fontSize: 15, fontWeight: FontWeight.bold, color: const Color(0xFF1E293B))),
                     const SizedBox(height: 4),
-                    Text('Premium Service', style: GoogleFonts.inter(fontSize: 12, color: const Color(0xFF64748B))),
+                    Text('Premium Service', style: GoogleFonts.outfit(fontSize: 12, color: const Color(0xFF64748B))),
                     const SizedBox(height: 6),
                     Row(
                       children: [
                         Icon(Icons.calendar_month, size: 14, color: primaryGreen),
                         const SizedBox(width: 6),
-                        Text('${DateFormat('E, dd MMM').format(widget.selectedDate)} • ${widget.selectedTime}', style: GoogleFonts.inter(fontSize: 12, color: primaryGreen, fontWeight: FontWeight.w600)),
+                        Text('${DateFormat('E, dd MMM').format(widget.selectedDate)} • ${widget.selectedTime}', style: GoogleFonts.outfit(fontSize: 12, color: primaryGreen, fontWeight: FontWeight.w600)),
                       ],
                     ),
                   ],
@@ -253,14 +255,14 @@ class _PaymentPageState extends State<PaymentPage> {
             ],
           ),
           const SizedBox(height: 24),
-          Text('SERVICE LOCATION', style: GoogleFonts.inter(fontSize: 10, fontWeight: FontWeight.bold, color: const Color(0xFF64748B), letterSpacing: 0.5)),
+          Text('SERVICE LOCATION', style: GoogleFonts.outfit(fontSize: 10, fontWeight: FontWeight.bold, color: const Color(0xFF64748B), letterSpacing: 0.5)),
           const SizedBox(height: 12),
           Row(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               Icon(Icons.location_on, size: 16, color: const Color(0xFF1E293B)),
               const SizedBox(width: 12),
-              Expanded(child: Text(widget.address, style: GoogleFonts.inter(fontSize: 12, color: const Color(0xFF1E293B)))),
+              Expanded(child: Text(widget.address, style: GoogleFonts.outfit(fontSize: 12, color: const Color(0xFF1E293B)))),
             ],
           ),
           const SizedBox(height: 24),
@@ -278,15 +280,15 @@ class _PaymentPageState extends State<PaymentPage> {
               Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  Text('TOTAL AMOUNT', style: GoogleFonts.inter(fontSize: 10, fontWeight: FontWeight.bold, color: const Color(0xFF64748B))),
+                  Text('TOTAL AMOUNT', style: GoogleFonts.outfit(fontSize: 10, fontWeight: FontWeight.bold, color: const Color(0xFF64748B))),
                   const SizedBox(height: 4),
-                  Text('RM ${widget.totalPrice.toStringAsFixed(2)}', style: GoogleFonts.inter(fontSize: 24, fontWeight: FontWeight.bold, color: const Color(0xFF1E293B))),
+                  Text('RM ${widget.totalPrice.toStringAsFixed(2)}', style: GoogleFonts.outfit(fontSize: 24, fontWeight: FontWeight.bold, color: const Color(0xFF1E293B))),
                 ],
               ),
               Container(
                 padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
                 decoration: BoxDecoration(color: const Color(0xFFE8F5E9), borderRadius: BorderRadius.circular(6)),
-                child: Text('INSTANT CONFIRM', style: GoogleFonts.inter(fontSize: 9, fontWeight: FontWeight.bold, color: const Color(0xFF2E7D32))),
+                child: Text('INSTANT CONFIRM', style: GoogleFonts.outfit(fontSize: 9, fontWeight: FontWeight.bold, color: const Color(0xFF2E7D32))),
               ),
             ],
           ),
@@ -299,8 +301,8 @@ class _PaymentPageState extends State<PaymentPage> {
     return Row(
       mainAxisAlignment: MainAxisAlignment.spaceBetween,
       children: [
-        Text(label, style: GoogleFonts.inter(fontSize: 13, color: const Color(0xFF64748B))),
-        Text(value, style: GoogleFonts.inter(fontSize: 13, fontWeight: FontWeight.bold, color: const Color(0xFF1E293B))),
+        Text(label, style: GoogleFonts.outfit(fontSize: 13, color: const Color(0xFF64748B))),
+        Text(value, style: GoogleFonts.outfit(fontSize: 13, fontWeight: FontWeight.bold, color: const Color(0xFF1E293B))),
       ],
     );
   }
@@ -320,7 +322,7 @@ class _PaymentPageState extends State<PaymentPage> {
         child: Row(
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
-            Text('Confirm & Pay', style: GoogleFonts.inter(fontSize: 16, fontWeight: FontWeight.bold)),
+            Text('Confirm & Pay', style: GoogleFonts.outfit(fontSize: 16, fontWeight: FontWeight.bold)),
             const SizedBox(width: 12),
             const Icon(Icons.arrow_forward_rounded, size: 20),
           ],
@@ -350,9 +352,19 @@ class _PaymentPageState extends State<PaymentPage> {
       });
       
       if (mounted) {
-        Navigator.pop(context); 
-        Navigator.of(context).popUntil((route) => route.isFirst);
-        ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Payment Successful! Booking Confirmed.')));
+        Navigator.pop(context); // Close loading dialog
+        Navigator.pushReplacement(
+          context,
+          MaterialPageRoute(
+            builder: (context) => BookingSuccessScreen(
+              providerName: widget.providerName,
+              serviceName: widget.serviceName,
+              date: widget.selectedDate,
+              time: widget.selectedTime,
+              totalPrice: widget.totalPrice,
+            ),
+          ),
+        );
       }
     } catch (e) {
       if (!mounted) return;

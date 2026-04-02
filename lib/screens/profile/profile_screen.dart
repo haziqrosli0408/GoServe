@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:google_fonts/google_fonts.dart';
 
 class ProfileScreen extends StatefulWidget {
   const ProfileScreen({super.key});
@@ -36,7 +37,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: const Color(0xFFF6F9FC),
+      backgroundColor: Colors.white,
       body: userData == null
           ? const Center(child: CircularProgressIndicator())
           : Column(
@@ -44,89 +45,82 @@ class _ProfileScreenState extends State<ProfileScreen> {
                 // 🔹 HEADER
                 Container(
                   width: double.infinity,
-                  padding: const EdgeInsets.fromLTRB(20, 60, 20, 30),
+                  padding: const EdgeInsets.fromLTRB(20, 60, 20, 20),
                   decoration: const BoxDecoration(
-                    gradient: LinearGradient(
-                      colors: [
-                        Color(0xFFFF6B00),
-                        Color(0xFF0EA5E9),
-                      ],
-                    ),
-                    borderRadius:
-                        BorderRadius.vertical(bottom: Radius.circular(30)),
+                    color: Colors.white,
                   ),
-                  child: const Text(
-                    'My Profile',
-                    style: TextStyle(
-                      color: Colors.white,
-                      fontSize: 22,
-                      fontWeight: FontWeight.bold,
-                    ),
+                  child: Row(
+                    children: [
+                      Text(
+                        'My Profile',
+                        style: GoogleFonts.outfit(
+                          color: const Color(0xFF1F212C),
+                          fontSize: 24,
+                          fontWeight: FontWeight.bold,
+                        ),
+                      ),
+                    ],
                   ),
                 ),
 
                 const SizedBox(height: 16),
 
                 // 🔹 PROFILE CARD
-                Transform.translate(
-                  offset: const Offset(0, -30),
-                  child: Container(
-                    margin: const EdgeInsets.symmetric(horizontal: 18),
-                    padding: const EdgeInsets.all(20),
-                    decoration: BoxDecoration(
-                      color: Colors.white,
-                      borderRadius: BorderRadius.circular(24),
-                      boxShadow: const [
-                        BoxShadow(
-                          color: Colors.black12,
-                          blurRadius: 12,
-                          offset: Offset(0, 6),
+                Container(
+                  margin: const EdgeInsets.symmetric(horizontal: 18),
+                  padding: const EdgeInsets.all(24),
+                  decoration: BoxDecoration(
+                    color: Colors.white,
+                    borderRadius: BorderRadius.circular(30),
+                    border: Border.all(color: Colors.grey.shade100, width: 1.5),
+                    boxShadow: [
+                      BoxShadow(
+                        color: Colors.black.withValues(alpha: 0.03),
+                        blurRadius: 15,
+                        offset: const Offset(0, 8),
+                      ),
+                    ],
+                  ),
+                  child: Column(
+                    children: [
+                      CircleAvatar(
+                        radius: 45,
+                        backgroundColor: const Color(0xFFF1F5F9),
+                        backgroundImage: NetworkImage('https://i.pravatar.cc/150?u=${userData!['name']}'),
+                      ),
+                      const SizedBox(height: 16),
+                      Text(
+                        userData!['name'] ?? 'User Name',
+                        style: GoogleFonts.outfit(
+                          fontSize: 20,
+                          fontWeight: FontWeight.bold,
+                          color: const Color(0xFF1F212C),
                         ),
-                      ],
-                    ),
-                    child: Column(
-                      children: [
-                        const CircleAvatar(
-                          radius: 45,
-                          backgroundColor: Color(0xFFE5E7EB),
-                          child: Icon(Icons.person,
-                              size: 45, color: Colors.grey),
-                        ),
-                        const SizedBox(height: 12),
-
-                        Text(
-                          userData!['name'] ?? 'Loading...',
-                          style: const TextStyle(
-                              fontSize: 18, fontWeight: FontWeight.bold),
-                        ),
-                        const SizedBox(height: 4),
-
-                        Text(
-                          userData!['email'] ?? 'Loading...',
-                          style: const TextStyle(color: Colors.black54),
-                        ),
-
-                        const SizedBox(height: 12),
-
-                        const Row(
-                          mainAxisAlignment: MainAxisAlignment.spaceAround,
-                          children: [
-                            _ProfileStat(
-                                icon: Icons.calendar_today,
-                                value: '0',
-                                label: 'Bookings'),
-                            _ProfileStat(
-                                icon: Icons.star_border,
-                                value: '0',
-                                label: 'Reviews'),
-                            _ProfileStat(
-                                icon: Icons.favorite_border,
-                                value: '0',
-                                label: 'Saved'),
-                          ],
-                        ),
-                      ],
-                    ),
+                      ),
+                      const SizedBox(height: 4),
+                      Text(
+                        userData!['email'] ?? 'email@example.com',
+                        style: GoogleFonts.outfit(color: Colors.grey.shade500),
+                      ),
+                      const SizedBox(height: 24),
+                      Row(
+                        mainAxisAlignment: MainAxisAlignment.spaceAround,
+                        children: [
+                          _ProfileStat(
+                              icon: Icons.calendar_today_outlined,
+                              value: '12',
+                              label: 'Bookings'),
+                          _ProfileStat(
+                              icon: Icons.star_outline_rounded,
+                              value: '4.8',
+                              label: 'Rating'),
+                          _ProfileStat(
+                              icon: Icons.favorite_border_rounded,
+                              value: '24',
+                              label: 'Saved'),
+                        ],
+                      ),
+                    ],
                   ),
                 ),
 
@@ -157,8 +151,8 @@ class _ProfileScreenState extends State<ProfileScreen> {
                       _settingTile(
                         icon: Icons.notifications_outlined,
                         color: Colors.orange,
-                        title: 'Notifications',
-                        subtitle: 'Notification preferences',
+                        title: 'Updates',
+                        subtitle: 'App alerts and updates',
                       ),
                       _settingTile(
                         icon: Icons.help_outline,

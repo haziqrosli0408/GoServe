@@ -57,7 +57,7 @@ class _IntroScreenState extends State<IntroScreen>
               ),
               Text(
                 'Choose Account Type',
-                style: GoogleFonts.inter(
+                style: GoogleFonts.outfit(
                   fontSize: 22,
                   fontWeight: FontWeight.bold,
                   color: const Color(0xFF1E293B),
@@ -66,7 +66,7 @@ class _IntroScreenState extends State<IntroScreen>
               const SizedBox(height: 8),
               Text(
                 'Select how you want to use GoServe',
-                style: GoogleFonts.inter(
+                style: GoogleFonts.outfit(
                   fontSize: 14,
                   color: Colors.black45,
                 ),
@@ -112,7 +112,7 @@ class _IntroScreenState extends State<IntroScreen>
                 },
                 child: Text(
                   'Already have an account? Log in',
-                  style: GoogleFonts.inter(
+                  style: GoogleFonts.outfit(
                     color: const Color(0xFFFF6B00),
                     fontWeight: FontWeight.w600,
                     fontSize: 14,
@@ -162,7 +162,7 @@ class _IntroScreenState extends State<IntroScreen>
                 children: [
                   Text(
                     title,
-                    style: GoogleFonts.inter(
+                    style: GoogleFonts.outfit(
                       fontWeight: FontWeight.bold,
                       fontSize: 16,
                       color: const Color(0xFF1E293B),
@@ -170,7 +170,7 @@ class _IntroScreenState extends State<IntroScreen>
                   ),
                   Text(
                     subtitle,
-                    style: GoogleFonts.inter(
+                    style: GoogleFonts.outfit(
                       color: Colors.black45,
                       fontSize: 13,
                     ),
@@ -219,14 +219,14 @@ class _IntroScreenState extends State<IntroScreen>
                           children: [
                             TextSpan(
                               text: 'Go',
-                              style: GoogleFonts.inter(
+                              style: GoogleFonts.outfit(
                                 color: const Color(0xFFFF6B00),
                                 fontWeight: FontWeight.w600,
                               ),
                             ),
                             TextSpan(
                               text: 'Serve',
-                              style: GoogleFonts.inter(
+                              style: GoogleFonts.outfit(
                                 color: const Color(0xFF1E293B),
                                 fontWeight: FontWeight.w500,
                               ),
@@ -242,7 +242,7 @@ class _IntroScreenState extends State<IntroScreen>
                       Text(
                         'Your Smart Gateway To Trusted\nLocal Services',
                         textAlign: TextAlign.center,
-                        style: GoogleFonts.inter(
+                        style: GoogleFonts.outfit(
                           fontSize: 18,
                           fontWeight: FontWeight.w400,
                           color: Colors.black54,
@@ -272,7 +272,7 @@ class _IntroScreenState extends State<IntroScreen>
                         },
                         child: Text(
                           'Sign Up',
-                          style: GoogleFonts.inter(
+                          style: GoogleFonts.outfit(
                             fontSize: 16,
                             fontWeight: FontWeight.w400,
                             color: Colors.white,
@@ -297,7 +297,7 @@ class _IntroScreenState extends State<IntroScreen>
                         },
                         child: Text(
                           'Log In',
-                          style: GoogleFonts.inter(
+                          style: GoogleFonts.outfit(
                             fontSize: 16,
                             color: const Color(0xFF1E293B),
                             fontWeight: FontWeight.w400,

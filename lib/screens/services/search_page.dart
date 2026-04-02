@@ -13,11 +13,13 @@ class SearchPage extends StatefulWidget {
 
 class _SearchPageState extends State<SearchPage> {
   String searchQuery = "";
+  String _selectedSort = 'All';
   final TextEditingController _searchController = TextEditingController();
   List<Map<String, dynamic>> _allProviders = [];
   Map<String, dynamic>? _userData;
   bool _isLoading = true;
   bool _isSearchSubmitted = false;
+  final Set<String> _savedProviderNames = {};
 
   @override
   void initState() {
@@ -82,7 +84,7 @@ class _SearchPageState extends State<SearchPage> {
   List<Map<String, dynamic>> get _filteredProviders {
     if (searchQuery.isEmpty) return [];
     
-    return _allProviders.where((p) {
+    var results = _allProviders.where((p) {
       final name = (p['name'] as String?)?.toLowerCase() ?? '';
       final List<dynamic> services = p['services'] ?? [];
       final address = (p['address'] as String?)?.toLowerCase() ?? '';
@@ -92,6 +94,32 @@ class _SearchPageState extends State<SearchPage> {
           services.any((s) => s.toString().toLowerCase().contains(query)) ||
           address.contains(query);
     }).toList();
+
+    if (_selectedSort == 'Highest Rated') {
+      // Mock ratings sort (add real rating prop to providers in Firestore if available)
+      results.sort((a, b) => ('4.9').compareTo('4.9'));
+    } else if (_selectedSort == 'Lowest Price') {
+      results.sort((a, b) {
+        double priceA = double.tryParse(a['price']?.toString() ?? '85') ?? 85.0;
+        double priceB = double.tryParse(b['price']?.toString() ?? '85') ?? 85.0;
+        return priceA.compareTo(priceB);
+      });
+    } else if (_selectedSort == 'Nearest') {
+      String userAddress = _userData?['address']?.toString() ?? 'Kuala Lumpur, Malaysia';
+      String userState = userAddress.split(',').length >= 2 
+          ? userAddress.split(',')[userAddress.split(',').length - 2].trim().toLowerCase() 
+          : userAddress.toLowerCase();
+      
+      results.sort((a, b) {
+        bool aMatches = (a['address'] as String?)?.toLowerCase().contains(userState) ?? false;
+        bool bMatches = (b['address'] as String?)?.toLowerCase().contains(userState) ?? false;
+        if (aMatches && !bMatches) return -1;
+        if (!aMatches && bMatches) return 1;
+        return 0;
+      });
+    }
+
+    return results;
   }
 
   @override
@@ -116,38 +144,46 @@ class _SearchPageState extends State<SearchPage> {
           icon: const Icon(Icons.arrow_back, color: Color(0xFF1E293B)),
           onPressed: () => Navigator.pop(context),
         ),
-        title: Text('Search', style: GoogleFonts.inter(color: const Color(0xFF1E293B), fontWeight: FontWeight.bold, fontSize: 18)),
+        title: Text('Search', style: GoogleFonts.outfit(color: const Color(0xFF1E293B), fontWeight: FontWeight.bold, fontSize: 18)),
         centerTitle: true,
       ),
       body: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           // Current Location Header
-          Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 8),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
-                  'Your Current Location', 
-                  style: GoogleFonts.inter(fontSize: 12, color: Colors.grey.shade500, fontWeight: FontWeight.w500)
-                ),
-                const SizedBox(height: 4),
-                Row(
-                  children: [
-                    const Icon(Icons.location_on, color: Color(0xFF000000), size: 16),
-                    const SizedBox(width: 4),
-                    Expanded(
-                      child: Text(
-                        userState, 
-                        style: GoogleFonts.inter(fontSize: 15, fontWeight: FontWeight.w600, color: const Color(0xFF1E293B)),
-                        maxLines: 1,
-                        overflow: TextOverflow.ellipsis,
+          AnimatedCrossFade(
+            duration: const Duration(milliseconds: 300),
+            crossFadeState: _isSearchSubmitted 
+                ? CrossFadeState.showSecond 
+                : CrossFadeState.showFirst,
+            sizeCurve: Curves.easeInOut,
+            secondChild: const SizedBox(width: double.infinity),
+            firstChild: Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 8),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    'Your Current Location', 
+                    style: GoogleFonts.outfit(fontSize: 12, color: Colors.grey.shade500, fontWeight: FontWeight.w500)
+                  ),
+                  const SizedBox(height: 4),
+                  Row(
+                    children: [
+                      const Icon(Icons.location_on, color: Color(0xFF000000), size: 16),
+                      const SizedBox(width: 4),
+                      Expanded(
+                        child: Text(
+                          userState, 
+                          style: GoogleFonts.outfit(fontSize: 15, fontWeight: FontWeight.w600, color: const Color(0xFF1E293B)),
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                        ),
                       ),
-                    ),
-                  ],
-                ),
-              ],
+                    ],
+                  ),
+                ],
+              ),
             ),
           ),
           
@@ -162,6 +198,11 @@ class _SearchPageState extends State<SearchPage> {
               child: TextField(
                 controller: _searchController,
                 autofocus: true,
+                onTap: () {
+                  if (_isSearchSubmitted) {
+                    setState(() => _isSearchSubmitted = false);
+                  }
+                },
                 onChanged: (value) {
                   setState(() {
                     searchQuery = value;
@@ -169,12 +210,13 @@ class _SearchPageState extends State<SearchPage> {
                   });
                 },
                 onSubmitted: (value) {
+                  FocusManager.instance.primaryFocus?.unfocus();
                   setState(() => _isSearchSubmitted = true);
                 },
-                style: GoogleFonts.inter(color: const Color(0xFF1E293B), fontSize: 14),
+                style: GoogleFonts.outfit(color: const Color(0xFF1E293B), fontSize: 14),
                 decoration: InputDecoration(
                   hintText: 'Search for services or providers...',
-                  hintStyle: GoogleFonts.inter(color: Colors.grey.shade500, fontSize: 14),
+                  hintStyle: GoogleFonts.outfit(color: Colors.grey.shade500, fontSize: 14),
                   prefixIcon: Icon(Icons.search, color: Colors.grey.shade500, size: 20),
                   border: InputBorder.none,
                   contentPadding: const EdgeInsets.symmetric(vertical: 14),
@@ -184,6 +226,26 @@ class _SearchPageState extends State<SearchPage> {
           ),
           
           const SizedBox(height: 8),
+
+          // 🔹 Sort Chips (Show only when submitted)
+          if (_isSearchSubmitted)
+            SingleChildScrollView(
+              scrollDirection: Axis.horizontal,
+              padding: const EdgeInsets.symmetric(horizontal: 24),
+              child: Row(
+                children: [
+                  _buildSortChip('All'),
+                  const SizedBox(width: 8),
+                  _buildSortChip('Highest Rated'),
+                  const SizedBox(width: 8),
+                  _buildSortChip('Lowest Price'),
+                  const SizedBox(width: 8),
+                  _buildSortChip('Nearest'),
+                ],
+              ),
+            ),
+          
+          if (_isSearchSubmitted) const SizedBox(height: 12),
           
           // Content
           Expanded(
@@ -202,7 +264,7 @@ class _SearchPageState extends State<SearchPage> {
 
     if (suggestions.isEmpty) {
       return Center(
-        child: Text('No keywords found', style: GoogleFonts.inter(color: Colors.grey.shade400)),
+        child: Text('No keywords found', style: GoogleFonts.outfit(color: Colors.grey.shade400)),
       );
     }
 
@@ -214,9 +276,10 @@ class _SearchPageState extends State<SearchPage> {
         return ListTile(
           contentPadding: EdgeInsets.zero,
           leading: const Icon(Icons.history, color: Colors.grey, size: 18),
-          title: Text(suggestion, style: GoogleFonts.inter(fontSize: 14, color: const Color(0xFF1E293B))),
+          title: Text(suggestion, style: GoogleFonts.outfit(fontSize: 14, color: const Color(0xFF1E293B))),
           trailing: const Icon(Icons.north_west, color: Colors.grey, size: 16),
           onTap: () {
+            FocusManager.instance.primaryFocus?.unfocus();
             setState(() {
               searchQuery = suggestion;
               _searchController.text = suggestion;
@@ -237,14 +300,20 @@ class _SearchPageState extends State<SearchPage> {
           children: [
             Icon(Icons.search_off, size: 64, color: Colors.grey.shade100),
             const SizedBox(height: 16),
-            Text('No results found for "$searchQuery"', style: GoogleFonts.inter(color: Colors.grey.shade400)),
+            Text('No results found for "$searchQuery"', style: GoogleFonts.outfit(color: Colors.grey.shade400)),
           ],
         ),
       );
     }
 
-    return ListView.builder(
-      padding: const EdgeInsets.symmetric(horizontal: 24),
+    return GridView.builder(
+      padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 12),
+      gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
+        crossAxisCount: 2,
+        mainAxisSpacing: 20,
+        crossAxisSpacing: 16,
+        childAspectRatio: 0.7, // Adjusted for the new card style
+      ),
       itemCount: results.length,
       itemBuilder: (context, index) {
         final p = results[index];
@@ -254,182 +323,186 @@ class _SearchPageState extends State<SearchPage> {
   }
 
   Widget _buildResultCard(Map<String, dynamic> p) {
-    String name = p['name'] ?? 'Provider';
-    List<dynamic> services = p['services'] ?? [];
-    String category = services.isNotEmpty ? services.first.toString() : 'Cleaning';
-    String description = p['description'] ?? 'Full sanitization and aesthetic restoration for your space.';
-    String price = p['price'] ?? '85';
-    String profileUrl = p['profileUrl'] ?? '';
+    String name = p['name'] ?? 'Elite Home Services';
+    List<dynamic> svcs = p['services'] ?? [];
+    String sub = svcs.isNotEmpty ? svcs.first.toString() : 'Expert Professional';
+    String price = p['price']?.toString() ?? '85';
     String rating = '4.9';
-    // String reviews = '1.2k'; // Removed as unused
+    String profileUrl = p['profileUrl'] ?? '';
 
     return GestureDetector(
       onTap: () {
-        Navigator.push(context, MaterialPageRoute(builder: (context) => ServiceDetailsScreen(
-          provider: p,
-        )));
+        Navigator.push(context, MaterialPageRoute(builder: (context) => ServiceDetailsScreen(provider: p)));
       },
       child: Container(
-        margin: const EdgeInsets.only(bottom: 16),
-        padding: const EdgeInsets.all(12),
-        decoration: BoxDecoration(
-          color: Colors.white,
-          borderRadius: BorderRadius.circular(16),
-          border: Border.all(color: Colors.grey.shade100),
-          boxShadow: [
-            BoxShadow(
-              color: Colors.black.withValues(alpha: 0.03),
-              blurRadius: 15,
-              offset: const Offset(0, 5),
-            ),
-          ],
-        ),
-        child: Row(
+        color: Colors.white,
+        child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
+          mainAxisSize: MainAxisSize.min,
           children: [
-            // Image with Elite Badge
-            Stack(
-              children: [
-                Container(
-                  width: 90,
-                  height: 90,
-                  decoration: BoxDecoration(
-                    borderRadius: BorderRadius.circular(12),
-                    image: profileUrl.isNotEmpty ? DecorationImage(
-                      image: NetworkImage(profileUrl),
-                      fit: BoxFit.cover,
-                    ) : DecorationImage(
-                      image: NetworkImage('https://i.pravatar.cc/150?u=$name'),
-                      fit: BoxFit.cover,
-                    ),
-                  ),
-                ),
-                Positioned(
-                  top: 6,
-                  left: 6,
-                  child: Container(
-                    padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 1),
-                    decoration: BoxDecoration(
-                      color: const Color(0xFFFF6B00),
-                      borderRadius: BorderRadius.circular(3),
-                    ),
-                    child: Text(
-                      'ELITE',
-                      style: GoogleFonts.inter(
-                        color: Colors.white,
-                        fontSize: 7,
-                        fontWeight: FontWeight.bold,
-                        letterSpacing: 0.5,
-                      ),
-                    ),
-                  ),
-                ),
-              ],
-            ),
-            const SizedBox(width: 14),
-            // Details
+            // Image
             Expanded(
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  // Category and Rating
-                  Row(
-                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                    children: [
-                      Text(
-                        category.toUpperCase(),
-                        style: GoogleFonts.inter(
-                          fontSize: 9,
-                          fontWeight: FontWeight.bold,
-                          color: const Color(0xFFFF6B00),
-                          letterSpacing: 0.5,
-                        ),
-                      ),
-                      Row(
-                        children: [
-                          const Icon(Icons.star, color: Color(0xFFF59E0B), size: 12),
-                          const SizedBox(width: 2),
-                          Text(
-                            rating,
-                            style: GoogleFonts.inter(
-                              fontSize: 10,
-                              fontWeight: FontWeight.bold,
-                              color: const Color(0xFF1E293B),
-                            ),
-                          ),
-                        ],
-                      ),
-                    ],
-                  ),
-                  const SizedBox(height: 4),
-                  // Title
-                  Text(
-                    name,
-                    style: GoogleFonts.inter(
-                      fontSize: 14,
+              child: ClipRRect(
+                borderRadius: BorderRadius.circular(16),
+                child: profileUrl.isNotEmpty ? Image.network(
+                  profileUrl,
+                  width: double.infinity,
+                  height: double.infinity,
+                  fit: BoxFit.cover,
+                  errorBuilder: (_, __, ___) => Image.network('https://i.pravatar.cc/150?u=$name', width: double.infinity, fit: BoxFit.cover),
+                ) : Image.network(
+                  'https://i.pravatar.cc/150?u=$name',
+                  width: double.infinity,
+                  fit: BoxFit.cover,
+                ),
+              ),
+            ),
+            const SizedBox(height: 10),
+
+            // Row 1: Title and Bookmark Icon
+            Row(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              children: [
+                Expanded(
+                  child: Text(
+                    sub, // Service name
+                    style: GoogleFonts.outfit(
+                      fontSize: 15,
                       fontWeight: FontWeight.bold,
-                      color: const Color(0xFF1E293B),
-                    ),
-                    maxLines: 1,
-                    overflow: TextOverflow.ellipsis,
-                  ),
-                  const SizedBox(height: 2),
-                  // Description
-                  Text(
-                    description,
-                    style: GoogleFonts.inter(
-                      fontSize: 11,
-                      color: Colors.grey.shade500,
-                      height: 1.2,
+                      color: const Color(0xFF1F2937),
                     ),
                     maxLines: 2,
                     overflow: TextOverflow.ellipsis,
                   ),
-                  const SizedBox(height: 8),
-                  // Price
-                  Row(
-                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                ),
+                GestureDetector(
+                  onTap: () {
+                    setState(() {
+                      if (_savedProviderNames.contains(name)) {
+                        _savedProviderNames.remove(name);
+                      } else {
+                        _savedProviderNames.add(name);
+                      }
+                    });
+                  },
+                  child: Icon(
+                    _savedProviderNames.contains(name) ? Icons.bookmark : Icons.bookmark_border,
+                    size: 20,
+                    color: _savedProviderNames.contains(name) ? Colors.black : Colors.grey.shade400,
+                  ),
+                ),
+              ],
+            ),
+            const SizedBox(height: 6),
+
+            // Row 2: Price and Rating
+            Row(
+              children: [
+                RichText(
+                  text: TextSpan(
                     children: [
-                      RichText(
-                        text: TextSpan(
-                          children: [
-                            TextSpan(
-                              text: 'RM$price',
-                              style: GoogleFonts.inter(
-                                fontSize: 16,
-                                fontWeight: FontWeight.bold,
-                                color: const Color(0xFFFF6B00),
-                              ),
-                            ),
-                            TextSpan(
-                              text: '/hr',
-                              style: GoogleFonts.inter(
-                                fontSize: 10,
-                                fontWeight: FontWeight.w500,
-                                color: Colors.grey.shade400,
-                              ),
-                            ),
-                          ],
+                      TextSpan(
+                        text: 'From ',
+                        style: GoogleFonts.outfit(
+                          fontSize: 11,
+                          color: Colors.grey.shade600,
                         ),
                       ),
-                      Container(
-                        padding: const EdgeInsets.all(6),
-                        decoration: BoxDecoration(
-                          color: const Color(0xFFF1F5F9),
-                          borderRadius: BorderRadius.circular(8),
-                        ),
-                        child: const Icon(
-                          Icons.bookmark_border,
-                          size: 16,
-                          color: Color(0xFF475569),
+                      TextSpan(
+                        text: 'RM$price/hr',
+                        style: GoogleFonts.outfit(
+                          fontSize: 14,
+                          fontWeight: FontWeight.bold,
+                          color: const Color(0xFFFF6B00),
                         ),
                       ),
                     ],
                   ),
-                ],
-              ),
+                ),
+                Text(
+                  ' · ',
+                  style: GoogleFonts.outfit(
+                    fontSize: 12,
+                    color: const Color(0xFF6B7280),
+                  ),
+                ),
+                const Icon(Icons.star, color: Color(0xFFFFC107), size: 14),
+                const SizedBox(width: 4),
+                Text(
+                  rating,
+                  style: GoogleFonts.outfit(
+                    fontSize: 12,
+                    fontWeight: FontWeight.w500,
+                    color: const Color(0xFF1E293B),
+                  ),
+                ),
+              ],
+            ),
+            const SizedBox(height: 8),
+
+            // Row 3: Provider Profile and Name
+            Row(
+              children: [
+                CircleAvatar(
+                  radius: 9,
+                  backgroundImage: profileUrl.isNotEmpty
+                    ? NetworkImage(profileUrl)
+                    : NetworkImage('https://i.pravatar.cc/150?u=$name') as ImageProvider,
+                ),
+                const SizedBox(width: 6),
+                Expanded(
+                  child: Text(
+                    name,
+                    style: GoogleFonts.outfit(
+                      fontSize: 12,
+                      fontWeight: FontWeight.w500,
+                      color: const Color(0xFF4B5563),
+                    ),
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                  ),
+                ),
+                const SizedBox(width: 4),
+                Text(
+                  '2.5 km',
+                  style: GoogleFonts.outfit(
+                    fontSize: 11,
+                    color: Colors.grey.shade400,
+                  ),
+                ),
+              ],
             ),
           ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildSortChip(String label) {
+    bool isSelected = _selectedSort == label;
+    return GestureDetector(
+      onTap: () {
+        setState(() {
+          _selectedSort = label;
+        });
+      },
+      child: Container(
+        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+        decoration: BoxDecoration(
+          color: isSelected ? const Color(0xFF1E293B) : Colors.white,
+          borderRadius: BorderRadius.circular(20),
+          border: Border.all(
+            color: isSelected ? const Color(0xFF1E293B) : Colors.grey.shade300,
+          ),
+        ),
+        child: Text(
+          label,
+          style: GoogleFonts.outfit(
+            fontSize: 13,
+            fontWeight: isSelected ? FontWeight.bold : FontWeight.w500,
+            color: isSelected ? Colors.white : const Color(0xFF64748B),
+          ),
         ),
       ),
     );
