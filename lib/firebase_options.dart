@@ -63,6 +63,7 @@ class DefaultFirebaseOptions {
     messagingSenderId: '382033508368',
     projectId: 'goserve-50b3b',
     storageBucket: 'goserve-50b3b.firebasestorage.app',
+    iosClientId: '382033508368-am6cpgl50rolb7188l2tvf88tqgi5gcb.apps.googleusercontent.com',
     iosBundleId: 'com.example.gooservee',
   );
 
@@ -72,6 +73,7 @@ class DefaultFirebaseOptions {
     messagingSenderId: '382033508368',
     projectId: 'goserve-50b3b',
     storageBucket: 'goserve-50b3b.firebasestorage.app',
+    iosClientId: '382033508368-am6cpgl50rolb7188l2tvf88tqgi5gcb.apps.googleusercontent.com',
     iosBundleId: 'com.example.gooservee',
   );
 
@@ -83,4 +85,5 @@ class DefaultFirebaseOptions {
     authDomain: 'goserve-50b3b.firebaseapp.com',
     storageBucket: 'goserve-50b3b.firebasestorage.app',
   );
+
 }

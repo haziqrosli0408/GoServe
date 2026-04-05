@@ -3,6 +3,7 @@ import 'package:google_fonts/google_fonts.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'service_details.dart';
+import '../misc/map_picker_screen.dart';
 
 class SearchPage extends StatefulWidget {
   const SearchPage({super.key});
@@ -39,6 +40,42 @@ class _SearchPageState extends State<SearchPage> {
       }
     } catch (e) {
       // Ignore
+    }
+  }
+
+  Future<void> _updateUserLocation() async {
+    try {
+      final user = FirebaseAuth.instance.currentUser;
+      if (user == null) return;
+
+      final result = await Navigator.push<Map<String, dynamic>>(
+        context,
+        MaterialPageRoute(builder: (context) => const MapPickerScreen()),
+      );
+
+      if (result != null && mounted) {
+        final String newAddress = result['address'];
+        
+        setState(() {
+          _userData?['address'] = newAddress;
+        });
+
+        await FirebaseFirestore.instance
+            .collection('users')
+            .doc(user.uid)
+            .update({'address': newAddress});
+            
+        if (!mounted) return;
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('Location updated successfully!')),
+        );
+      }
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Failed to update location: $e')),
+        );
+      }
     }
   }
 
@@ -158,31 +195,37 @@ class _SearchPageState extends State<SearchPage> {
                 : CrossFadeState.showFirst,
             sizeCurve: Curves.easeInOut,
             secondChild: const SizedBox(width: double.infinity),
-            firstChild: Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 8),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(
-                    'Your Current Location', 
-                    style: GoogleFonts.outfit(fontSize: 12, color: Colors.grey.shade500, fontWeight: FontWeight.w500)
-                  ),
-                  const SizedBox(height: 4),
-                  Row(
-                    children: [
-                      const Icon(Icons.location_on, color: Color(0xFF000000), size: 16),
-                      const SizedBox(width: 4),
-                      Expanded(
-                        child: Text(
-                          userState, 
-                          style: GoogleFonts.outfit(fontSize: 15, fontWeight: FontWeight.w600, color: const Color(0xFF1E293B)),
-                          maxLines: 1,
-                          overflow: TextOverflow.ellipsis,
+            firstChild: GestureDetector(
+              onTap: _updateUserLocation,
+              child: Container(
+                color: Colors.transparent, // Ensures entire area is clickable
+                padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 8),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      'Your Current Location', 
+                      style: GoogleFonts.outfit(fontSize: 12, color: Colors.grey.shade500, fontWeight: FontWeight.w500)
+                    ),
+                    const SizedBox(height: 4),
+                    Row(
+                      children: [
+                        const Icon(Icons.location_on, color: Color(0xFF000000), size: 16),
+                        const SizedBox(width: 4),
+                        Expanded(
+                          child: Text(
+                            userState, 
+                            style: GoogleFonts.outfit(fontSize: 15, fontWeight: FontWeight.w600, color: const Color(0xFF1E293B)),
+                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis,
+                          ),
                         ),
-                      ),
-                    ],
-                  ),
-                ],
+                        const SizedBox(width: 8),
+                        Icon(Icons.keyboard_arrow_down, size: 18, color: Colors.grey.shade400),
+                      ],
+                    ),
+                  ],
+                ),
               ),
             ),
           ),
@@ -329,6 +372,7 @@ class _SearchPageState extends State<SearchPage> {
     String price = p['price']?.toString() ?? '85';
     String rating = '4.9';
     String profileUrl = p['profileUrl'] ?? '';
+    String servicePhotoUrl = p['servicePhotoUrl'] ?? '';
 
     return GestureDetector(
       onTap: () {
@@ -344,14 +388,14 @@ class _SearchPageState extends State<SearchPage> {
             Expanded(
               child: ClipRRect(
                 borderRadius: BorderRadius.circular(16),
-                child: profileUrl.isNotEmpty ? Image.network(
-                  profileUrl,
+                child: servicePhotoUrl.isNotEmpty ? Image.network(
+                  servicePhotoUrl,
                   width: double.infinity,
                   height: double.infinity,
                   fit: BoxFit.cover,
-                  errorBuilder: (_, __, ___) => Image.network('https://i.pravatar.cc/150?u=$name', width: double.infinity, fit: BoxFit.cover),
+                  errorBuilder: (_, __, ___) => Image.network('https://images.unsplash.com/photo-1581578731548-c64695cc6952?q=80&w=800&auto=format&fit=crop', width: double.infinity, fit: BoxFit.cover),
                 ) : Image.network(
-                  'https://i.pravatar.cc/150?u=$name',
+                  'https://images.unsplash.com/photo-1581578731548-c64695cc6952?q=80&w=800&auto=format&fit=crop',
                   width: double.infinity,
                   fit: BoxFit.cover,
                 ),

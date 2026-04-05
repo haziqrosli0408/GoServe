@@ -383,7 +383,7 @@ class _BookingsScreenState extends State<BookingsScreen> {
                     Text(
                       time,
                       style: GoogleFonts.outfit(
-                        fontSize: 13,
+                        fontSize: 15,
                         color: Colors.black87,
                       ),
                     ),
@@ -418,7 +418,7 @@ class _BookingsScreenState extends State<BookingsScreen> {
                               style: GoogleFonts.outfit(
                                 color: const Color(0xFF1F212C),
                                 fontWeight: FontWeight.bold,
-                                fontSize: 14,
+                                fontSize: 16,
                               ),
                             ),
                           ),
@@ -466,7 +466,7 @@ class _BookingsScreenState extends State<BookingsScreen> {
             style: GoogleFonts.outfit(
               color: Colors.white,
               fontWeight: FontWeight.bold,
-              fontSize: 14,
+              fontSize: 16,
             ),
           ),
         ),

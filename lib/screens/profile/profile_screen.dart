@@ -358,21 +358,89 @@ class _ProfileScreenState extends State<ProfileScreen> {
   void _showLogoutDialog(BuildContext context) {
     showDialog(
       context: context,
-      builder: (_) => AlertDialog(
-        title: const Text("Logout"),
-        content: const Text("Are you sure you want to logout?"),
-        actions: [
-          TextButton(
-              onPressed: () => Navigator.pop(context),
-              child: const Text("Cancel")),
-          ElevatedButton(
-            onPressed: () {
-              FirebaseAuth.instance.signOut();
-              Navigator.pushReplacementNamed(context, "/login");
-            },
-            child: const Text("Logout"),
+      builder: (_) => Dialog(
+        backgroundColor: Colors.white,
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(24)),
+        child: Padding(
+          padding: const EdgeInsets.all(24),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Container(
+                padding: const EdgeInsets.all(16),
+                decoration: BoxDecoration(
+                  color: const Color(0xFFFFEEEE),
+                  shape: BoxShape.circle,
+                ),
+                child: const Icon(Icons.logout_rounded, color: Colors.red, size: 32),
+              ),
+              const SizedBox(height: 24),
+              Text(
+                'Sign Out',
+                style: GoogleFonts.outfit(
+                  fontSize: 20,
+                  fontWeight: FontWeight.bold,
+                  color: const Color(0xFF1F212C),
+                ),
+              ),
+              const SizedBox(height: 12),
+              Text(
+                'Are you sure you want to logout? You will need to sign in again to access your account.',
+                textAlign: TextAlign.center,
+                style: GoogleFonts.outfit(
+                  fontSize: 14,
+                  color: Colors.grey.shade600,
+                  height: 1.5,
+                ),
+              ),
+              const SizedBox(height: 32),
+              Row(
+                children: [
+                  Expanded(
+                    child: TextButton(
+                      onPressed: () => Navigator.pop(context),
+                      style: TextButton.styleFrom(
+                        padding: const EdgeInsets.symmetric(vertical: 14),
+                        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+                      ),
+                      child: Text(
+                        'Cancel',
+                        style: GoogleFonts.outfit(
+                          fontSize: 15,
+                          fontWeight: FontWeight.w600,
+                          color: const Color(0xFF64748B),
+                        ),
+                      ),
+                    ),
+                  ),
+                  const SizedBox(width: 12),
+                  Expanded(
+                    child: ElevatedButton(
+                      onPressed: () {
+                        FirebaseAuth.instance.signOut();
+                        Navigator.pushNamedAndRemoveUntil(context, '/', (route) => false);
+                      },
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: const Color(0xFFFF6B00),
+                        foregroundColor: Colors.white,
+                        padding: const EdgeInsets.symmetric(vertical: 14),
+                        elevation: 0,
+                        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+                      ),
+                      child: Text(
+                        'Logout',
+                        style: GoogleFonts.outfit(
+                          fontSize: 15,
+                          fontWeight: FontWeight.bold,
+                        ),
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+            ],
           ),
-        ],
+        ),
       ),
     );
   }
@@ -404,7 +472,7 @@ class _ProfileStat extends StatelessWidget {
             style:
                 const TextStyle(fontWeight: FontWeight.bold, fontSize: 16)),
         Text(label,
-            style: const TextStyle(fontSize: 12, color: Colors.black54)),
+            style: const TextStyle(fontSize: 15, color: Colors.black54)),
       ],
     );
   }
@@ -426,8 +494,8 @@ Widget _settingTile({
       child: Icon(icon, color: color),
     ),
     title: Text(title,
-        style: const TextStyle(fontWeight: FontWeight.w600)),
-    subtitle: Text(subtitle),
+        style: const TextStyle(fontWeight: FontWeight.w600, fontSize: 16)),
+    subtitle: Text(subtitle, style: const TextStyle(fontSize: 14)),
     trailing: const Icon(Icons.chevron_right),
   );
 }

@@ -630,11 +630,11 @@ class _HomeScreenState extends State<HomeScreen> {
           final cat = categories[index];
           return Container(
             decoration: BoxDecoration(
-              color: Colors.white,
+              color: const Color(0xFFFFF7ED),
               borderRadius: BorderRadius.circular(16),
               boxShadow: [
                 BoxShadow(
-                  color: Colors.black.withValues(alpha: 0.05),
+                  color: const Color(0xFFFF6B00).withValues(alpha: 0.06),
                   blurRadius: 10,
                   offset: const Offset(0, 4),
                 ),
@@ -645,7 +645,7 @@ class _HomeScreenState extends State<HomeScreen> {
               children: [
                 Icon(
                   cat['icon'] as IconData,
-                  color: const Color(0xFF1F2937),
+                  color: const Color(0xFFFF6B00),
                   size: 32,
                 ),
                 const SizedBox(height: 8),
@@ -653,8 +653,8 @@ class _HomeScreenState extends State<HomeScreen> {
                   cat['name'] as String,
                   style: GoogleFonts.outfit(
                     fontSize: 12,
-                    fontWeight: FontWeight.w600,
-                    color: const Color(0xFF4B5563),
+                    fontWeight: FontWeight.w700,
+                    color: const Color(0xFF1E293B),
                   ),
                 ),
               ],
@@ -696,7 +696,8 @@ class _HomeScreenState extends State<HomeScreen> {
     String sub = svcs.isNotEmpty ? svcs.first.toString() : 'Expert Professional';
     String price = p['price']?.toString() ?? '25';
     String rating = '4.9';
-    String profileUrl = p['profileUrl'] ?? '';
+    String profileUrl = p['profileUrl'] ?? ''; // used for the small avatar later
+    String servicePhotoUrl = p['servicePhotoUrl'] ?? ''; 
 
     return GestureDetector(
       onTap: () {
@@ -712,14 +713,14 @@ class _HomeScreenState extends State<HomeScreen> {
             // Image
             ClipRRect(
               borderRadius: BorderRadius.circular(16),
-              child: profileUrl.isNotEmpty ? Image.network(
-                profileUrl,
+              child: servicePhotoUrl.isNotEmpty ? Image.network(
+                servicePhotoUrl,
                 height: 150,
                 width: 160,
                 fit: BoxFit.cover,
-                errorBuilder: (_, __, ___) => Image.network('https://i.pravatar.cc/150?u=$name', height: 150, width: 160, fit: BoxFit.cover),
+                errorBuilder: (_, __, ___) => Image.network('https://images.unsplash.com/photo-1581578731548-c64695cc6952?q=80&w=800&auto=format&fit=crop', height: 150, width: 160, fit: BoxFit.cover),
               ) : Image.network(
-                'https://i.pravatar.cc/150?u=$name',
+                'https://images.unsplash.com/photo-1581578731548-c64695cc6952?q=80&w=800&auto=format&fit=crop',
                 height: 150,
                 width: 160,
                 fit: BoxFit.cover,
@@ -908,6 +909,7 @@ class _HomeScreenState extends State<HomeScreen> {
     String reviews = '195'; 
     String price = p['price']?.toString() ?? '85';
     String profileUrl = p['profileUrl'] ?? '';
+    String servicePhotoUrl = p['servicePhotoUrl'] ?? '';
 
     return GestureDetector(
       onTap: () {
@@ -929,11 +931,11 @@ class _HomeScreenState extends State<HomeScreen> {
                   height: 120,
                   decoration: BoxDecoration(
                     borderRadius: BorderRadius.circular(16),
-                    image: profileUrl.isNotEmpty ? DecorationImage(
-                      image: NetworkImage(profileUrl),
+                    image: servicePhotoUrl.isNotEmpty ? DecorationImage(
+                      image: NetworkImage(servicePhotoUrl),
                       fit: BoxFit.cover,
-                    ) : DecorationImage(
-                      image: NetworkImage('https://i.pravatar.cc/150?u=$name'),
+                    ) : const DecorationImage(
+                      image: NetworkImage('https://images.unsplash.com/photo-1581578731548-c64695cc6952?q=80&w=800&auto=format&fit=crop'),
                       fit: BoxFit.cover,
                     ),
                   ),
@@ -1018,7 +1020,7 @@ class _HomeScreenState extends State<HomeScreen> {
                             child: Text(
                               name,
                               style: GoogleFonts.outfit(
-                                fontSize: 13,
+                                fontSize: 15,
                                 fontWeight: FontWeight.w600,
                                 color: const Color(0xFF1E293B),
                               ),
@@ -1037,7 +1039,7 @@ class _HomeScreenState extends State<HomeScreen> {
                             TextSpan(
                               text: 'From ',
                               style: GoogleFonts.outfit(
-                                fontSize: 11,
+                                fontSize: 13,
                                 fontWeight: FontWeight.w500,
                                 color: Colors.grey.shade500,
                               ),
@@ -1053,7 +1055,7 @@ class _HomeScreenState extends State<HomeScreen> {
                             TextSpan(
                               text: '/hr',
                               style: GoogleFonts.outfit(
-                                fontSize: 11,
+                                fontSize: 13,
                                 fontWeight: FontWeight.w500,
                                 color: Colors.grey.shade400,
                               ),

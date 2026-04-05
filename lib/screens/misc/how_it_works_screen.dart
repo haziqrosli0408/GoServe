@@ -179,7 +179,7 @@ class _HowItWorksScreenState extends State<HowItWorksScreen> {
           'Book Appointment',
           'Schedule services at your preferred date and time.',
           Icons.calendar_today,
-          const Color(0xFF8B5CF6),
+          const Color(0xFF4F46E5),
         ),
         _stepCard(
           '4',
@@ -196,7 +196,7 @@ class _HowItWorksScreenState extends State<HowItWorksScreen> {
           'Create Profile',
           'Register and set up your service provider profile.',
           Icons.person_add,
-          const Color(0xFF8B5CF6),
+          const Color(0xFF4F46E5),
         ),
         _stepCard(
           '2',

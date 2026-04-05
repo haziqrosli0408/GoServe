@@ -110,12 +110,25 @@ class _IntroScreenState extends State<IntroScreen>
                   Navigator.pop(context);
                   Navigator.pushNamed(context, '/login');
                 },
-                child: Text(
-                  'Already have an account? Log in',
-                  style: GoogleFonts.outfit(
-                    color: const Color(0xFFFF6B00),
-                    fontWeight: FontWeight.w600,
-                    fontSize: 14,
+                child: Text.rich(
+                  TextSpan(
+                    children: [
+                      TextSpan(
+                        text: 'Already have an account? ',
+                        style: GoogleFonts.outfit(
+                          color: Colors.black45,
+                          fontWeight: FontWeight.w400,
+                        ),
+                      ),
+                      TextSpan(
+                        text: 'Log in',
+                        style: GoogleFonts.outfit(
+                          color: const Color(0xFFFF6B00),
+                          fontWeight: FontWeight.w600,
+                        ),
+                      ),
+                    ],
+                    style: const TextStyle(fontSize: 14),
                   ),
                 ),
               ),

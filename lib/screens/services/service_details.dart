@@ -23,7 +23,7 @@ class _ServiceDetailsScreenState extends State<ServiceDetailsScreen> {
     final String description = widget.provider['description'] ?? 'No description available for this service provider.';
     final String price = widget.provider['price'] ?? '0';
     final String profileUrl = widget.provider['profileUrl'] ?? '';
-    final String serviceImageUrl = 'https://images.unsplash.com/photo-1581578731548-c64695cc6952?q=80&w=2070&auto=format&fit=crop'; 
+    final String serviceImageUrl = widget.provider['servicePhotoUrl'] ?? 'https://images.unsplash.com/photo-1581578731548-c64695cc6952?q=80&w=2070&auto=format&fit=crop'; 
 
     return Scaffold(
       backgroundColor: Colors.white,

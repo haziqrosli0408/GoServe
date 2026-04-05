@@ -70,7 +70,7 @@ class _AddServiceScreenState extends State<AddServiceScreen> {
               ),
             ],
           ),
-          backgroundColor: const Color(0xFFFF6B00),
+          backgroundColor: const Color(0xFF4F46E5),
           behavior: SnackBarBehavior.floating,
           shape: RoundedRectangleBorder(
             borderRadius: BorderRadius.circular(16),
@@ -266,10 +266,10 @@ class _AddServiceScreenState extends State<AddServiceScreen> {
                 ElevatedButton(
                   onPressed: _handleSubmit,
                   style: ElevatedButton.styleFrom(
-                    backgroundColor: const Color(0xFFFF6B00),
+                    backgroundColor: const Color(0xFF4F46E5),
                     minimumSize: const Size(double.infinity, 56),
                     shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(16),
+                      borderRadius: BorderRadius.circular(8),
                     ),
                     elevation: 0,
                   ),

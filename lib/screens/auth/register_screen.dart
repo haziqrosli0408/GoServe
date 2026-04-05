@@ -7,6 +7,7 @@ import 'package:geocoding/geocoding.dart';
 import 'package:image_picker/image_picker.dart';
 import 'dart:typed_data';
 import 'package:path/path.dart' as path;
+import 'package:gooservee/services/google_auth_service.dart';
 
 class RegisterScreen extends StatefulWidget {
   const RegisterScreen({super.key});
@@ -27,6 +28,43 @@ class _RegisterScreenState extends State<RegisterScreen> {
   Uint8List? _imageBytes;
   final ImagePicker _picker = ImagePicker();
   String? _profileImageUrl;
+  final GoogleAuthService _googleAuthService = GoogleAuthService();
+  bool isGoogleUser = false;
+
+  Future<void> _googleSignUp() async {
+    setState(() => isLoading = true);
+    try {
+      final userCredential = await _googleAuthService.signInWithGoogle();
+      if (userCredential == null) {
+        setState(() => isLoading = false);
+        return;
+      }
+
+      final user = userCredential.user!;
+      
+      setState(() {
+        isGoogleUser = true;
+        emailController.text = user.email ?? "";
+        if (nameController.text.isEmpty) {
+          nameController.text = user.displayName ?? "";
+        }
+        // Advance to next step (Location)
+        _currentStep++;
+      });
+      
+      _pageController.nextPage(
+        duration: const Duration(milliseconds: 300),
+        curve: Curves.easeInOut,
+      );
+      
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text("Google account linked! Please complete the remaining steps.")));
+    } catch (e) {
+      if (mounted) ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(e.toString())));
+    } finally {
+      if (mounted) setState(() => isLoading = false);
+    }
+  }
 
   final List<GlobalKey<FormState>> _formKeys = [
     GlobalKey<FormState>(),
@@ -193,12 +231,20 @@ class _RegisterScreenState extends State<RegisterScreen> {
     setState(() => isLoading = true);
 
     try {
-      UserCredential userCredential = await FirebaseAuth.instance.createUserWithEmailAndPassword(
-        email: emailController.text.trim(),
-        password: passwordController.text.trim(),
-      );
-
-      String uid = userCredential.user!.uid;
+      String uid;
+      
+      if (isGoogleUser) {
+        // Already signed in via Google
+        final user = FirebaseAuth.instance.currentUser;
+        if (user == null) throw Exception("User not found");
+        uid = user.uid;
+      } else {
+        UserCredential userCredential = await FirebaseAuth.instance.createUserWithEmailAndPassword(
+          email: emailController.text.trim(),
+          password: passwordController.text.trim(),
+        );
+        uid = userCredential.user!.uid;
+      }
 
       // 🔥 Upload profile photo if exists
       _profileImageUrl = await _uploadImage(uid);
@@ -286,7 +332,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
         backgroundColor: Colors.transparent,
         elevation: 0,
         leading: IconButton(
-          icon: const Icon(Icons.close, color: Color(0xFF1E293B)),
+          icon: const Icon(Icons.arrow_back_ios_new, color: Color(0xFF2D3748), size: 20),
           onPressed: () {
             if (_currentStep == 0) {
               Navigator.pop(context);
@@ -334,9 +380,11 @@ class _RegisterScreenState extends State<RegisterScreen> {
                     SizedBox(
                       width: double.infinity,
                       child: ElevatedButton(
-                        onPressed: isLoading ? null : _nextStep,
+                        onPressed: (isLoading || (_currentStep == 1 && _imageBytes == null)) ? null : _nextStep,
                         style: ElevatedButton.styleFrom(
-                          backgroundColor: const Color(0xFFFF6B00),
+                          backgroundColor: (_currentStep == 1 && _imageBytes == null)
+                              ? Colors.grey.shade400
+                              : const Color(0xFFFF6B00),
                           foregroundColor: Colors.white,
                           padding: const EdgeInsets.symmetric(vertical: 16),
                           shape: RoundedRectangleBorder(
@@ -357,13 +405,6 @@ class _RegisterScreenState extends State<RegisterScreen> {
                                             : (_currentStep == 4 ? "Complete" : "Continue")),
                                     style: const TextStyle(fontSize: 14, color: Colors.white, fontWeight: FontWeight.w400),
                                   ),
-                                  if (_currentStep != 1) const SizedBox(width: 8),
-                                  if (_currentStep != 1)
-                                    Icon(
-                                      _currentStep == 0 ? Icons.verified_user : Icons.arrow_forward,
-                                      color: Colors.white,
-                                      size: 18,
-                                    )
                                 ],
                               ),
                       ),
@@ -396,7 +437,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
         const SizedBox(height: 12),
         Text(
           subtitle,
-          style: const TextStyle(fontSize: 14, color: Colors.black54),
+          style: const TextStyle(fontSize: 16, color: Colors.black54),
         ),
         const SizedBox(height: 32),
       ],
@@ -433,8 +474,6 @@ class _RegisterScreenState extends State<RegisterScreen> {
                   child: const Row(
                     children: [
                       Text("+60", style: TextStyle(fontSize: 14, fontWeight: FontWeight.bold)),
-                      SizedBox(width: 4),
-                      Icon(Icons.keyboard_arrow_down, size: 16, color: Colors.black54),
                     ],
                   ),
                 ),
@@ -562,10 +601,50 @@ class _RegisterScreenState extends State<RegisterScreen> {
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             _buildHeader("Secure Your Account", "Use a valid email and a strong password."),
+            
+            SizedBox(
+              width: double.infinity,
+              child: OutlinedButton(
+                onPressed: isLoading ? null : _googleSignUp,
+                style: OutlinedButton.styleFrom(
+                  padding: const EdgeInsets.symmetric(vertical: 16),
+                  side: BorderSide(color: Colors.grey.shade200),
+                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+                ),
+                child: Row(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: [
+                    Image.network(
+                      "https://www.gstatic.com/images/branding/product/2x/googleg_48dp.png",
+                      height: 18,
+                      errorBuilder: (context, error, stackTrace) => const Icon(Icons.account_circle, size: 20, color: Colors.grey),
+                    ),
+                    const SizedBox(width: 12),
+                    const Text(
+                      "Continue with Google",
+                      style: TextStyle(fontSize: 14, color: Color(0xFF2D3748), fontWeight: FontWeight.w500),
+                    ),
+                  ],
+                ),
+              ),
+            ),
+            const SizedBox(height: 24),
+            Row(
+              children: [
+                Expanded(child: Divider(color: Colors.grey.shade300)),
+                const Padding(
+                  padding: EdgeInsets.symmetric(horizontal: 16),
+                  child: Text("or", style: TextStyle(color: Colors.black26, fontSize: 13)),
+                ),
+                Expanded(child: Divider(color: Colors.grey.shade300)),
+              ],
+            ),
+            const SizedBox(height: 24),
+
             _inputField(
               controller: emailController,
               label: "Email Address",
-              hint: "alexander.v@verdant.com",
+              hint: "user@goserve.com",
               suffixIcon: const Icon(Icons.check_circle, color: Color(0xFF000000), size: 18),
               validator: (v) {
                 if (v!.isEmpty) return "Email is required";
@@ -651,6 +730,10 @@ class _RegisterScreenState extends State<RegisterScreen> {
               },
               decoration: InputDecoration(
                 hintText: "••••••••••••",
+                suffixIcon: IconButton(
+                  icon: Icon(hideConfirm ? Icons.visibility_off : Icons.visibility, color: Colors.black54, size: 20),
+                  onPressed: () => setState(() => hideConfirm = !hideConfirm),
+                ),
                 filled: true,
                 fillColor: const Color(0xFFF1F5F9),
                 contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 16),
@@ -700,131 +783,17 @@ class _RegisterScreenState extends State<RegisterScreen> {
               ),
             ),
             const SizedBox(height: 24),
-            const Center(child: Text("Or enter manually", style: TextStyle(color: Colors.black38, fontSize: 10, fontWeight: FontWeight.w400, letterSpacing: 1))),
-            const SizedBox(height: 24),
             
-            Container(
-              decoration: BoxDecoration(
-                color: const Color(0xFFF1F5F9),
-                borderRadius: BorderRadius.circular(8),
-              ),
-              child: Column(
-                children: [
-                  TextFormField(
-                    controller: addressController,
-                    validator: (v) => v!.isEmpty ? "Address is required" : null,
-                    decoration: const InputDecoration(
-                      hintText: "Search for your address...",
-                      hintStyle: TextStyle(color: Colors.black38, fontSize: 14),
-                      prefixIcon: Icon(Icons.location_on, color: Colors.black38, size: 20),
-                      border: InputBorder.none,
-                      contentPadding: EdgeInsets.symmetric(vertical: 16),
-                    ),
-                  ),
-                  const Divider(height: 1, color: Color(0xFFEEEEEE)),
-                  _buildAddressSuggestion("123 Verdant Avenue", "Portland, Oregon, USA", Icons.history),
-                  const Divider(height: 1, color: Color(0xFFEEEEEE)),
-                  _buildAddressSuggestion("Verdant Hills Estates", "Los Angeles, California, USA", Icons.location_on),
-                  
-                  // Map Preview
-                  Container(
-                    height: 140,
-                    width: double.infinity,
-                    decoration: BoxDecoration(
-                      color: const Color(0xFFC8E6C9),
-                      borderRadius: const BorderRadius.vertical(bottom: Radius.circular(8)),
-                    ),
-                    child: Stack(
-                      children: [
-                        Positioned.fill(
-                          child: Icon(Icons.map, size: 100, color: Colors.green.withValues(alpha: 0.3)),
-                        ),
-                        Center(
-                          child: Container(
-                            padding: const EdgeInsets.all(8),
-                            decoration: BoxDecoration(
-                              color: const Color(0xFF000000),
-                              borderRadius: BorderRadius.circular(8),
-                            ),
-                            child: const Icon(Icons.location_on, color: Colors.white, size: 20),
-                          ),
-                        ),
-                        Positioned(
-                          left: 12,
-                          bottom: 12,
-                          child: Container(
-                            padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-                            decoration: BoxDecoration(
-                              color: Colors.white,
-                              borderRadius: BorderRadius.circular(4),
-                            ),
-                            child: const Text("Map preview", style: TextStyle(fontSize: 8, fontWeight: FontWeight.w400)),
-                          ),
-                        ),
-                      ],
-                    ),
-                  ),
-                ],
-              ),
-            ),
-
-            const SizedBox(height: 24),
-            Container(
-              padding: const EdgeInsets.all(16),
-              decoration: BoxDecoration(
-                color: const Color(0xFFF1F8F5),
-                borderRadius: BorderRadius.circular(8),
-              ),
-              child: const Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text("Coverage", style: TextStyle(fontSize: 10, fontWeight: FontWeight.w400, color: Colors.black54, letterSpacing: 1)),
-                  SizedBox(height: 8),
-                  Text.rich(
-                    TextSpan(
-                      text: "We currently service all metro areas in ",
-                      style: TextStyle(fontSize: 13, color: Colors.black87, height: 1.4),
-                      children: [
-                        TextSpan(text: "Portland", style: TextStyle(color: Color(0xFF000000), fontWeight: FontWeight.bold)),
-                        TextSpan(text: " and surrounding suburbs."),
-                      ],
-                    ),
-                  ),
-                ],
-              ),
-            ),
-            const SizedBox(height: 16),
-            Container(
-              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-              decoration: BoxDecoration(
-                color: const Color(0xFFE8F5E9),
-                borderRadius: BorderRadius.circular(8),
-              ),
-              child: const Row(
-                children: [
-                  Icon(Icons.check_circle, color: Color(0xFF000000), size: 16),
-                  SizedBox(width: 8),
-                  Text("Service Area Verified", style: TextStyle(color: Color(0xFF000000), fontWeight: FontWeight.bold, fontSize: 12)),
-                ],
-              ),
+            _inputField(
+              controller: addressController,
+              label: "LOCATION ADDRESS",
+              hint: "Detecting location...",
+              icon: Icons.location_on,
+              validator: (v) => v!.isEmpty ? "Address is required" : null,
             ),
           ],
         ),
       ),
-    );
-  }
-
-  Widget _buildAddressSuggestion(String title, String subtitle, IconData icon) {
-    return ListTile(
-      leading: Icon(icon, color: Colors.black38, size: 20),
-      title: Text(title, style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 13, color: Color(0xFF2D3748))),
-      subtitle: Text(subtitle, style: const TextStyle(fontSize: 11, color: Colors.black54)),
-      dense: true,
-      visualDensity: VisualDensity.compact,
-      contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
-      onTap: () {
-        addressController.text = "$title, $subtitle";
-      },
     );
   }
 
@@ -885,34 +854,42 @@ class _RegisterScreenState extends State<RegisterScreen> {
                 );
               },
             ),
-            const SizedBox(height: 24),
-            Container(
-              padding: const EdgeInsets.all(16),
-              decoration: BoxDecoration(
-                color: const Color(0xFFF1F8F5),
-                borderRadius: BorderRadius.circular(8),
-              ),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                   Container(
-                     padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
-                     decoration: BoxDecoration(
-                       color: const Color(0xFF9FF2C4),
-                       borderRadius: BorderRadius.circular(12),
-                     ),
-                     child: const Text("PRO TIP", style: TextStyle(fontSize: 9, fontWeight: FontWeight.bold, color: Color(0xFF000000))),
-                   ),
-                   const SizedBox(height: 12),
-                   const Text("Expert Consultation", style: TextStyle(fontWeight: FontWeight.bold, fontSize: 13, color: Color(0xFF2D3748))),
-                   const SizedBox(height: 6),
-                   const Text(
-                     "By selecting your preferences, we can curate a gallery of top-tier professionals specifically suited to your architectural style and maintenance needs.",
-                     style: TextStyle(fontSize: 11, color: Colors.black54, height: 1.4),
-                   ),
-                ],
+            const SizedBox(height: 12),
+            GestureDetector(
+              onTap: () {
+                final isSelected = selectedServices.contains("Other");
+                setState(() {
+                  if (isSelected) {
+                    selectedServices.remove("Other");
+                  } else {
+                    selectedServices.add("Other");
+                  }
+                });
+              },
+              child: Container(
+                width: double.infinity,
+                decoration: BoxDecoration(
+                  color: selectedServices.contains("Other") ? const Color(0xFF9FF2C4) : Colors.white,
+                  borderRadius: BorderRadius.circular(10),
+                  border: Border.all(color: selectedServices.contains("Other") ? Colors.transparent : Colors.grey.shade200),
+                ),
+                padding: const EdgeInsets.symmetric(vertical: 16, horizontal: 20),
+                child: Row(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: [
+                    Text(
+                      "Other",
+                      style: TextStyle(
+                        fontWeight: FontWeight.w600, 
+                        fontSize: 14, 
+                        color: selectedServices.contains("Other") ? const Color(0xFF000000) : const Color(0xFF2D3748)
+                      ),
+                    ),
+                  ],
+                ),
               ),
             ),
+            const SizedBox(height: 24),
           ],
         ),
       ),
@@ -931,15 +908,16 @@ class _RegisterScreenState extends State<RegisterScreen> {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        Text(label.substring(0, 1).toUpperCase() + label.substring(1).toLowerCase(), style: const TextStyle(fontSize: 10, fontWeight: FontWeight.w400, color: Colors.black54, letterSpacing: 0.5)),
+        Text(label.substring(0, 1).toUpperCase() + label.substring(1).toLowerCase(), style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w400, color: Colors.black54, letterSpacing: 0.5)),
         const SizedBox(height: 6),
         TextFormField(
           controller: controller,
           validator: validator,
           keyboardType: keyboard,
+          style: const TextStyle(fontSize: 15),
           decoration: InputDecoration(
             hintText: hint,
-            hintStyle: const TextStyle(color: Colors.black38, fontSize: 13),
+            hintStyle: const TextStyle(color: Colors.black38, fontSize: 15),
             prefixIcon: icon != null ? Icon(icon, color: Colors.black54, size: 20) : null,
             suffixIcon: suffixIcon,
             filled: true,

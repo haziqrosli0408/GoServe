@@ -7,6 +7,7 @@ import 'package:geocoding/geocoding.dart';
 import 'package:image_picker/image_picker.dart';
 import 'dart:typed_data';
 import 'package:path/path.dart' as path;
+import 'package:gooservee/services/google_auth_service.dart';
 
 class ProviderRegisterScreen extends StatefulWidget {
   const ProviderRegisterScreen({super.key});
@@ -27,6 +28,44 @@ class _ProviderRegisterScreenState extends State<ProviderRegisterScreen> {
   Uint8List? _imageBytes;
   final ImagePicker _picker = ImagePicker();
   String? _profileImageUrl;
+  final GoogleAuthService _googleAuthService = GoogleAuthService();
+  bool showBankList = false;
+  bool isGoogleUser = false;
+
+  Future<void> _googleSignUp() async {
+    setState(() => isLoading = true);
+    try {
+      final userCredential = await _googleAuthService.signInWithGoogle();
+      if (userCredential == null) {
+        setState(() => isLoading = false);
+        return;
+      }
+
+      final user = userCredential.user!;
+      
+      setState(() {
+        isGoogleUser = true;
+        emailController.text = user.email ?? "";
+        if (nameController.text.isEmpty) {
+          nameController.text = user.displayName ?? "";
+        }
+        // Advance to next step (Location)
+        _currentStep++;
+      });
+      
+      _pageController.nextPage(
+        duration: const Duration(milliseconds: 300),
+        curve: Curves.easeInOut,
+      );
+      
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text("Google account linked! Please complete the remaining steps.")));
+    } catch (e) {
+      if (mounted) ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(e.toString())));
+    } finally {
+      if (mounted) setState(() => isLoading = false);
+    }
+  }
 
   final List<GlobalKey<FormState>> _formKeys = [
     GlobalKey<FormState>(),
@@ -47,21 +86,27 @@ class _ProviderRegisterScreenState extends State<ProviderRegisterScreen> {
   
   String? selectedBank;
   final List<String> banks = [
-    'Maybank',
-    'CIMB Bank',
-    'Public Bank',
-    'RHB Bank',
-    'Hong Leong Bank',
-    'AmBank',
-    'UOB Bank',
-    'Bank Rakyat',
-    'Bank Islam',
-    'OCBC Bank',
-    'HSBC Bank',
-    'Alliance Bank',
-    'Affin Bank',
-    'Standard Chartered',
+    'Maybank', 'CIMB Bank', 'Public Bank', 'RHB Bank', 'Hong Leong Bank',
+    'AmBank', 'UOB Bank', 'Bank Rakyat', 'Bank Islam', 'OCBC Bank',
+    'HSBC Bank', 'Alliance Bank', 'Affin Bank', 'Standard Chartered'
   ];
+
+  final Map<String, String> bankDomains = {
+    'Maybank': 'maybank.com.my',
+    'CIMB Bank': 'cimb.com.my',
+    'Public Bank': 'pbebank.com',
+    'RHB Bank': 'rhbgroup.com',
+    'Hong Leong Bank': 'hlb.com.my',
+    'AmBank': 'ambankgroup.com',
+    'UOB Bank': 'uob.com.my',
+    'Bank Rakyat': 'bankrakyat.com.my',
+    'Bank Islam': 'bankislam.com.my',
+    'OCBC Bank': 'ocbc.com.my',
+    'HSBC Bank': 'hsbc.com.my',
+    'Alliance Bank': 'alliancebank.com.my',
+    'Affin Bank': 'affinbank.com.my',
+    'Standard Chartered': 'sc.com'
+  };
 
   @override
   void initState() {
@@ -211,12 +256,20 @@ class _ProviderRegisterScreenState extends State<ProviderRegisterScreen> {
     setState(() => isLoading = true);
 
     try {
-      UserCredential userCredential = await FirebaseAuth.instance.createUserWithEmailAndPassword(
-        email: emailController.text.trim(),
-        password: passwordController.text.trim(),
-      );
-
-      String uid = userCredential.user!.uid;
+      String uid;
+      
+      if (isGoogleUser) {
+        // Already signed in via Google
+        final user = FirebaseAuth.instance.currentUser;
+        if (user == null) throw Exception("User not found");
+        uid = user.uid;
+      } else {
+        UserCredential userCredential = await FirebaseAuth.instance.createUserWithEmailAndPassword(
+          email: emailController.text.trim(),
+          password: passwordController.text.trim(),
+        );
+        uid = userCredential.user!.uid;
+      }
 
       // 🔥 Upload profile photo if exists
       _profileImageUrl = await _uploadImage(uid);
@@ -288,7 +341,7 @@ class _ProviderRegisterScreenState extends State<ProviderRegisterScreen> {
             margin: EdgeInsets.only(right: index == 5 ? 0 : 8),
             height: 4,
             decoration: BoxDecoration(
-              color: isActive ? Color(0xFF8B5CF6) : Colors.grey.shade300,
+              color: isActive ? Color(0xFF4F46E5) : Colors.grey.shade300,
               borderRadius: BorderRadius.circular(2),
             ),
           ),
@@ -305,7 +358,7 @@ class _ProviderRegisterScreenState extends State<ProviderRegisterScreen> {
         backgroundColor: Colors.transparent,
         elevation: 0,
         leading: IconButton(
-          icon: const Icon(Icons.close, color: Colors.white),
+          icon: const Icon(Icons.arrow_back_ios_new, color: Color(0xFF2D3748), size: 20),
           onPressed: () {
             if (_currentStep == 0) {
               Navigator.pop(context);
@@ -316,7 +369,7 @@ class _ProviderRegisterScreenState extends State<ProviderRegisterScreen> {
         ),
         title: const Text(
           "Sign Up",
-          style: TextStyle(color: Colors.white, fontSize: 16, fontWeight: FontWeight.w600),
+          style: TextStyle(color: Color(0xFF2B3748), fontSize: 16, fontWeight: FontWeight.bold),
         ),
         centerTitle: true,
       ),
@@ -354,9 +407,11 @@ class _ProviderRegisterScreenState extends State<ProviderRegisterScreen> {
                     SizedBox(
                       width: double.infinity,
                       child: ElevatedButton(
-                        onPressed: isLoading ? null : _nextStep,
+                        onPressed: (isLoading || (_currentStep == 1 && _imageBytes == null)) ? null : _nextStep,
                         style: ElevatedButton.styleFrom(
-                          backgroundColor: const Color(0xFF8B5CF6),
+                          backgroundColor: (_currentStep == 1 && _imageBytes == null)
+                              ? Colors.grey.shade400
+                              : const Color(0xFF4F46E5),
                           foregroundColor: Colors.white,
                           padding: const EdgeInsets.symmetric(vertical: 16),
                           shape: RoundedRectangleBorder(
@@ -377,13 +432,6 @@ class _ProviderRegisterScreenState extends State<ProviderRegisterScreen> {
                                             : (_currentStep == 5 ? "Complete" : "Continue")),
                                     style: const TextStyle(fontSize: 14, color: Colors.white, fontWeight: FontWeight.w400),
                                   ),
-                                  if (_currentStep != 1) const SizedBox(width: 8),
-                                  if (_currentStep != 1)
-                                    Icon(
-                                      _currentStep == 0 ? Icons.verified_user : Icons.arrow_forward,
-                                      color: Colors.white,
-                                      size: 18,
-                                    )
                                 ],
                               ),
                       ),
@@ -416,7 +464,7 @@ class _ProviderRegisterScreenState extends State<ProviderRegisterScreen> {
         const SizedBox(height: 12),
         Text(
           subtitle,
-          style: const TextStyle(fontSize: 14, color: Colors.black54),
+          style: const TextStyle(fontSize: 16, color: Colors.black54),
         ),
         const SizedBox(height: 32),
       ],
@@ -453,8 +501,6 @@ class _ProviderRegisterScreenState extends State<ProviderRegisterScreen> {
                   child: const Row(
                     children: [
                       Text("+60", style: TextStyle(fontSize: 14, fontWeight: FontWeight.bold)),
-                      SizedBox(width: 4),
-                      Icon(Icons.keyboard_arrow_down, size: 16, color: Colors.black54),
                     ],
                   ),
                 ),
@@ -582,10 +628,50 @@ class _ProviderRegisterScreenState extends State<ProviderRegisterScreen> {
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             _buildHeader("Secure Your Account", "Use a valid email and a strong password."),
+            
+            SizedBox(
+              width: double.infinity,
+              child: OutlinedButton(
+                onPressed: isLoading ? null : _googleSignUp,
+                style: OutlinedButton.styleFrom(
+                  padding: const EdgeInsets.symmetric(vertical: 16),
+                  side: BorderSide(color: Colors.grey.shade200),
+                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+                ),
+                child: Row(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: [
+                    Image.network(
+                      "https://www.gstatic.com/images/branding/product/2x/googleg_48dp.png",
+                      height: 18,
+                      errorBuilder: (context, error, stackTrace) => const Icon(Icons.account_circle, size: 20, color: Colors.grey),
+                    ),
+                    const SizedBox(width: 12),
+                    const Text(
+                      "Continue with Google",
+                      style: TextStyle(fontSize: 14, color: Color(0xFF2D3748), fontWeight: FontWeight.w500),
+                    ),
+                  ],
+                ),
+              ),
+            ),
+            const SizedBox(height: 24),
+            Row(
+              children: [
+                Expanded(child: Divider(color: Colors.grey.shade300)),
+                const Padding(
+                  padding: EdgeInsets.symmetric(horizontal: 16),
+                  child: Text("or", style: TextStyle(color: Colors.black26, fontSize: 13)),
+                ),
+                Expanded(child: Divider(color: Colors.grey.shade300)),
+              ],
+            ),
+            const SizedBox(height: 24),
+
             _inputField(
               controller: emailController,
               label: "EMAIL ADDRESS",
-              hint: "alexander.v@verdant.com",
+              hint: "user@goserve.com",
               suffixIcon: const Icon(Icons.check_circle, color: Color(0xFF000000), size: 18),
               validator: (v) {
                 if (v!.isEmpty) return "Email is required";
@@ -630,7 +716,7 @@ class _ProviderRegisterScreenState extends State<ProviderRegisterScreen> {
                               ? "Fair"
                               : (_strength == 3 ? "Strong" : "Very Strong"))),
                   style: TextStyle(
-                    color: _strength <= 1 ? Colors.red : (_strength == 2 ? Colors.orange : const Color(0xFF8B5CF6)),
+                    color: _strength <= 1 ? Colors.red : (_strength == 2 ? Colors.orange : const Color(0xFF4F46E5)),
                     fontSize: 10,
                     fontWeight: FontWeight.bold,
                   ),
@@ -668,6 +754,10 @@ class _ProviderRegisterScreenState extends State<ProviderRegisterScreen> {
               },
               decoration: InputDecoration(
                 hintText: "••••••••••••",
+                suffixIcon: IconButton(
+                  icon: Icon(hideConfirm ? Icons.visibility_off : Icons.visibility, color: Colors.black54, size: 20),
+                  onPressed: () => setState(() => hideConfirm = !hideConfirm),
+                ),
                 filled: true,
                 fillColor: const Color(0xFFF1F5F9),
                 contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 16),
@@ -729,6 +819,8 @@ class _ProviderRegisterScreenState extends State<ProviderRegisterScreen> {
   }
 
   Widget _buildStepPayment() {
+    final selectedBankDomain = selectedBank != null ? bankDomains[selectedBank!] : null;
+
     return SingleChildScrollView(
       padding: const EdgeInsets.symmetric(horizontal: 24),
       child: Form(
@@ -738,23 +830,111 @@ class _ProviderRegisterScreenState extends State<ProviderRegisterScreen> {
           children: [
             _buildHeader("Get Paid\nDirectly", "Securely add your payment details to receive\nearnings directly."),
             
-            const Text("Select bank", style: TextStyle(fontSize: 10, fontWeight: FontWeight.w400, color: Colors.black54, letterSpacing: 0.5)),
-            const SizedBox(height: 6),
-            DropdownButtonFormField<String>(
-              value: selectedBank,
-              validator: (v) => v == null ? "Please select a bank" : null,
-              decoration: InputDecoration(
-                filled: true,
-                fillColor: const Color(0xFFF1F5F9),
-                border: OutlineInputBorder(borderRadius: BorderRadius.circular(8), borderSide: BorderSide.none),
-                contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 16),
-                prefixIcon: const Icon(Icons.account_balance, color: Colors.black54, size: 20),
+            const Text("BANK ACCOUNT", style: TextStyle(fontSize: 10, fontWeight: FontWeight.bold, color: Colors.black54, letterSpacing: 1.0)),
+            const SizedBox(height: 12),
+
+            // --- Custom Premium Dropdown ---
+            GestureDetector(
+              onTap: () => setState(() => showBankList = !showBankList),
+              child: Container(
+                padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 16),
+                decoration: BoxDecoration(
+                  color: const Color(0xFFF1F5F9),
+                  borderRadius: showBankList ? const BorderRadius.vertical(top: Radius.circular(8)) : BorderRadius.circular(8),
+                  border: Border.all(color: Colors.grey.shade200),
+                ),
+                child: Row(
+                  children: [
+                    if (selectedBank != null) ...[
+                      ClipRRect(
+                        borderRadius: BorderRadius.circular(4),
+                        child: Image.network(
+                          "https://www.google.com/s2/favicons?sz=64&domain=$selectedBankDomain",
+                          width: 24,
+                          height: 24,
+                          errorBuilder: (context, error, stackTrace) => const Icon(Icons.account_balance, size: 18, color: Colors.black26),
+                        ),
+                      ),
+                      const SizedBox(width: 12),
+                    ] else
+                      const Icon(Icons.account_balance, color: Colors.black54, size: 20),
+                    
+                    if (selectedBank == null) const SizedBox(width: 12),
+                    
+                    Expanded(
+                      child: Text(
+                        selectedBank ?? "Choose your bank account",
+                        style: TextStyle(
+                          fontSize: 14,
+                          color: selectedBank != null ? const Color(0xFF1E293B) : Colors.black38,
+                          fontWeight: selectedBank != null ? FontWeight.w600 : FontWeight.w400,
+                        ),
+                      ),
+                    ),
+                    Icon(
+                      showBankList ? Icons.expand_less : Icons.expand_more,
+                      color: Colors.black54,
+                    ),
+                  ],
+                ),
               ),
-              hint: const Text("Choose your bank", style: TextStyle(color: Colors.black38, fontSize: 13)),
-              items: banks.map((bank) => DropdownMenuItem(value: bank, child: Text(bank))).toList(),
-              onChanged: (v) => setState(() => selectedBank = v),
             ),
-            const SizedBox(height: 20),
+
+            if (showBankList)
+              Container(
+                height: 280,
+                decoration: BoxDecoration(
+                  color: Colors.white,
+                  borderRadius: const BorderRadius.vertical(bottom: Radius.circular(8)),
+                  border: Border.all(color: Colors.grey.shade200),
+                  boxShadow: [
+                    BoxShadow(color: Colors.black.withValues(alpha: 0.05), blurRadius: 10, offset: const Offset(0, 4))
+                  ],
+                ),
+                child: ListView.separated(
+                  padding: const EdgeInsets.all(8),
+                  itemCount: banks.length,
+                  separatorBuilder: (context, index) => const Divider(height: 1, color: Color(0xFFF1F5F9)),
+                  itemBuilder: (context, index) {
+                    final bank = banks[index];
+                    final domain = bankDomains[bank];
+                    final isSelected = selectedBank == bank;
+                    
+                    return ListTile(
+                      onTap: () {
+                        setState(() {
+                          selectedBank = bank;
+                          showBankList = false;
+                        });
+                      },
+                      leading: Container(
+                        width: 32,
+                        height: 32,
+                        padding: const EdgeInsets.all(4),
+                        decoration: BoxDecoration(
+                          color: const Color(0xFFF8FAFC),
+                          borderRadius: BorderRadius.circular(6),
+                        ),
+                        child: Image.network(
+                          "https://www.google.com/s2/favicons?sz=64&domain=$domain",
+                          errorBuilder: (context, error, stackTrace) => const Icon(Icons.account_balance, size: 16, color: Colors.black26),
+                        ),
+                      ),
+                      title: Text(
+                        bank,
+                        style: TextStyle(
+                          fontSize: 14,
+                          fontWeight: isSelected ? FontWeight.bold : FontWeight.w500,
+                          color: isSelected ? const Color(0xFF4F46E5) : const Color(0xFF2D3748),
+                        ),
+                      ),
+                      trailing: isSelected ? const Icon(Icons.check_circle, color: Color(0xFF4F46E5), size: 18) : null,
+                    );
+                  },
+                ),
+              ),
+            
+            const SizedBox(height: 24),
             _inputField(
               controller: accountNumberController,
               label: "ACCOUNT NUMBER",
@@ -763,6 +943,7 @@ class _ProviderRegisterScreenState extends State<ProviderRegisterScreen> {
               keyboard: TextInputType.number,
               validator: (v) => v!.isEmpty ? "Account number is required" : null,
             ),
+            const SizedBox(height: 80), // Added spacing to avoid overlap
           ],
         ),
       ),
@@ -805,8 +986,9 @@ class _ProviderRegisterScreenState extends State<ProviderRegisterScreen> {
                   },
                   child: Container(
                     decoration: BoxDecoration(
-                      color: isSelected ? const Color(0xFF9FF2C4) : const Color(0xFFF1F5F9),
+                      color: isSelected ? const Color(0xFF9FF2C4) : Colors.white,
                       borderRadius: BorderRadius.circular(10),
+                      border: Border.all(color: isSelected ? Colors.transparent : Colors.grey.shade200),
                     ),
                     padding: const EdgeInsets.all(12),
                     child: Column(
@@ -825,6 +1007,42 @@ class _ProviderRegisterScreenState extends State<ProviderRegisterScreen> {
                 );
               },
             ),
+            const SizedBox(height: 12),
+            GestureDetector(
+              onTap: () {
+                final isSelected = selectedServices.contains("Other");
+                setState(() {
+                  if (isSelected) {
+                    selectedServices.remove("Other");
+                  } else {
+                    selectedServices.add("Other");
+                  }
+                });
+              },
+              child: Container(
+                width: double.infinity,
+                decoration: BoxDecoration(
+                  color: selectedServices.contains("Other") ? const Color(0xFF9FF2C4) : Colors.white,
+                  borderRadius: BorderRadius.circular(10),
+                  border: Border.all(color: selectedServices.contains("Other") ? Colors.transparent : Colors.grey.shade200),
+                ),
+                padding: const EdgeInsets.symmetric(vertical: 16, horizontal: 20),
+                child: Row(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: [
+                    Text(
+                      "Other",
+                      style: TextStyle(
+                        fontWeight: FontWeight.w600, 
+                        fontSize: 14, 
+                        color: selectedServices.contains("Other") ? const Color(0xFF000000) : const Color(0xFF2D3748)
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ),
+            const SizedBox(height: 80),
           ],
         ),
       ),
@@ -843,15 +1061,16 @@ class _ProviderRegisterScreenState extends State<ProviderRegisterScreen> {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        Text(label.substring(0, 1).toUpperCase() + label.substring(1).toLowerCase(), style: const TextStyle(fontSize: 10, fontWeight: FontWeight.w400, color: Colors.black54, letterSpacing: 0.5)),
+        Text(label.substring(0, 1).toUpperCase() + label.substring(1).toLowerCase(), style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w400, color: Colors.black54, letterSpacing: 0.5)),
         const SizedBox(height: 6),
         TextFormField(
           controller: controller,
           validator: validator,
           keyboardType: keyboard,
+          style: const TextStyle(fontSize: 15),
           decoration: InputDecoration(
             hintText: hint,
-            hintStyle: const TextStyle(color: Colors.black38, fontSize: 13),
+            hintStyle: const TextStyle(color: Colors.black38, fontSize: 15),
             prefixIcon: icon != null ? Icon(icon, color: Colors.black54, size: 20) : null,
             suffixIcon: suffixIcon,
             filled: true,

@@ -22,15 +22,15 @@ class AppTheme {
     ),
   );
 
-  // 🟣 PROVIDER THEME (SOFT PURPLE)
+  // 🟣 PROVIDER THEME (INDIGO BLUE)
   static final ThemeData providerTheme = ThemeData(
-    primaryColor: const Color(0xFF8B5CF6),
-    scaffoldBackgroundColor: const Color(0xFFF9F7FF),
+    primaryColor: const Color(0xFF4F46E5),
+    scaffoldBackgroundColor: const Color(0xFFF8FAFC),
     fontFamily: GoogleFonts.outfit().fontFamily,
     textTheme: GoogleFonts.outfitTextTheme(),
     elevatedButtonTheme: ElevatedButtonThemeData(
       style: ElevatedButton.styleFrom(
-        backgroundColor: const Color(0xFF8B5CF6),
+        backgroundColor: const Color(0xFF4F46E5),
         foregroundColor: Colors.white,
         shape: RoundedRectangleBorder(
           borderRadius: BorderRadius.circular(8),
@@ -38,7 +38,7 @@ class AppTheme {
       ),
     ),
     colorScheme: ColorScheme.fromSeed(
-      seedColor: const Color(0xFF8B5CF6),
+      seedColor: const Color(0xFF4F46E5),
     ),
   );
 }

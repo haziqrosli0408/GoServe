@@ -177,11 +177,11 @@ class _CategoriesScreenState extends State<CategoriesScreen> {
                   },
                   child: Container(
                     decoration: BoxDecoration(
-                      color: Colors.white,
+                      color: const Color(0xFFFFF7ED),
                       borderRadius: BorderRadius.circular(24),
                       boxShadow: [
                         BoxShadow(
-                          color: Colors.black.withValues(alpha: 0.04),
+                          color: const Color(0xFFFF6B00).withValues(alpha: 0.06),
                           blurRadius: 20,
                           offset: const Offset(0, 10),
                         ),
@@ -190,18 +190,10 @@ class _CategoriesScreenState extends State<CategoriesScreen> {
                     child: Column(
                       mainAxisAlignment: MainAxisAlignment.center,
                       children: [
-                        Container(
-                          width: 70,
-                          height: 70,
-                          decoration: BoxDecoration(
-                            color: const Color(0xFFFFEDD5), // Bright light orange bg
-                            shape: BoxShape.circle,
-                            border: Border.all(
-                                color: const Color(0xFFFF6B00)
-                                    .withValues(alpha: 0.3),
-                                width: 1.5),
-                          ),
-                          child: Icon(icon, color: Colors.black, size: 32),
+                        Icon(
+                          icon,
+                          color: const Color(0xFFFF6B00),
+                          size: 40,
                         ),
                         const SizedBox(height: 12),
                         Text(
