@@ -2,8 +2,8 @@ import 'dart:io';
 import 'package:flutter/material.dart';
 import './provider_home_screen.dart';
 import '../provider/provider_bookings_screen.dart';
+import '../provider/my_services_screen.dart';
 import '../chat/chat_screen.dart';
-import '../profile/profile_screen.dart';
 import '../provider/add_service_screen.dart';
 import 'package:google_fonts/google_fonts.dart';
 
@@ -31,7 +31,7 @@ class _ProviderDashboardState extends State<ProviderDashboard>
     const ProviderBookingsScreen(),
     const SizedBox.shrink(), // Placeholder for center button
     const ChatScreen(),
-    const ProfileScreen(),
+    const MyServicesScreen(),
   ];
 
   @override
@@ -80,7 +80,7 @@ class _ProviderDashboardState extends State<ProviderDashboard>
               _navItem(1, Icons.calendar_month_rounded, 'Bookings'),
               _navItem(2, Icons.add_rounded, 'Add'),
               _navItem(3, Icons.chat_rounded, 'Chat'),
-              _navItem(4, Icons.person_rounded, 'Profile'),
+              _navItem(4, Icons.storefront_rounded, 'Services'),
             ],
           ),
         ),
@@ -264,6 +264,7 @@ class _ProviderDashboardState extends State<ProviderDashboard>
               );
             }
           ),
+          const Spacer(),
           Center(
             child: GestureDetector(
               onTap: () {
@@ -275,29 +276,29 @@ class _ProviderDashboardState extends State<ProviderDashboard>
               },
               child: Column(
                 children: [
-                  Container(
-                    width: 140,
-                    height: 140,
+                   Container(
+                    width: 120,
+                    height: 120,
                     decoration: BoxDecoration(
                       color: const Color(0xFF4F46E5).withValues(alpha: 0.1),
-                      borderRadius: BorderRadius.circular(35),
+                      borderRadius: BorderRadius.circular(8),
                     ),
                     child: Center(
                       child: Container(
-                        padding: const EdgeInsets.all(16),
+                        padding: const EdgeInsets.all(12),
                         decoration: const BoxDecoration(
                           color: Color(0xFF4F46E5),
                           shape: BoxShape.circle,
                         ),
-                        child: const Icon(Icons.add_rounded, color: Colors.white, size: 48),
+                        child: const Icon(Icons.add_rounded, color: Colors.white, size: 28),
                       ),
                     ),
                   ),
-                  const SizedBox(height: 24),
+                  const SizedBox(height: 20),
                   Text(
                     'Create Your New Service Listing',
                     style: GoogleFonts.outfit(
-                      fontSize: 18,
+                      fontSize: 17,
                       fontWeight: FontWeight.bold,
                       color: const Color(0xFF1E293B),
                     ),
@@ -306,7 +307,7 @@ class _ProviderDashboardState extends State<ProviderDashboard>
               ),
             ),
           ),
-          const Spacer(flex: 3),
+          const Spacer(flex: 2),
         ],
       ),
     );
@@ -323,7 +324,7 @@ class _ProviderDashboardState extends State<ProviderDashboard>
     return Container(
       decoration: BoxDecoration(
         color: Colors.white,
-        borderRadius: BorderRadius.circular(20),
+        borderRadius: BorderRadius.circular(8),
         border: Border.all(color: const Color(0xFF4F46E5).withValues(alpha: 0.1), width: 1),
         boxShadow: [
           BoxShadow(
@@ -343,7 +344,7 @@ class _ProviderDashboardState extends State<ProviderDashboard>
                 width: double.infinity,
                 decoration: BoxDecoration(
                   color: const Color(0xFFF8FAFC),
-                  borderRadius: const BorderRadius.vertical(top: Radius.circular(19)),
+                  borderRadius: const BorderRadius.vertical(top: Radius.circular(8)),
                   image: mainImage != null 
                     ? DecorationImage(image: FileImage(mainImage), fit: BoxFit.cover) 
                     : null,

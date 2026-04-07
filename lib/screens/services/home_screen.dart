@@ -28,10 +28,10 @@ class _HomeScreenState extends State<HomeScreen> {
   Timer? _bannerTimer;
 
   Map<String, dynamic>? _userData;
-  List<Map<String, dynamic>> _providersList = [];
-  bool _isLoadingProviders = true;
+  List<Map<String, dynamic>> _servicesList = [];
+  bool _isLoadingServices = true;
   String _currentLocation = "Detecting...";
-  final Set<String> _savedProviderNames = {};
+  final Set<String> _savedServiceIds = {};
 
   final categories = const [
     {'name': 'Plumbing', 'icon': Icons.plumbing_outlined},
@@ -48,7 +48,7 @@ class _HomeScreenState extends State<HomeScreen> {
   void initState() {
     super.initState();
     _fetchUserData();
-    _fetchProviders();
+    _fetchServices();
     _determinePosition();
 
     _bannerTimer = Timer.periodic(const Duration(seconds: 3), (Timer timer) {
@@ -82,7 +82,7 @@ class _HomeScreenState extends State<HomeScreen> {
 
     serviceEnabled = await Geolocator.isLocationServiceEnabled();
     if (!serviceEnabled) {
-      if (mounted) setState(() => _currentLocation = "Lagos, Nigeria");
+      if (mounted) setState(() => _currentLocation = "Kuala Lumpur, Malaysia");
       return;
     }
 
@@ -90,13 +90,13 @@ class _HomeScreenState extends State<HomeScreen> {
     if (permission == LocationPermission.denied) {
       permission = await Geolocator.requestPermission();
       if (permission == LocationPermission.denied) {
-        if (mounted) setState(() => _currentLocation = "Lagos, Nigeria");
+        if (mounted) setState(() => _currentLocation = "Kuala Lumpur, Malaysia");
         return;
       }
     }
 
     if (permission == LocationPermission.deniedForever) {
-      if (mounted) setState(() => _currentLocation = "Lagos, Nigeria");
+      if (mounted) setState(() => _currentLocation = "Kuala Lumpur, Malaysia");
       return;
     }
 
@@ -130,7 +130,15 @@ class _HomeScreenState extends State<HomeScreen> {
       if (user != null) {
         final doc = await FirebaseFirestore.instance.collection('users').doc(user.uid).get();
         if (doc.exists && mounted) {
-          setState(() => _userData = doc.data());
+          final data = doc.data();
+          setState(() {
+            _userData = data;
+            // Sync saved services from Firestore
+            if (data != null && data['savedServices'] != null) {
+              _savedServiceIds.clear();
+              _savedServiceIds.addAll(List<String>.from(data['savedServices']));
+            }
+          });
         }
       }
     } catch (e) {
@@ -138,35 +146,55 @@ class _HomeScreenState extends State<HomeScreen> {
     }
   }
 
-  Future<void> _fetchProviders() async {
-    try {
-      final snapshot = await FirebaseFirestore.instance.collection('providers').get();
-      if (mounted) {
-        setState(() {
-          _providersList = snapshot.docs.map((doc) => doc.data()).toList();
-          _isLoadingProviders = false;
-        });
+  Future<void> _toggleSaveService(String serviceId) async {
+    final user = FirebaseAuth.instance.currentUser;
+    if (user == null) return;
+
+    setState(() {
+      if (_savedServiceIds.contains(serviceId)) {
+        _savedServiceIds.remove(serviceId);
+      } else {
+        _savedServiceIds.add(serviceId);
       }
+    });
+
+    try {
+      await FirebaseFirestore.instance.collection('users').doc(user.uid).update({
+        'savedServices': _savedServiceIds.toList(),
+      });
     } catch (e) {
-      if (mounted) setState(() => _isLoadingProviders = false);
+      debugPrint("Error updating saved services: $e");
     }
   }
 
-  List<Map<String, dynamic>> get filteredProviders {
-    return _providersList.where((p) {
+  Future<void> _fetchServices() async {
+    try {
+      final snapshot = await FirebaseFirestore.instance.collection('services').where('isActive', isEqualTo: true).get();
+      if (mounted) {
+        setState(() {
+          _servicesList = snapshot.docs.map((doc) => doc.data()).toList();
+          _isLoadingServices = false;
+        });
+      }
+    } catch (e) {
+      if (mounted) setState(() => _isLoadingServices = false);
+    }
+  }
+
+  List<Map<String, dynamic>> get _filteredServices {
+    return _servicesList.where((s) {
       final query = searchQuery.toLowerCase();
       
-      final name = (p['name'] as String?)?.toLowerCase() ?? '';
-      final List<dynamic> services = p['services'] ?? [];
-      final address = (p['address'] as String?)?.toLowerCase() ?? '';
+      final title = (s['title'] as String?)?.toLowerCase() ?? '';
+      final category = (s['category'] as String?)?.toLowerCase() ?? '';
+      final providerAddress = (s['providerAddress'] as String?)?.toLowerCase() ?? '';
 
-      final matchesSearch = name.contains(query) ||
-          services.any((s) => s.toString().toLowerCase().contains(query)) ||
-          address.contains(query);
+      final matchesSearch = title.contains(query) ||
+          category.contains(query) ||
+          providerAddress.contains(query);
 
       bool matchesCategory = true;
       if (selectedCategory == 'Nearby') {
-        // Simple nearby check: check if the state matches
         String userFullAddress = _userData?['address']?.toString() ?? 'Kuala Lumpur, Malaysia';
         String userState = userFullAddress;
         if (userFullAddress.contains(',')) {
@@ -175,35 +203,32 @@ class _HomeScreenState extends State<HomeScreen> {
              userState = parts[parts.length - 2].trim();
           }
         }
-        matchesCategory = address.contains(userState.toLowerCase());
+        matchesCategory = providerAddress.contains(userState.toLowerCase());
       } else if (selectedCategory != 'All') {
-        matchesCategory = services.contains(selectedCategory);
+        matchesCategory = category.contains(selectedCategory.toLowerCase());
       }
 
       return matchesSearch && matchesCategory;
     }).toList();
   }
 
-  List<Map<String, dynamic>> get recommendedProviders {
+  List<Map<String, dynamic>> get recommendedServices {
     if (_userData == null || _userData!['services'] == null) return [];
     final List<dynamic> userPreferences = _userData!['services'] ?? [];
     
-    // Normalize user preferences to lowercase for robust matching
     final normalizedPrefs = userPreferences.map((e) => e.toString().toLowerCase()).toList();
     
     if (normalizedPrefs.isEmpty) return [];
 
-    return _providersList.where((p) {
-      final List<dynamic> providerServices = p['services'] ?? [];
-      return providerServices.any((s) {
-        final serviceName = s.toString().toLowerCase();
-        // Match if names are identical or one contains the other (e.g., 'Plumbing' vs 'Plumber')
-        return normalizedPrefs.any((pref) => 
-          serviceName == pref || 
-          serviceName.contains(pref) || 
-          pref.contains(serviceName)
-        );
-      });
+    return _servicesList.where((s) {
+      final category = (s['category'] as String?)?.toLowerCase() ?? '';
+      final title = (s['title'] as String?)?.toLowerCase() ?? '';
+      
+      return normalizedPrefs.any((pref) => 
+        category.contains(pref) || 
+        title.contains(pref) || 
+        pref.contains(category)
+      );
     }).toList();
   }
 
@@ -229,7 +254,7 @@ class _HomeScreenState extends State<HomeScreen> {
             const SizedBox(height: 24),
             _buildSectionHeader('Top Rated', 'See All', () {}),
             const SizedBox(height: 16),
-            _buildProviderList(),
+            _buildServicesList(),
             const SizedBox(height: 32),
           ],
         ),
@@ -267,42 +292,46 @@ class _HomeScreenState extends State<HomeScreen> {
             Row(
               mainAxisAlignment: MainAxisAlignment.spaceBetween,
               children: [
-                Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(
-                      'Location',
-                      style: GoogleFonts.outfit(
-                        color: Colors.black,
-                        fontWeight: FontWeight.w300,
-                        fontSize: 14,
-                      ),
-                    ),
-                    const SizedBox(height: 4),
-                    Row(
-                      children: [
-                        const Icon(Icons.location_on, color: Color(0xFFFF6B00), size: 18),
-                        const SizedBox(width: 4),
-                        Text(
-                          address,
-                          style: GoogleFonts.outfit(
-                            color: Colors.black,
-                            fontSize: 16,
-                            fontWeight: FontWeight.bold,
-                          ),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        'Location',
+                        style: GoogleFonts.outfit(
+                          color: Colors.black,
+                          fontWeight: FontWeight.w300,
+                          fontSize: 14,
                         ),
-                        const Icon(Icons.keyboard_arrow_down, color: Colors.black54),
-                      ],
-                    ),
-                  ],
+                      ),
+                      const SizedBox(height: 4),
+                      Row(
+                        children: [
+                          const Icon(Icons.location_on, color: Color(0xFFFF6B00), size: 18),
+                          const SizedBox(width: 4),
+                          Expanded(
+                            child: Text(
+                              address,
+                              style: GoogleFonts.outfit(
+                                color: Colors.black,
+                                fontSize: 16,
+                                fontWeight: FontWeight.bold,
+                              ),
+                              maxLines: 1,
+                              overflow: TextOverflow.ellipsis,
+                            ),
+                          ),
+                        ],
+                      ),
+                    ],
+                  ),
                 ),
                 GestureDetector(
                   onTap: () {
-                    final savedList = _providersList.where((p) => _savedProviderNames.contains(p['name'])).toList();
-                    Navigator.push(context, MaterialPageRoute(builder: (context) => SavedServicesScreen(savedProviders: savedList)));
+                    Navigator.push(context, MaterialPageRoute(builder: (context) => const SavedServicesScreen()));
                   },
                   child: const Padding(
-                    padding: EdgeInsets.all(8),
+                    padding: EdgeInsets.only(left: 12),
                     child: Icon(Icons.bookmark_outline, color: Colors.black, size: 28),
                   ),
                 ),
@@ -667,8 +696,7 @@ class _HomeScreenState extends State<HomeScreen> {
 
 
   Widget _buildRecommendationSection() {
-    // For demo purposes, if recommended is empty, we show a few from the main list
-    final list = recommendedProviders.isNotEmpty ? recommendedProviders : _providersList.take(5).toList();
+    final list = recommendedServices.isNotEmpty ? recommendedServices : _servicesList.take(5).toList();
     
     if (list.isEmpty) return const SizedBox.shrink();
 
@@ -683,32 +711,32 @@ class _HomeScreenState extends State<HomeScreen> {
             scrollDirection: Axis.horizontal,
             padding: const EdgeInsets.symmetric(horizontal: 20),
             itemCount: list.length,
-            itemBuilder: (context, index) => _buildCard2(list[index]),
+            itemBuilder: (context, index) => _buildServiceCardRecommendation(list[index]),
           ),
         ),
       ],
     );
   }
 
-  Widget _buildCard2(Map<String, dynamic> p) {
-    String name = p['name'] ?? 'Elite Home Services';
-    List<dynamic> svcs = p['services'] ?? [];
-    String sub = svcs.isNotEmpty ? svcs.first.toString() : 'Expert Professional';
-    String price = p['price']?.toString() ?? '25';
+  Widget _buildServiceCardRecommendation(Map<String, dynamic> s) {
+    String serviceId = s['serviceId'] ?? '';
+    String title = s['title'] ?? 'Elite Home Service';
+    String providerName = s['providerName'] ?? 'Pro Provider';
+    String price = s['price']?.toString() ?? '25';
     String rating = '4.9';
-    String profileUrl = p['profileUrl'] ?? ''; // used for the small avatar later
-    String servicePhotoUrl = p['servicePhotoUrl'] ?? ''; 
+    String providerProfileUrl = s['providerProfileUrl'] ?? ''; 
+    String servicePhotoUrl = s['servicePhotoUrl'] ?? ''; 
 
     return GestureDetector(
       onTap: () {
-        Navigator.push(context, MaterialPageRoute(builder: (context) => ServiceDetailsScreen(provider: p)));
+        Navigator.push(context, MaterialPageRoute(builder: (context) => ServiceDetailsScreen(provider: s)));
       },
       child: Container(
         width: 160,
         margin: const EdgeInsets.only(right: 16),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
-          mainAxisSize: MainAxisSize.min, // Wrap content height
+          mainAxisSize: MainAxisSize.min, 
           children: [
             // Image
             ClipRRect(
@@ -734,7 +762,7 @@ class _HomeScreenState extends State<HomeScreen> {
               children: [
                 Expanded(
                   child: Text(
-                    sub, // Service name
+                    title,
                     style: GoogleFonts.outfit(
                       fontSize: 15,
                       fontWeight: FontWeight.bold,
@@ -745,19 +773,11 @@ class _HomeScreenState extends State<HomeScreen> {
                   ),
                 ),
                 GestureDetector(
-                  onTap: () {
-                    setState(() {
-                      if (_savedProviderNames.contains(name)) {
-                        _savedProviderNames.remove(name);
-                      } else {
-                        _savedProviderNames.add(name);
-                      }
-                    });
-                  },
+                  onTap: () => _toggleSaveService(serviceId),
                   child: Icon(
-                    _savedProviderNames.contains(name) ? Icons.bookmark : Icons.bookmark_border,
+                    _savedServiceIds.contains(serviceId) ? Icons.bookmark : Icons.bookmark_border,
                     size: 20,
-                    color: _savedProviderNames.contains(name) ? Colors.black : Colors.grey.shade400,
+                    color: _savedServiceIds.contains(serviceId) ? const Color(0xFFFF6B00) : Colors.grey.shade400,
                   ),
                 ),
               ],
@@ -814,14 +834,16 @@ class _HomeScreenState extends State<HomeScreen> {
               children: [
                 CircleAvatar(
                   radius: 9,
-                  backgroundImage: profileUrl.isNotEmpty
-                    ? NetworkImage(profileUrl)
-                    : NetworkImage('https://i.pravatar.cc/150?u=$name') as ImageProvider,
+                  backgroundColor: const Color(0xFFF1F5F9),
+                  backgroundImage: providerProfileUrl.isNotEmpty ? NetworkImage(providerProfileUrl) : null,
+                  child: providerProfileUrl.isEmpty 
+                    ? Text(providerName.isNotEmpty ? providerName[0].toUpperCase() : 'P', style: GoogleFonts.outfit(color: const Color(0xFF1F212C), fontSize: 8, fontWeight: FontWeight.bold)) 
+                    : null,
                 ),
                 const SizedBox(width: 6),
                 Expanded(
                   child: Text(
-                    name,
+                    providerName,
                     style: GoogleFonts.outfit(
                       fontSize: 12,
                       fontWeight: FontWeight.w500,
@@ -870,15 +892,15 @@ class _HomeScreenState extends State<HomeScreen> {
     );
   }
 
-  Widget _buildProviderList() {
-    if (_isLoadingProviders) {
+  Widget _buildServicesList() {
+    if (_isLoadingServices) {
       return const Center(child: Padding(
         padding: EdgeInsets.all(40.0),
         child: CircularProgressIndicator(color: Color(0xFFFF6B00)),
       ));
     }
 
-    if (filteredProviders.isEmpty) {
+    if (_filteredServices.isEmpty) {
       return Center(
         child: Padding(
           padding: const EdgeInsets.symmetric(vertical: 40),
@@ -886,7 +908,7 @@ class _HomeScreenState extends State<HomeScreen> {
             children: [
               Icon(Icons.search_off, size: 48, color: Colors.grey.shade300),
               const SizedBox(height: 16),
-              Text("No providers found", style: GoogleFonts.outfit(color: Colors.grey.shade500)),
+              Text("No services found", style: GoogleFonts.outfit(color: Colors.grey.shade500)),
             ],
           ),
         ),
@@ -896,25 +918,25 @@ class _HomeScreenState extends State<HomeScreen> {
     return Padding(
       padding: const EdgeInsets.symmetric(horizontal: 24),
       child: Column(
-        children: filteredProviders.take(3).map((p) => _buildProviderCard(p)).toList(),
+        children: _filteredServices.take(5).map((s) => _buildServiceCardList(s)).toList(),
       ),
     );
   }
 
-  Widget _buildProviderCard(Map<String, dynamic> p) {
-    String name = p['name'] ?? 'Unknown Provider';
-    List<dynamic> servicesList = p['services'] ?? [];
-    String category = servicesList.isNotEmpty ? servicesList.first.toString() : 'Cleaning';
+  Widget _buildServiceCardList(Map<String, dynamic> s) {
+    String serviceId = s['serviceId'] ?? '';
+    String title = s['title'] ?? 'Elite Service';
+    String providerName = s['providerName'] ?? 'Elite Pro';
+    String price = s['price']?.toString() ?? '85';
     String rating = '4.8'; 
     String reviews = '195'; 
-    String price = p['price']?.toString() ?? '85';
-    String profileUrl = p['profileUrl'] ?? '';
-    String servicePhotoUrl = p['servicePhotoUrl'] ?? '';
+    String providerProfileUrl = s['providerProfileUrl'] ?? '';
+    String servicePhotoUrl = s['servicePhotoUrl'] ?? '';
 
     return GestureDetector(
       onTap: () {
         Navigator.push(context, MaterialPageRoute(builder: (context) => ServiceDetailsScreen(
-          provider: p,
+          provider: s,
         )));
       },
       child: Container(
@@ -944,18 +966,18 @@ class _HomeScreenState extends State<HomeScreen> {
                 // Details
                 Expanded(
                   child: SizedBox(
-                    height: 120, // Match the image height exactly
+                    height: 120, 
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
-                      // Title and More Icon
+                      // Title and Bookmark Icon
                       Row(
                         mainAxisAlignment: MainAxisAlignment.spaceBetween,
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
                           Expanded(
                             child: Text(
-                              category, // Displaying Service name
+                              title,
                               style: GoogleFonts.outfit(
                                 fontSize: 16,
                                 fontWeight: FontWeight.bold,
@@ -966,21 +988,13 @@ class _HomeScreenState extends State<HomeScreen> {
                             ),
                           ),
                           GestureDetector(
-                            onTap: () {
-                              setState(() {
-                                if (_savedProviderNames.contains(name)) {
-                                  _savedProviderNames.remove(name);
-                                } else {
-                                  _savedProviderNames.add(name);
-                                }
-                              });
-                            },
+                            onTap: () => _toggleSaveService(serviceId),
                             child: Padding(
-                              padding: const EdgeInsets.only(top: 2), // Minor alignment tweak
+                              padding: const EdgeInsets.only(top: 2),
                               child: Icon(
-                                _savedProviderNames.contains(name) ? Icons.bookmark : Icons.bookmark_border,
+                                _savedServiceIds.contains(serviceId) ? Icons.bookmark : Icons.bookmark_border,
                                 size: 20,
-                                color: _savedProviderNames.contains(name) ? Colors.black : Colors.grey.shade400,
+                                color: _savedServiceIds.contains(serviceId) ? const Color(0xFFFF6B00) : Colors.grey.shade400,
                               ),
                             ),
                           ),
@@ -1011,14 +1025,16 @@ class _HomeScreenState extends State<HomeScreen> {
                         children: [
                           CircleAvatar(
                             radius: 9,
-                            backgroundImage: profileUrl.isNotEmpty
-                              ? NetworkImage(profileUrl)
-                              : NetworkImage('https://i.pravatar.cc/150?u=$name') as ImageProvider,
+                            backgroundColor: const Color(0xFFF1F5F9),
+                            backgroundImage: providerProfileUrl.isNotEmpty ? NetworkImage(providerProfileUrl) : null,
+                            child: providerProfileUrl.isEmpty 
+                              ? Text(providerName.isNotEmpty ? providerName[0].toUpperCase() : 'P', style: GoogleFonts.outfit(color: const Color(0xFF1F212C), fontSize: 8, fontWeight: FontWeight.bold)) 
+                              : null,
                           ),
                           const SizedBox(width: 6),
                           Expanded(
                             child: Text(
-                              name,
+                              providerName,
                               style: GoogleFonts.outfit(
                                 fontSize: 15,
                                 fontWeight: FontWeight.w600,
@@ -1030,7 +1046,7 @@ class _HomeScreenState extends State<HomeScreen> {
                           ),
                         ],
                       ),
-                      const Spacer(), // Forces the price strictly down to the bottom limit
+                      const Spacer(), 
 
                       // Price
                       RichText(
@@ -1063,7 +1079,6 @@ class _HomeScreenState extends State<HomeScreen> {
                           ],
                         ),
                       ),
-                      // Clean bottom margin since extras are removed
                       const SizedBox(height: 4),
                     ],
                   ),

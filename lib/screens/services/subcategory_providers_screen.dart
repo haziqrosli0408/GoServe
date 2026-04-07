@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:firebase_auth/firebase_auth.dart';
 import 'service_details.dart';
 
 class SubcategoryProvidersScreen extends StatefulWidget {
@@ -20,29 +21,73 @@ class SubcategoryProvidersScreen extends StatefulWidget {
 class _SubcategoryProvidersScreenState extends State<SubcategoryProvidersScreen> {
   List<Map<String, dynamic>> _providers = [];
   bool _isLoading = true;
+  final Set<String> _savedServiceIds = {};
 
   @override
   void initState() {
     super.initState();
+    _fetchUserData();
     _fetchProviders();
+  }
+
+  Future<void> _fetchUserData() async {
+    try {
+      final user = FirebaseAuth.instance.currentUser;
+      if (user != null) {
+        final doc = await FirebaseFirestore.instance.collection('users').doc(user.uid).get();
+        if (doc.exists && mounted) {
+          final data = doc.data();
+          setState(() {
+            if (data != null && data['savedServices'] != null) {
+              _savedServiceIds.clear();
+              _savedServiceIds.addAll(List<String>.from(data['savedServices']));
+            }
+          });
+        }
+      }
+    } catch (e) {
+      // Ignore
+    }
+  }
+
+  Future<void> _toggleSaveService(String serviceId) async {
+    final user = FirebaseAuth.instance.currentUser;
+    if (user == null) return;
+
+    setState(() {
+      if (_savedServiceIds.contains(serviceId)) {
+        _savedServiceIds.remove(serviceId);
+      } else {
+        _savedServiceIds.add(serviceId);
+      }
+    });
+
+    try {
+      await FirebaseFirestore.instance.collection('users').doc(user.uid).update({
+        'savedServices': _savedServiceIds.toList(),
+      });
+    } catch (e) {
+      debugPrint("Error updating saved services: $e");
+    }
   }
 
   Future<void> _fetchProviders() async {
     try {
-      // 🔹 Filter by 'services' array containing the queryName
+      // 🔹 Fetch from 'services' collection for real service data
       final snapshot = await FirebaseFirestore.instance
-          .collection('providers')
+          .collection('services')
+          .where('isActive', isEqualTo: true)
           .get();
 
       if (mounted) {
         setState(() {
-          // Manual filtering locally because user preferences and testing
-          // might require case-insensitive or partial matching
           final query = widget.queryName.toLowerCase();
           
-          _providers = snapshot.docs.map((doc) => doc.data()).where((p) {
-             final List<dynamic> services = p['services'] ?? [];
-             return services.any((s) => s.toString().toLowerCase().contains(query));
+          // Filter services where category or title matches the selected subcategory
+          _providers = snapshot.docs.map((doc) => doc.data()).where((s) {
+             final category = (s['category'] as String?)?.toLowerCase() ?? '';
+             final title = (s['title'] as String?)?.toLowerCase() ?? '';
+             return category.contains(query) || title.contains(query);
           }).toList();
           
           _isLoading = false;
@@ -176,13 +221,13 @@ class _SubcategoryProvidersScreenState extends State<SubcategoryProvidersScreen>
   }
 
   Widget _buildProviderCard(Map<String, dynamic> p) {
-    String name = p['name'] ?? 'Provider';
-    List<dynamic> services = p['services'] ?? [];
-    String category = services.isNotEmpty ? services.first.toString() : 'Service';
-    String description = p['description'] ?? 'Expert professional service provider.';
+    String serviceId = p['serviceId'] ?? '';
+    String name = p['providerName'] ?? p['name'] ?? 'Provider';
+    String title = p['title'] ?? widget.title; 
     String price = p['price']?.toString() ?? '85';
-    String profileUrl = p['profileUrl'] ?? '';
     String rating = '4.9';
+    String profileUrl = p['providerProfileUrl'] ?? p['profileUrl'] ?? '';
+    String servicePhotoUrl = p['servicePhotoUrl'] ?? '';
 
     return GestureDetector(
       onTap: () {
@@ -194,159 +239,125 @@ class _SubcategoryProvidersScreenState extends State<SubcategoryProvidersScreen>
         );
       },
       child: Container(
-        margin: const EdgeInsets.only(bottom: 16),
-        padding: const EdgeInsets.all(12),
+        padding: const EdgeInsets.symmetric(vertical: 16),
         decoration: BoxDecoration(
-          color: Colors.white,
-          borderRadius: BorderRadius.circular(16),
-          border: Border.all(color: Colors.grey.shade100),
-          boxShadow: [
-            BoxShadow(
-              color: Colors.black.withValues(alpha: 0.03),
-              blurRadius: 15,
-              offset: const Offset(0, 5),
-            ),
-          ],
+          border: Border(bottom: BorderSide(color: Colors.grey.shade100)),
         ),
         child: Row(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            Stack(
-              children: [
-                Container(
-                  width: 90,
-                  height: 90,
-                  decoration: BoxDecoration(
-                    borderRadius: BorderRadius.circular(12),
-                    image: profileUrl.isNotEmpty
-                        ? DecorationImage(
-                            image: NetworkImage(profileUrl),
-                            fit: BoxFit.cover,
-                          )
-                        : DecorationImage(
-                            image: NetworkImage('https://i.pravatar.cc/150?u=$name'),
-                            fit: BoxFit.cover,
-                          ),
-                  ),
+            // Image
+            Container(
+              width: 120,
+              height: 120,
+              decoration: BoxDecoration(
+                borderRadius: BorderRadius.circular(16),
+                image: servicePhotoUrl.isNotEmpty ? DecorationImage(
+                  image: NetworkImage(servicePhotoUrl),
+                  fit: BoxFit.cover,
+                ) : const DecorationImage(
+                  image: NetworkImage('https://images.unsplash.com/photo-1581578731548-c64695cc6952?q=80&w=800&auto=format&fit=crop'),
+                  fit: BoxFit.cover,
                 ),
-                Positioned(
-                  top: 6,
-                  left: 6,
-                  child: Container(
-                    padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 1),
-                    decoration: BoxDecoration(
-                      color: const Color(0xFFFF6B00),
-                      borderRadius: BorderRadius.circular(3),
-                    ),
-                    child: Text(
-                      'ELITE',
-                      style: GoogleFonts.outfit(
-                        color: Colors.white,
-                        fontSize: 7,
-                        fontWeight: FontWeight.bold,
-                        letterSpacing: 0.5,
-                      ),
-                    ),
-                  ),
-                ),
-              ],
+              ),
             ),
-            const SizedBox(width: 14),
+            const SizedBox(width: 16),
+            // Details
             Expanded(
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Row(
-                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                    children: [
-                      Text(
-                        category.toUpperCase(),
-                        style: GoogleFonts.outfit(
-                          fontSize: 9,
-                          fontWeight: FontWeight.bold,
-                          color: const Color(0xFFFF6B00),
-                          letterSpacing: 0.5,
-                        ),
-                      ),
-                      Row(
-                        children: [
-                          const Icon(Icons.star, color: Color(0xFFF59E0B), size: 12),
-                          const SizedBox(width: 2),
-                          Text(
-                            rating,
+              child: SizedBox(
+                height: 120,
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Row(
+                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                      children: [
+                        Expanded(
+                          child: Text(
+                            title,
                             style: GoogleFonts.outfit(
-                              fontSize: 10,
+                              fontSize: 16,
                               fontWeight: FontWeight.bold,
                               color: const Color(0xFF1E293B),
                             ),
+                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis,
+                          ),
+                        ),
+                        GestureDetector(
+                          onTap: () => _toggleSaveService(serviceId),
+                          child: Icon(
+                            _savedServiceIds.contains(serviceId) ? Icons.bookmark : Icons.bookmark_border, 
+                            size: 20, 
+                            color: _savedServiceIds.contains(serviceId) ? const Color(0xFFFF6B00) : Colors.black45
+                          ),
+                        ),
+                      ],
+                    ),
+                    const SizedBox(height: 4),
+                    Row(
+                      children: [
+                        const Icon(Icons.star, color: Color(0xFFFFC107), size: 14),
+                        const SizedBox(width: 4),
+                        Text(
+                          '$rating (128) · \$\$',
+                          style: GoogleFonts.outfit(
+                            fontSize: 12,
+                            color: Colors.grey.shade600,
+                          ),
+                        ),
+                      ],
+                    ),
+                    const SizedBox(height: 8),
+                    // Provider Row
+                    Row(
+                      children: [
+                        CircleAvatar(
+                          radius: 9,
+                          backgroundColor: const Color(0xFFF1F5F9),
+                          backgroundImage: profileUrl.isNotEmpty ? NetworkImage(profileUrl) : null,
+                          child: profileUrl.isEmpty 
+                            ? Text(name.isNotEmpty ? name[0].toUpperCase() : 'P', style: GoogleFonts.outfit(color: const Color(0xFF1F212C), fontSize: 8, fontWeight: FontWeight.bold)) 
+                            : null,
+                        ),
+                        const SizedBox(width: 6),
+                        Expanded(
+                          child: Text(
+                            name,
+                            style: GoogleFonts.outfit(
+                              fontSize: 14,
+                              fontWeight: FontWeight.w600,
+                              color: const Color(0xFF1E293B),
+                            ),
+                          ),
+                        ),
+                      ],
+                    ),
+                    const Spacer(),
+                    RichText(
+                      text: TextSpan(
+                        children: [
+                          TextSpan(
+                            text: 'From ',
+                            style: GoogleFonts.outfit(fontSize: 12, color: Colors.grey.shade500),
+                          ),
+                          TextSpan(
+                            text: 'RM$price',
+                            style: GoogleFonts.outfit(
+                              fontSize: 16,
+                              fontWeight: FontWeight.bold,
+                              color: const Color(0xFFFF6B00),
+                            ),
+                          ),
+                          TextSpan(
+                            text: '/hr',
+                            style: GoogleFonts.outfit(fontSize: 11, color: Colors.grey.shade400),
                           ),
                         ],
                       ),
-                    ],
-                  ),
-                  const SizedBox(height: 4),
-                  Text(
-                    name,
-                    style: GoogleFonts.outfit(
-                      fontSize: 14,
-                      fontWeight: FontWeight.bold,
-                      color: const Color(0xFF1E293B),
                     ),
-                    maxLines: 1,
-                    overflow: TextOverflow.ellipsis,
-                  ),
-                  const SizedBox(height: 2),
-                  Text(
-                    description,
-                    style: GoogleFonts.outfit(
-                      fontSize: 11,
-                      color: Colors.grey.shade500,
-                      height: 1.2,
-                    ),
-                    maxLines: 2,
-                    overflow: TextOverflow.ellipsis,
-                  ),
-                  const SizedBox(height: 8),
-                  Row(
-                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                    children: [
-                      RichText(
-                        text: TextSpan(
-                          children: [
-                            TextSpan(
-                              text: 'RM$price',
-                              style: GoogleFonts.outfit(
-                                fontSize: 16,
-                                fontWeight: FontWeight.bold,
-                                color: const Color(0xFFFF6B00),
-                              ),
-                            ),
-                            TextSpan(
-                              text: '/hr',
-                              style: GoogleFonts.outfit(
-                                fontSize: 10,
-                                fontWeight: FontWeight.w500,
-                                color: Colors.grey.shade400,
-                              ),
-                            ),
-                          ],
-                        ),
-                      ),
-                      Container(
-                        padding: const EdgeInsets.all(6),
-                        decoration: BoxDecoration(
-                          color: const Color(0xFFF1F5F9),
-                          borderRadius: BorderRadius.circular(8),
-                        ),
-                        child: const Icon(
-                          Icons.bookmark_border,
-                          size: 16,
-                          color: Color(0xFF475569),
-                        ),
-                      ),
-                    ],
-                  ),
-                ],
+                  ],
+                ),
               ),
             ),
           ],

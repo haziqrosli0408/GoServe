@@ -4,6 +4,8 @@ import 'package:google_fonts/google_fonts.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:firebase_storage/firebase_storage.dart';
+import 'package:path/path.dart' as path_pkg;
 
 class AddServiceScreen extends StatefulWidget {
   final bool startNew;
@@ -59,13 +61,14 @@ class AddServiceScreen extends StatefulWidget {
 class _AddServiceScreenState extends State<AddServiceScreen> {
   int step = 1;
   static const int totalSteps = 5;
-  final _formKey = GlobalKey<FormState>();
   String? selectedCategory;
   String? draftId;
   
   // States
   File? _mainImage;
   final List<File> _galleryImages = [];
+  String? _networkMainImage; // For already uploaded images
+  final List<String> _networkGalleryImages = []; // For already uploaded images
   final List<String> _serviceDetails = [];
   final List<Map<String, dynamic>> _addOns = [];
   
@@ -75,6 +78,7 @@ class _AddServiceScreenState extends State<AddServiceScreen> {
   final TextEditingController _descriptionController = TextEditingController();
   final TextEditingController _addOnNameController = TextEditingController();
   final TextEditingController _addOnPriceController = TextEditingController();
+  final TextEditingController _addOnDescriptionController = TextEditingController();
   final TextEditingController _searchController = TextEditingController();
   String _searchQuery = '';
   String _priceType = 'per hour'; // 'per hour' or 'one-time'
@@ -130,11 +134,14 @@ class _AddServiceScreenState extends State<AddServiceScreen> {
       _priceType = draft['priceType'] ?? 'per hour';
       _mainImage = draft['mainImage'];
       
+      if (widget.initialDraftData!['galleryUrls'] != null) {
+        _networkGalleryImages.clear();
+        _networkGalleryImages.addAll(List<String>.from(widget.initialDraftData!['galleryUrls']));
+      } else if (widget.initialDraftData!['galleryImagePaths'] != null) {
+        _galleryImages.addAll(List<File>.from(draft['galleryImages']));
+      }
       if (draft['details'] != null) {
         _serviceDetails.addAll(List<String>.from(draft['details']));
-      }
-      if (draft['galleryImages'] != null) {
-        _galleryImages.addAll(List<File>.from(draft['galleryImages']));
       }
       if (draft['addOns'] != null) {
         _addOns.addAll(List<Map<String, dynamic>>.from(draft['addOns']));
@@ -207,14 +214,18 @@ class _AddServiceScreenState extends State<AddServiceScreen> {
   }
 
   void _addAddOn() {
-    if (_addOnNameController.text.trim().isNotEmpty && _addOnPriceController.text.trim().isNotEmpty) {
+    if (_addOnNameController.text.trim().isNotEmpty && 
+        _addOnPriceController.text.trim().isNotEmpty &&
+        _addOnDescriptionController.text.trim().isNotEmpty) {
       setState(() {
         _addOns.add({
           'name': _addOnNameController.text.trim(),
           'price': _addOnPriceController.text.trim(),
+          'description': _addOnDescriptionController.text.trim(),
         });
         _addOnNameController.clear();
         _addOnPriceController.clear();
+        _addOnDescriptionController.clear();
       });
     }
   }
@@ -289,21 +300,7 @@ class _AddServiceScreenState extends State<AddServiceScreen> {
               }
             },
           ),
-          const Spacer(),
-          if (step == totalSteps)
-            TextButton(
-              onPressed: () {
-                // handle preview
-              },
-              child: Text(
-                'Preview',
-                style: GoogleFonts.outfit(
-                  color: primaryIndigo,
-                  fontWeight: FontWeight.bold,
-                  fontSize: 14,
-                ),
-              ),
-            ),
+          const SizedBox(width: 48), // Spacer replacement for symmetry
         ],
       ),
     );
@@ -355,8 +352,35 @@ class _AddServiceScreenState extends State<AddServiceScreen> {
               color: const Color(0xFF1E293B),
             ),
           ),
-          const SizedBox(height: 8),
-          Divider(height: 1, thickness: 1.5, color: Colors.grey.shade100),
+          const SizedBox(height: 12),
+          Stack(
+            children: [
+              Container(
+                height: 4,
+                width: double.infinity,
+                decoration: BoxDecoration(
+                  color: Colors.grey.shade100,
+                  borderRadius: BorderRadius.circular(2),
+                ),
+              ),
+              AnimatedContainer(
+                duration: const Duration(milliseconds: 300),
+                height: 4,
+                width: (MediaQuery.of(context).size.width - 48) * (step / totalSteps),
+                decoration: BoxDecoration(
+                  color: primaryIndigo,
+                  borderRadius: BorderRadius.circular(2),
+                  boxShadow: [
+                    BoxShadow(
+                      color: primaryIndigo.withValues(alpha: 0.2),
+                      blurRadius: 4,
+                      offset: const Offset(0, 2),
+                    ),
+                  ],
+                ),
+              ),
+            ],
+          ),
         ],
       ),
     );
@@ -415,7 +439,7 @@ class _AddServiceScreenState extends State<AddServiceScreen> {
           padding: const EdgeInsets.symmetric(horizontal: 16),
           decoration: BoxDecoration(
             color: const Color(0xFFF8FAFC),
-            borderRadius: BorderRadius.circular(16),
+            borderRadius: BorderRadius.circular(8),
             border: Border.all(color: Colors.grey.shade100),
           ),
           child: TextField(
@@ -444,7 +468,7 @@ class _AddServiceScreenState extends State<AddServiceScreen> {
             return Container(
               decoration: BoxDecoration(
                 color: Colors.white,
-                borderRadius: BorderRadius.circular(20),
+                borderRadius: BorderRadius.circular(8),
                 border: Border.all(color: const Color(0xFFF1F5F9)),
               ),
               child: ExpansionTile(
@@ -568,7 +592,7 @@ class _AddServiceScreenState extends State<AddServiceScreen> {
           padding: const EdgeInsets.symmetric(horizontal: 16),
           decoration: BoxDecoration(
             color: const Color(0xFFF8FAFC),
-            borderRadius: BorderRadius.circular(20),
+            borderRadius: BorderRadius.circular(8),
             border: Border.all(color: Colors.grey.shade100),
           ),
           child: Row(
@@ -615,7 +639,7 @@ class _AddServiceScreenState extends State<AddServiceScreen> {
           padding: const EdgeInsets.all(20),
           decoration: BoxDecoration(
             color: isSelected ? primaryIndigo.withValues(alpha: 0.05) : Colors.white,
-            borderRadius: BorderRadius.circular(24),
+            borderRadius: BorderRadius.circular(8),
             border: Border.all(
               color: isSelected ? primaryIndigo : Colors.grey.shade100,
               width: 2,
@@ -692,9 +716,9 @@ class _AddServiceScreenState extends State<AddServiceScreen> {
           hintStyle: GoogleFonts.outfit(color: Colors.grey.shade400, fontSize: 14),
           filled: true,
           fillColor: const Color(0xFFF8FAFC),
-          border: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: BorderSide(color: Colors.grey.shade100)),
-          enabledBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: BorderSide(color: Colors.grey.shade100)),
-          focusedBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: BorderSide(color: primaryIndigo, width: 1.5)),
+          border: OutlineInputBorder(borderRadius: BorderRadius.circular(8), borderSide: BorderSide(color: Colors.grey.shade100)),
+          enabledBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(8), borderSide: BorderSide(color: Colors.grey.shade100)),
+          focusedBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(8), borderSide: BorderSide(color: primaryIndigo, width: 1.5)),
           contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 16),
         ),
       ),
@@ -710,7 +734,7 @@ class _AddServiceScreenState extends State<AddServiceScreen> {
         width: double.infinity,
         decoration: BoxDecoration(
           color: const Color(0xFFF8FAFC),
-          borderRadius: BorderRadius.circular(16),
+          borderRadius: BorderRadius.circular(8),
           border: Border.all(color: Colors.grey.shade200),
           image: _mainImage != null 
             ? DecorationImage(image: FileImage(_mainImage!), fit: BoxFit.cover) 
@@ -726,7 +750,7 @@ class _AddServiceScreenState extends State<AddServiceScreen> {
         ) : Container(
           decoration: BoxDecoration(
             color: Colors.black.withValues(alpha: 0.3),
-            borderRadius: BorderRadius.circular(16),
+            borderRadius: BorderRadius.circular(8),
           ),
           child: const Center(child: Icon(Icons.edit, color: Colors.white, size: 32)),
         ),
@@ -752,7 +776,7 @@ class _AddServiceScreenState extends State<AddServiceScreen> {
             child: Container(
               decoration: BoxDecoration(
                 color: const Color(0xFFF8FAFC),
-                borderRadius: BorderRadius.circular(12),
+                borderRadius: BorderRadius.circular(8),
                 border: Border.all(color: Colors.grey.shade200, style: BorderStyle.solid),
               ),
               child: Icon(Icons.add_a_photo_outlined, color: Colors.grey.shade400),
@@ -763,7 +787,7 @@ class _AddServiceScreenState extends State<AddServiceScreen> {
           children: [
             Container(
               decoration: BoxDecoration(
-                borderRadius: BorderRadius.circular(12),
+                borderRadius: BorderRadius.circular(8),
                 image: DecorationImage(image: FileImage(_galleryImages[index]), fit: BoxFit.cover),
               ),
             ),
@@ -799,7 +823,7 @@ class _AddServiceScreenState extends State<AddServiceScreen> {
               icon: const Icon(Icons.add),
               style: IconButton.styleFrom(
                 backgroundColor: primaryIndigo,
-                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
                 padding: const EdgeInsets.all(12),
               ),
             ),
@@ -817,7 +841,7 @@ class _AddServiceScreenState extends State<AddServiceScreen> {
                 padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
                 decoration: BoxDecoration(
                   color: const Color(0xFFF8FAFC),
-                  borderRadius: BorderRadius.circular(12),
+                  borderRadius: BorderRadius.circular(8),
                 ),
                 child: Row(
                   children: [
@@ -850,12 +874,14 @@ class _AddServiceScreenState extends State<AddServiceScreen> {
           padding: const EdgeInsets.all(20),
           decoration: BoxDecoration(
             color: const Color(0xFFF8FAFC),
-            borderRadius: BorderRadius.circular(20),
+            borderRadius: BorderRadius.circular(8),
             border: Border.all(color: Colors.grey.shade100),
           ),
           child: Column(
             children: [
               _buildTextField(_addOnNameController, 'Add-on name (e.g., Attic Cleaning)'),
+              const SizedBox(height: 12),
+              _buildTextField(_addOnDescriptionController, 'Description (e.g., Deep cleaning of the attic floor)'),
               const SizedBox(height: 12),
               Row(
                 children: [
@@ -866,7 +892,7 @@ class _AddServiceScreenState extends State<AddServiceScreen> {
                     icon: const Icon(Icons.add),
                     style: IconButton.styleFrom(
                       backgroundColor: primaryIndigo,
-                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
                       padding: const EdgeInsets.all(16),
                     ),
                   ),
@@ -887,7 +913,7 @@ class _AddServiceScreenState extends State<AddServiceScreen> {
                 padding: const EdgeInsets.all(16),
                 decoration: BoxDecoration(
                   color: Colors.white,
-                  borderRadius: BorderRadius.circular(16),
+                  borderRadius: BorderRadius.circular(8),
                   border: Border.all(color: Colors.grey.shade100),
                 ),
                 child: Row(
@@ -903,6 +929,8 @@ class _AddServiceScreenState extends State<AddServiceScreen> {
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
                           Text(_addOns[index]['name'], style: GoogleFonts.outfit(fontWeight: FontWeight.bold, fontSize: 14)),
+                          Text(_addOns[index]['description'] ?? '', style: GoogleFonts.outfit(color: Colors.grey.shade500, fontSize: 12, height: 1.2)),
+                          const SizedBox(height: 4),
                           Text('RM ${_addOns[index]['price']}', style: GoogleFonts.outfit(color: primaryIndigo, fontWeight: FontWeight.w600, fontSize: 13)),
                         ],
                       ),
@@ -921,6 +949,8 @@ class _AddServiceScreenState extends State<AddServiceScreen> {
     );
   }
 
+  bool _isPublishing = false;
+
   Widget _buildFooter() {
     return Container(
       padding: const EdgeInsets.fromLTRB(24, 16, 24, 32),
@@ -934,11 +964,11 @@ class _AddServiceScreenState extends State<AddServiceScreen> {
             Expanded(
               flex: 1,
               child: OutlinedButton(
-                onPressed: () => setState(() => step--),
+                onPressed: _isPublishing ? null : () => setState(() => step--),
                 style: OutlinedButton.styleFrom(
                   side: BorderSide(color: Colors.grey.shade200),
                   minimumSize: const Size(0, 56),
-                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
                 ),
                 child: Text('Back', style: GoogleFonts.outfit(color: const Color(0xFF64748B), fontWeight: FontWeight.bold)),
               ),
@@ -947,23 +977,37 @@ class _AddServiceScreenState extends State<AddServiceScreen> {
           Expanded(
             flex: 2,
             child: ElevatedButton(
-              onPressed: () {
-                if (step < totalSteps) {
-                  setState(() => step++);
-                } else {
-                  _showSuccessMessage();
-                }
-              },
+              onPressed: _isPublishing
+                  ? null
+                  : () {
+                      if (step < totalSteps) {
+                        setState(() => step++);
+                      } else {
+                        _publishService();
+                      }
+                    },
               style: ElevatedButton.styleFrom(
                 backgroundColor: primaryIndigo,
                 minimumSize: const Size(0, 56),
-                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
                 elevation: 0,
               ),
-              child: Text(
-                step < totalSteps ? 'Continue' : 'Create Service',
-                style: GoogleFonts.outfit(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 16),
-              ),
+              child: _isPublishing
+                  ? const SizedBox(
+                      width: 22,
+                      height: 22,
+                      child: CircularProgressIndicator(
+                        color: Colors.white,
+                        strokeWidth: 2.5,
+                      ),
+                    )
+                  : Text(
+                      step < totalSteps ? 'Continue' : 'Publish Service',
+                      style: GoogleFonts.outfit(
+                          color: Colors.white,
+                          fontWeight: FontWeight.bold,
+                          fontSize: 16),
+                    ),
             ),
           ),
         ],
@@ -971,14 +1015,161 @@ class _AddServiceScreenState extends State<AddServiceScreen> {
     );
   }
 
-  void _showSuccessMessage() {
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(
-        content: Text('Service created successfully!', style: GoogleFonts.outfit()),
-        backgroundColor: Colors.green,
-      ),
-    );
-    Navigator.pop(context);
+  Future<String?> _uploadImage(File? file, String serviceId, String type) async {
+    if (file == null) return null;
+    try {
+      final fileName = path_pkg.basename(file.path);
+      final destination = 'services/$serviceId/$type/${DateTime.now().millisecondsSinceEpoch}_$fileName';
+      final ref = FirebaseStorage.instance.ref(destination);
+      debugPrint('Uploading $type image to $destination...');
+      final uploadTask = await ref.putFile(file);
+      final downloadUrl = await uploadTask.ref.getDownloadURL();
+      debugPrint('Upload success: $downloadUrl');
+      return downloadUrl;
+    } catch (e) {
+      debugPrint('Error uploading $type image: $e');
+      return null;
+    }
+  }
+
+  Future<void> _publishService() async {
+    final user = FirebaseAuth.instance.currentUser;
+    if (user == null) return;
+
+    if (_titleController.text.trim().isEmpty || 
+        selectedCategory == null || 
+        _priceController.text.trim().isEmpty ||
+        _mainImage == null) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('Please complete all required fields and upload a main image.',
+              style: GoogleFonts.outfit(color: Colors.white)),
+          backgroundColor: Colors.orangeAccent.shade700,
+          behavior: SnackBarBehavior.floating,
+        ),
+      );
+      return;
+    }
+
+    setState(() => _isPublishing = true);
+
+    try {
+      final user = FirebaseAuth.instance.currentUser;
+      if (user == null) return;
+
+      // 🔹 1. Fetch Provider Details
+      final providerDoc = await FirebaseFirestore.instance.collection('providers').doc(user.uid).get();
+      if (!providerDoc.exists) throw Exception("Provider profile not found. Please complete your registration.");
+      final providerData = providerDoc.data()!;
+      final String providerName = providerData['name'] ?? 'Elite Pro';
+      final String providerAddress = providerData['address'] ?? 'Kuala Lumpur, Malaysia';
+      final String providerProfileUrl = providerData['profileUrl'] ?? '';
+
+      // 🔹 2. Create Service ID (if new)
+      final CollectionReference servicesCollection = FirebaseFirestore.instance.collection('services');
+      DocumentReference serviceDoc;
+      final String? existingServiceId = widget.initialDraftData?['serviceId'];
+      
+      if (existingServiceId != null && existingServiceId.isNotEmpty) {
+        serviceDoc = servicesCollection.doc(existingServiceId);
+      } else {
+        serviceDoc = servicesCollection.doc();
+      }
+
+      // 🔹 3. Upload New Images
+      String? mainImageUrl = _networkMainImage;
+      String? uploadError;
+      
+      if (_mainImage != null) {
+        try {
+          mainImageUrl = await _uploadImage(_mainImage, serviceDoc.id, 'main');
+          if (mainImageUrl == null) uploadError = "Failed to upload main image. Please check your storage bucket configuration or internet connection.";
+        } catch (e) {
+          uploadError = e.toString();
+        }
+        if (uploadError != null) throw Exception(uploadError);
+      }
+      
+      List<String> galleryUrls = List<String>.from(_networkGalleryImages);
+      for (var imgFile in _galleryImages) {
+        String? url = await _uploadImage(imgFile, serviceDoc.id, 'gallery');
+        if (url != null) {
+          galleryUrls.add(url);
+        } else {
+          debugPrint("Warning: A gallery image failed to upload.");
+        }
+      }
+
+      // 🔹 4. Final Service Data
+      final Map<String, dynamic> serviceData = {
+        'serviceId': serviceDoc.id,
+        'providerId': user.uid,
+        'providerName': providerName,
+        'providerAddress': providerAddress,
+        'providerProfileUrl': providerProfileUrl,
+        'title': _titleController.text.trim(),
+        'category': selectedCategory,
+        'description': _descriptionController.text.trim(),
+        'price': _priceController.text.trim(),
+        'priceType': _priceType,
+        'details': _serviceDetails,
+        'addOns': _addOns,
+        'isActive': true,
+        'createdAt': FieldValue.serverTimestamp(),
+        'updatedAt': FieldValue.serverTimestamp(),
+        'servicePhotoUrl': mainImageUrl,
+        'galleryUrls': galleryUrls,
+      };
+
+      await serviceDoc.set(serviceData, SetOptions(merge: true));
+
+      // 🔹 5. Update Provider's Service List
+      List<dynamic> currentServices = providerData['services'] ?? [];
+      if (!currentServices.contains(selectedCategory?.split('>').last.trim())) {
+        currentServices.add(selectedCategory?.split('>').last.trim());
+        await FirebaseFirestore.instance.collection('providers').doc(user.uid).update({
+          'services': currentServices,
+        });
+      }
+
+      // 🔹 6. Delete Draft
+      final String? draftId = widget.initialDraftData?['id'];
+      if (draftId != null) {
+        await AddServiceScreen.clearDraft(draftId);
+      }
+
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('Service published successfully!',
+              style: GoogleFonts.outfit(color: Colors.white)),
+          backgroundColor: const Color(0xFF16A34A),
+          behavior: SnackBarBehavior.floating,
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+        ),
+      );
+      
+      // Return to dashboard and refresh
+      Navigator.pop(context, true);
+    } catch (e) {
+      if (!mounted) return;
+      debugPrint("Publishing error: $e");
+      showDialog(
+        context: context,
+        builder: (ctx) => AlertDialog(
+          title: Text('Publishing Failed', style: GoogleFonts.outfit(fontWeight: FontWeight.bold)),
+          content: Text(e.toString().replaceAll("Exception: ", ""), style: GoogleFonts.outfit()),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.pop(ctx),
+              child: Text('OK', style: GoogleFonts.outfit(fontWeight: FontWeight.bold)),
+            ),
+          ],
+        ),
+      );
+    } finally {
+      if (mounted) setState(() => _isPublishing = false);
+    }
   }
 }
 

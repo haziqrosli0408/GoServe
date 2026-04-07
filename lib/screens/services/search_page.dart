@@ -16,17 +16,17 @@ class _SearchPageState extends State<SearchPage> {
   String searchQuery = "";
   String _selectedSort = 'All';
   final TextEditingController _searchController = TextEditingController();
-  List<Map<String, dynamic>> _allProviders = [];
+  List<Map<String, dynamic>> _allServices = [];
   Map<String, dynamic>? _userData;
   bool _isLoading = true;
   bool _isSearchSubmitted = false;
-  final Set<String> _savedProviderNames = {};
+  final Set<String> _savedServiceIds = {};
 
   @override
   void initState() {
     super.initState();
     _fetchUserData();
-    _fetchProviders();
+    _fetchServices();
   }
 
   Future<void> _fetchUserData() async {
@@ -35,11 +35,39 @@ class _SearchPageState extends State<SearchPage> {
       if (user != null) {
         final doc = await FirebaseFirestore.instance.collection('users').doc(user.uid).get();
         if (doc.exists && mounted) {
-          setState(() => _userData = doc.data());
+          final data = doc.data();
+          setState(() {
+            _userData = data;
+            if (data != null && data['savedServices'] != null) {
+              _savedServiceIds.clear();
+              _savedServiceIds.addAll(List<String>.from(data['savedServices']));
+            }
+          });
         }
       }
     } catch (e) {
       // Ignore
+    }
+  }
+
+  Future<void> _toggleSaveService(String serviceId) async {
+    final user = FirebaseAuth.instance.currentUser;
+    if (user == null) return;
+
+    setState(() {
+      if (_savedServiceIds.contains(serviceId)) {
+        _savedServiceIds.remove(serviceId);
+      } else {
+        _savedServiceIds.add(serviceId);
+      }
+    });
+
+    try {
+      await FirebaseFirestore.instance.collection('users').doc(user.uid).update({
+        'savedServices': _savedServiceIds.toList(),
+      });
+    } catch (e) {
+      debugPrint("Error updating saved services: $e");
     }
   }
 
@@ -79,12 +107,12 @@ class _SearchPageState extends State<SearchPage> {
     }
   }
 
-  Future<void> _fetchProviders() async {
+  Future<void> _fetchServices() async {
     try {
-      final snapshot = await FirebaseFirestore.instance.collection('providers').get();
+      final snapshot = await FirebaseFirestore.instance.collection('services').where('isActive', isEqualTo: true).get();
       if (mounted) {
         setState(() {
-          _allProviders = snapshot.docs.map((doc) => doc.data()).toList();
+          _allServices = snapshot.docs.map((doc) => doc.data()).toList();
           _isLoading = false;
         });
       }
@@ -99,41 +127,39 @@ class _SearchPageState extends State<SearchPage> {
     final Set<String> suggestionSet = {};
     final query = searchQuery.toLowerCase();
 
-    for (var p in _allProviders) {
-      final name = p['name'] as String? ?? '';
-      final List<dynamic> services = p['services'] ?? [];
+    for (var s in _allServices) {
+      final title = s['title'] as String? ?? '';
+      final category = s['category'] as String? ?? '';
       
-      if (name.toLowerCase().contains(query)) {
-        suggestionSet.add(name);
+      if (title.toLowerCase().contains(query)) {
+        suggestionSet.add(title);
       }
       
-      for (var s in services) {
-        final serviceName = s.toString();
-        if (serviceName.toLowerCase().contains(query)) {
-          suggestionSet.add(serviceName);
-        }
+      if (category.toLowerCase().contains(query)) {
+        suggestionSet.add(category);
       }
     }
     
     return suggestionSet.toList()..sort((a, b) => a.toLowerCase().indexOf(query).compareTo(b.toLowerCase().indexOf(query)));
   }
 
-  List<Map<String, dynamic>> get _filteredProviders {
+  List<Map<String, dynamic>> get _filteredServices {
     if (searchQuery.isEmpty) return [];
     
-    var results = _allProviders.where((p) {
-      final name = (p['name'] as String?)?.toLowerCase() ?? '';
-      final List<dynamic> services = p['services'] ?? [];
-      final address = (p['address'] as String?)?.toLowerCase() ?? '';
+    var results = _allServices.where((s) {
+      final title = (s['title'] as String?)?.toLowerCase() ?? '';
+      final category = (s['category'] as String?)?.toLowerCase() ?? '';
+      final providerName = (s['providerName'] as String?)?.toLowerCase() ?? '';
+      final providerAddress = (s['providerAddress'] as String?)?.toLowerCase() ?? '';
       final query = searchQuery.toLowerCase();
 
-      return name.contains(query) ||
-          services.any((s) => s.toString().toLowerCase().contains(query)) ||
-          address.contains(query);
+      return title.contains(query) ||
+          category.contains(query) ||
+          providerName.contains(query) ||
+          providerAddress.contains(query);
     }).toList();
 
     if (_selectedSort == 'Highest Rated') {
-      // Mock ratings sort (add real rating prop to providers in Firestore if available)
       results.sort((a, b) => ('4.9').compareTo('4.9'));
     } else if (_selectedSort == 'Lowest Price') {
       results.sort((a, b) {
@@ -148,8 +174,8 @@ class _SearchPageState extends State<SearchPage> {
           : userAddress.toLowerCase();
       
       results.sort((a, b) {
-        bool aMatches = (a['address'] as String?)?.toLowerCase().contains(userState) ?? false;
-        bool bMatches = (b['address'] as String?)?.toLowerCase().contains(userState) ?? false;
+        bool aMatches = (a['providerAddress'] as String?)?.toLowerCase().contains(userState) ?? false;
+        bool bMatches = (b['providerAddress'] as String?)?.toLowerCase().contains(userState) ?? false;
         if (aMatches && !bMatches) return -1;
         if (!aMatches && bMatches) return 1;
         return 0;
@@ -335,7 +361,7 @@ class _SearchPageState extends State<SearchPage> {
   }
 
   Widget _buildSearchResults() {
-    final results = _filteredProviders;
+    final results = _filteredServices;
     if (results.isEmpty) {
       return Center(
         child: Column(
@@ -355,28 +381,28 @@ class _SearchPageState extends State<SearchPage> {
         crossAxisCount: 2,
         mainAxisSpacing: 20,
         crossAxisSpacing: 16,
-        childAspectRatio: 0.7, // Adjusted for the new card style
+        childAspectRatio: 0.7, 
       ),
       itemCount: results.length,
       itemBuilder: (context, index) {
-        final p = results[index];
-        return _buildResultCard(p);
+        final s = results[index];
+        return _buildResultCard(s);
       },
     );
   }
 
-  Widget _buildResultCard(Map<String, dynamic> p) {
-    String name = p['name'] ?? 'Elite Home Services';
-    List<dynamic> svcs = p['services'] ?? [];
-    String sub = svcs.isNotEmpty ? svcs.first.toString() : 'Expert Professional';
-    String price = p['price']?.toString() ?? '85';
+  Widget _buildResultCard(Map<String, dynamic> s) {
+    String serviceId = s['serviceId'] ?? '';
+    String title = s['title'] ?? 'Elite Service';
+    String providerName = s['providerName'] ?? 'Pro Provider';
+    String price = s['price']?.toString() ?? '85';
     String rating = '4.9';
-    String profileUrl = p['profileUrl'] ?? '';
-    String servicePhotoUrl = p['servicePhotoUrl'] ?? '';
+    String providerProfileUrl = s['providerProfileUrl'] ?? '';
+    String servicePhotoUrl = s['servicePhotoUrl'] ?? '';
 
     return GestureDetector(
       onTap: () {
-        Navigator.push(context, MaterialPageRoute(builder: (context) => ServiceDetailsScreen(provider: p)));
+        Navigator.push(context, MaterialPageRoute(builder: (context) => ServiceDetailsScreen(provider: s)));
       },
       child: Container(
         color: Colors.white,
@@ -410,7 +436,7 @@ class _SearchPageState extends State<SearchPage> {
               children: [
                 Expanded(
                   child: Text(
-                    sub, // Service name
+                    title,
                     style: GoogleFonts.outfit(
                       fontSize: 15,
                       fontWeight: FontWeight.bold,
@@ -421,19 +447,11 @@ class _SearchPageState extends State<SearchPage> {
                   ),
                 ),
                 GestureDetector(
-                  onTap: () {
-                    setState(() {
-                      if (_savedProviderNames.contains(name)) {
-                        _savedProviderNames.remove(name);
-                      } else {
-                        _savedProviderNames.add(name);
-                      }
-                    });
-                  },
+                  onTap: () => _toggleSaveService(serviceId),
                   child: Icon(
-                    _savedProviderNames.contains(name) ? Icons.bookmark : Icons.bookmark_border,
+                    _savedServiceIds.contains(serviceId) ? Icons.bookmark : Icons.bookmark_border,
                     size: 20,
-                    color: _savedProviderNames.contains(name) ? Colors.black : Colors.grey.shade400,
+                    color: _savedServiceIds.contains(serviceId) ? const Color(0xFFFF6B00) : Colors.grey.shade400,
                   ),
                 ),
               ],
@@ -490,14 +508,16 @@ class _SearchPageState extends State<SearchPage> {
               children: [
                 CircleAvatar(
                   radius: 9,
-                  backgroundImage: profileUrl.isNotEmpty
-                    ? NetworkImage(profileUrl)
-                    : NetworkImage('https://i.pravatar.cc/150?u=$name') as ImageProvider,
+                  backgroundColor: const Color(0xFFF1F5F9),
+                  backgroundImage: providerProfileUrl.isNotEmpty ? NetworkImage(providerProfileUrl) : null,
+                  child: providerProfileUrl.isEmpty 
+                    ? Text(providerName.isNotEmpty ? providerName[0].toUpperCase() : 'P', style: GoogleFonts.outfit(color: const Color(0xFF1F212C), fontSize: 8, fontWeight: FontWeight.bold)) 
+                    : null,
                 ),
                 const SizedBox(width: 6),
                 Expanded(
                   child: Text(
-                    name,
+                    providerName,
                     style: GoogleFonts.outfit(
                       fontSize: 12,
                       fontWeight: FontWeight.w500,
@@ -505,14 +525,6 @@ class _SearchPageState extends State<SearchPage> {
                     ),
                     maxLines: 1,
                     overflow: TextOverflow.ellipsis,
-                  ),
-                ),
-                const SizedBox(width: 4),
-                Text(
-                  '2.5 km',
-                  style: GoogleFonts.outfit(
-                    fontSize: 11,
-                    color: Colors.grey.shade400,
                   ),
                 ),
               ],

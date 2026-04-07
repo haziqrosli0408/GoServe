@@ -2,8 +2,11 @@ import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
+import '../profile/profile_screen.dart';
 import '../services/add_service.dart';
 import '../profile/provider_reviews.dart';
+import '../provider/my_services_screen.dart';
+import '../provider/provider_activity_screen.dart';
 
 class ProviderHomeScreen extends StatefulWidget {
   const ProviderHomeScreen({super.key});
@@ -112,15 +115,23 @@ class _ProviderHomeScreenState extends State<ProviderHomeScreen> {
                 ],
               ),
             ),
-            CircleAvatar(
-              radius: 25,
-              backgroundColor: const Color(0xFFF1F5F9),
-              backgroundImage: (providerData?['profileUrl'] != null && providerData!['profileUrl'].isNotEmpty)
-                  ? NetworkImage(providerData!['profileUrl'])
-                  : null,
-              child: (providerData?['profileUrl'] == null || providerData!['profileUrl'].isEmpty)
-                  ? const Icon(Icons.person, color: Colors.grey)
-                  : null,
+            GestureDetector(
+              onTap: () {
+                Navigator.push(
+                  context,
+                  MaterialPageRoute(builder: (context) => const ProfileScreen()),
+                );
+              },
+              child: CircleAvatar(
+                radius: 25,
+                backgroundColor: const Color(0xFFF1F5F9),
+                backgroundImage: (providerData?['profileUrl'] != null && providerData!['profileUrl'].isNotEmpty)
+                    ? NetworkImage(providerData!['profileUrl'])
+                    : null,
+                child: (providerData?['profileUrl'] == null || providerData!['profileUrl'].isEmpty)
+                    ? const Icon(Icons.person, color: Colors.grey)
+                    : null,
+              ),
             ),
           ],
         ),
@@ -327,9 +338,13 @@ class _ProviderHomeScreenState extends State<ProviderHomeScreen> {
           const SizedBox(height: 12),
           Row(
             children: [
-              _actionCard('Earnings', Icons.wallet_outlined, Colors.teal, () {}),
+              _actionCard('My Services', Icons.storefront_outlined, Colors.indigo, () {
+                Navigator.push(context, MaterialPageRoute(builder: (context) => const MyServicesScreen()));
+              }),
               const SizedBox(width: 12),
-              _actionCard('Calendar', Icons.calendar_month_outlined, Colors.purple, () {}),
+              _actionCard('Activity', Icons.local_activity_rounded, Colors.teal, () {
+                Navigator.push(context, MaterialPageRoute(builder: (context) => const ProviderActivityScreen()));
+              }),
             ],
           ),
         ],

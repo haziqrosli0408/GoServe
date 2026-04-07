@@ -51,6 +51,13 @@ class _ProfileScreenState extends State<ProfileScreen> {
                   ),
                   child: Row(
                     children: [
+                      IconButton(
+                        onPressed: () => Navigator.pop(context),
+                        icon: const Icon(Icons.chevron_left_rounded, size: 30, color: Color(0xFF1F212C)),
+                        padding: EdgeInsets.zero,
+                        constraints: const BoxConstraints(),
+                      ),
+                      const SizedBox(width: 8),
                       Text(
                         'My Profile',
                         style: GoogleFonts.outfit(
@@ -86,7 +93,15 @@ class _ProfileScreenState extends State<ProfileScreen> {
                       CircleAvatar(
                         radius: 45,
                         backgroundColor: const Color(0xFFF1F5F9),
-                        backgroundImage: NetworkImage('https://i.pravatar.cc/150?u=${userData!['name']}'),
+                        backgroundImage: (userData!['profileUrl'] != null && userData!['profileUrl'].toString().isNotEmpty) 
+                          ? NetworkImage(userData!['profileUrl']) 
+                          : null,
+                        child: (userData!['profileUrl'] == null || userData!['profileUrl'].toString().isEmpty)
+                          ? Text(
+                              (userData!['name'] ?? 'U')[0].toUpperCase(),
+                              style: GoogleFonts.outfit(fontSize: 32, fontWeight: FontWeight.bold, color: const Color(0xFF1F212C)),
+                            )
+                          : null,
                       ),
                       const SizedBox(height: 16),
                       Text(
@@ -242,12 +257,19 @@ class _ProfileScreenState extends State<ProfileScreen> {
 
                   const SizedBox(height: 20),
 
-                  const Center(
+                  Center(
                     child: CircleAvatar(
                       radius: 45,
-                      backgroundColor: Color(0xFFE5E7EB),
-                      child:
-                          Icon(Icons.person, size: 45, color: Colors.grey),
+                      backgroundColor: const Color(0xFFF1F5F9),
+                      backgroundImage: (userData!['profileUrl'] != null && userData!['profileUrl'].toString().isNotEmpty) 
+                        ? NetworkImage(userData!['profileUrl']) 
+                        : null,
+                      child: (userData!['profileUrl'] == null || userData!['profileUrl'].toString().isEmpty)
+                        ? Text(
+                            (userData!['name'] ?? 'U')[0].toUpperCase(),
+                            style: GoogleFonts.outfit(fontSize: 32, fontWeight: FontWeight.bold, color: const Color(0xFF1F212C)),
+                          )
+                        : null,
                     ),
                   ),
 

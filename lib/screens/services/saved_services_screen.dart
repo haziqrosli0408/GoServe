@@ -1,11 +1,85 @@
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
+import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:firebase_auth/firebase_auth.dart';
 import 'service_details.dart';
 
-class SavedServicesScreen extends StatelessWidget {
-  final List<Map<String, dynamic>> savedProviders;
-  
-  const SavedServicesScreen({super.key, required this.savedProviders});
+class SavedServicesScreen extends StatefulWidget {
+  const SavedServicesScreen({super.key});
+
+  @override
+  State<SavedServicesScreen> createState() => _SavedServicesScreenState();
+}
+
+class _SavedServicesScreenState extends State<SavedServicesScreen> {
+  List<Map<String, dynamic>> _savedServices = [];
+  bool _isLoading = true;
+
+  @override
+  void initState() {
+    super.initState();
+    _fetchSavedServices();
+  }
+
+  Future<void> _fetchSavedServices() async {
+    try {
+      final user = FirebaseAuth.instance.currentUser;
+      if (user == null) {
+        if (mounted) setState(() => _isLoading = false);
+        return;
+      }
+
+      // 1. Get saved IDs from user doc
+      final userDoc = await FirebaseFirestore.instance.collection('users').doc(user.uid).get();
+      final List<dynamic> savedIds = userDoc.data()?['savedServices'] ?? [];
+
+      if (savedIds.isEmpty) {
+        if (mounted) {
+          setState(() {
+            _savedServices = [];
+            _isLoading = false;
+          });
+        }
+        return;
+      }
+
+      // 2. Fetch those services
+      // Note: we fetch as much as we can. Firestore 'where in' limit is 10 or 30 depending on version.
+      // For now, let's fetch all services and filter locally to avoid indexing complex queries
+      final snapshot = await FirebaseFirestore.instance
+          .collection('services')
+          .where('isActive', isEqualTo: true)
+          .get();
+
+      final allServices = snapshot.docs.map((doc) => doc.data()).toList();
+      final filtered = allServices.where((s) => savedIds.contains(s['serviceId'])).toList();
+
+      if (mounted) {
+        setState(() {
+          _savedServices = filtered.cast<Map<String, dynamic>>();
+          _isLoading = false;
+        });
+      }
+    } catch (e) {
+      if (mounted) setState(() => _isLoading = false);
+    }
+  }
+
+  Future<void> _toggleUnsave(String serviceId) async {
+    final user = FirebaseAuth.instance.currentUser;
+    if (user == null) return;
+
+    try {
+      await FirebaseFirestore.instance.collection('users').doc(user.uid).update({
+        'savedServices': FieldValue.arrayRemove([serviceId]),
+      });
+      
+      // Refresh list
+      _fetchSavedServices();
+    } catch (e) {
+      debugPrint("Error unsaving service: $e");
+    }
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -19,40 +93,32 @@ class SavedServicesScreen extends StatelessWidget {
           icon: const Icon(Icons.arrow_back, color: Color(0xFF1B1B1B)),
           onPressed: () => Navigator.pop(context),
         ),
-      ),
-      body: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Padding(
-            padding: const EdgeInsets.fromLTRB(20, 0, 20, 16),
-            child: Text(
-              'Saved Services',
-              style: GoogleFonts.outfit(
-                color: const Color(0xFF1B1B1B),
-                fontWeight: FontWeight.bold,
-                fontSize: 20,
-              ),
-            ),
+        title: Text(
+          'Saved Services',
+          style: GoogleFonts.outfit(
+            color: const Color(0xFF1B1B1B),
+            fontWeight: FontWeight.bold,
+            fontSize: 20,
           ),
-          Expanded(
-            child: savedProviders.isEmpty
-                ? _buildEmptyState()
-                : GridView.builder(
-                    padding: const EdgeInsets.fromLTRB(20, 12, 20, 20),
-                    gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
-                      crossAxisCount: 2,
-                      mainAxisSpacing: 20,
-                      crossAxisSpacing: 16,
-                      childAspectRatio: 0.68, // Give enough vertical space for the text lines below the image
-                    ),
-                    itemCount: savedProviders.length,
-                    itemBuilder: (context, index) {
-                      return _buildSavedCard(context, savedProviders[index]);
-                    },
+        ),
+      ),
+      body: _isLoading
+          ? const Center(child: CircularProgressIndicator(color: Color(0xFFFF6B00)))
+          : _savedServices.isEmpty
+              ? _buildEmptyState()
+              : GridView.builder(
+                  padding: const EdgeInsets.fromLTRB(20, 12, 20, 20),
+                  gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
+                    crossAxisCount: 2,
+                    mainAxisSpacing: 20,
+                    crossAxisSpacing: 16,
+                    childAspectRatio: 0.68,
                   ),
-          ),
-        ],
-      ),
+                  itemCount: _savedServices.length,
+                  itemBuilder: (context, index) {
+                    return _buildSavedCard(context, _savedServices[index]);
+                  },
+                ),
     );
   }
 
@@ -97,12 +163,13 @@ class SavedServicesScreen extends StatelessWidget {
   }
 
   Widget _buildSavedCard(BuildContext context, Map<String, dynamic> provider) {
-    String name = provider['name'] ?? 'Elite Home Services';
-    List<dynamic> svcs = provider['services'] ?? [];
-    String sub = svcs.isNotEmpty ? svcs.first.toString() : 'Expert Professional';
+    String serviceId = provider['serviceId'] ?? '';
+    String name = provider['providerName'] ?? provider['name'] ?? 'Elite Pro';
+    String title = provider['title'] ?? 'Elite Service';
     String price = provider['price']?.toString() ?? '85';
     String rating = '4.9';
-    String profileUrl = provider['profileUrl'] ?? '';
+    String providerProfileUrl = provider['providerProfileUrl'] ?? provider['profileUrl'] ?? '';
+    String servicePhotoUrl = provider['servicePhotoUrl'] ?? '';
 
     return GestureDetector(
       onTap: () {
@@ -112,35 +179,34 @@ class SavedServicesScreen extends StatelessWidget {
         color: Colors.white,
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
-          mainAxisSize: MainAxisSize.min, // Wrap content height
+          mainAxisSize: MainAxisSize.min,
           children: [
-            // Image
             Expanded(
               child: ClipRRect(
                 borderRadius: BorderRadius.circular(16),
-                child: profileUrl.isNotEmpty ? Image.network(
-                  profileUrl,
-                  width: double.infinity,
-                  height: double.infinity,
-                  fit: BoxFit.cover,
-                  errorBuilder: (_, __, ___) => Image.network('https://i.pravatar.cc/150?u=$name', width: double.infinity, fit: BoxFit.cover),
-                ) : Image.network(
-                  'https://i.pravatar.cc/150?u=$name',
-                  width: double.infinity,
-                  fit: BoxFit.cover,
-                ),
+                child: servicePhotoUrl.isNotEmpty 
+                  ? Image.network(
+                      servicePhotoUrl,
+                      width: double.infinity,
+                      height: double.infinity,
+                      fit: BoxFit.cover,
+                      errorBuilder: (_, __, ___) => Image.network('https://images.unsplash.com/photo-1581578731548-c64695cc6952?q=80&w=800&auto=format&fit=crop', width: double.infinity, fit: BoxFit.cover),
+                    ) 
+                  : Image.network(
+                      'https://images.unsplash.com/photo-1581578731548-c64695cc6952?q=80&w=800&auto=format&fit=crop',
+                      width: double.infinity,
+                      fit: BoxFit.cover,
+                    ),
               ),
             ),
             const SizedBox(height: 10),
-            
-            // Row 1: Title and Bookmark Icon
             Row(
               crossAxisAlignment: CrossAxisAlignment.start,
               mainAxisAlignment: MainAxisAlignment.spaceBetween,
               children: [
                 Expanded(
                   child: Text(
-                    sub, // Service name
+                    title,
                     style: GoogleFonts.outfit(
                       fontSize: 15,
                       fontWeight: FontWeight.bold,
@@ -150,16 +216,17 @@ class SavedServicesScreen extends StatelessWidget {
                     overflow: TextOverflow.ellipsis,
                   ),
                 ),
-                const Icon(                   
-                  Icons.bookmark, // Hardcoded active for this page
-                  size: 20,
-                  color: Colors.black,
+                GestureDetector(
+                  onTap: () => _toggleUnsave(serviceId),
+                  child: const Icon(                   
+                    Icons.bookmark, 
+                    size: 20,
+                    color: Color(0xFFFF6B00),
+                  ),
                 ),
               ],
             ),
             const SizedBox(height: 6),
-
-            // Row 2: Price and Rating
             Row(
               children: [
                 RichText(
@@ -203,15 +270,15 @@ class SavedServicesScreen extends StatelessWidget {
               ],
             ),
             const SizedBox(height: 8),
-
-            // Row 3: Provider Profile and Name
             Row(
               children: [
                 CircleAvatar(
                   radius: 9,
-                  backgroundImage: profileUrl.isNotEmpty
-                    ? NetworkImage(profileUrl)
-                    : NetworkImage('https://i.pravatar.cc/150?u=$name') as ImageProvider,
+                  backgroundColor: const Color(0xFFF1F5F9),
+                  backgroundImage: providerProfileUrl.isNotEmpty ? NetworkImage(providerProfileUrl) : null,
+                  child: providerProfileUrl.isEmpty 
+                    ? Text(name.isNotEmpty ? name[0].toUpperCase() : 'P', style: GoogleFonts.outfit(color: const Color(0xFF1F212C), fontSize: 8, fontWeight: FontWeight.bold)) 
+                    : null,
                 ),
                 const SizedBox(width: 6),
                 Expanded(
@@ -233,5 +300,4 @@ class SavedServicesScreen extends StatelessWidget {
       ),
     );
   }
-
 }

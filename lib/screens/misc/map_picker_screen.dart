@@ -152,6 +152,7 @@ class _MapPickerScreenState extends State<MapPickerScreen> {
             left: 20,
             right: 20,
             child: Card(
+              color: Colors.white,
               shape: RoundedRectangleBorder(
                 borderRadius: BorderRadius.circular(16),
               ),
@@ -190,7 +191,7 @@ class _MapPickerScreenState extends State<MapPickerScreen> {
                           });
                         },
                         style: ElevatedButton.styleFrom(
-                          backgroundColor: const Color(0xFF1E293B),
+                          backgroundColor: const Color(0xFFFF6B00),
                           foregroundColor: Colors.white,
                           padding: const EdgeInsets.symmetric(vertical: 16),
                           shape: RoundedRectangleBorder(

@@ -158,8 +158,35 @@ class _BookingPageState extends State<BookingPage> {
               color: const Color(0xFF1E293B),
             ),
           ),
-          const SizedBox(height: 8),
-          Divider(height: 1, thickness: 1.5, color: Colors.grey.shade100),
+          const SizedBox(height: 12),
+          Stack(
+            children: [
+              Container(
+                height: 4,
+                width: double.infinity,
+                decoration: BoxDecoration(
+                  color: Colors.grey.shade100,
+                  borderRadius: BorderRadius.circular(2),
+                ),
+              ),
+              AnimatedContainer(
+                duration: const Duration(milliseconds: 300),
+                height: 4,
+                width: (MediaQuery.of(context).size.width - 48) * (step / 3),
+                decoration: BoxDecoration(
+                  color: primaryGreen, // Orange Color(0xFFFF6B00)
+                  borderRadius: BorderRadius.circular(2),
+                  boxShadow: [
+                    BoxShadow(
+                      color: primaryGreen.withValues(alpha: 0.2),
+                      blurRadius: 4,
+                      offset: const Offset(0, 2),
+                    ),
+                  ],
+                ),
+              ),
+            ],
+          ),
         ],
       ),
     );

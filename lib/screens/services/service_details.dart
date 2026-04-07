@@ -1,6 +1,9 @@
+import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
+import 'package:cloud_firestore/cloud_firestore.dart';
 import '../bookings/booking_screen.dart';
+import '../chat/single_chat_screen.dart';
 
 class ServiceDetailsScreen extends StatefulWidget {
   final Map<String, dynamic> provider;
@@ -14,15 +17,38 @@ class ServiceDetailsScreen extends StatefulWidget {
 class _ServiceDetailsScreenState extends State<ServiceDetailsScreen> {
   int _activeTab = 0; // 0: About, 1: Gallery, 2: Reviews
   bool _isSaved = false;
+  String? _liveProfileUrl;
+
+  @override
+  void initState() {
+    super.initState();
+    _fetchLiveProviderData();
+  }
+
+  Future<void> _fetchLiveProviderData() async {
+    try {
+      final String providerId = widget.provider['providerId'] ?? '';
+      if (providerId.isNotEmpty) {
+        final doc = await FirebaseFirestore.instance.collection('providers').doc(providerId).get();
+        if (doc.exists && mounted) {
+          setState(() {
+            _liveProfileUrl = doc.data()?['profileUrl'];
+          });
+        }
+      }
+    } catch (e) {
+      debugPrint("Error fetching live provider data: $e");
+    }
+  }
 
   @override
   Widget build(BuildContext context) {
-    final String name = widget.provider['name'] ?? 'Unknown Provider';
+    final String name = widget.provider['providerName'] ?? widget.provider['name'] ?? 'Unknown Provider';
     final List<dynamic> servicesList = widget.provider['services'] ?? [];
-    final String category = servicesList.isNotEmpty ? servicesList.first.toString() : 'Service';
+    final String category = (widget.provider['category'] as String?) ?? (servicesList.isNotEmpty ? servicesList.first.toString() : 'Service');
     final String description = widget.provider['description'] ?? 'No description available for this service provider.';
     final String price = widget.provider['price'] ?? '0';
-    final String profileUrl = widget.provider['profileUrl'] ?? '';
+    final String profileUrl = _liveProfileUrl ?? widget.provider['providerProfileUrl'] ?? widget.provider['profileUrl'] ?? '';
     final String serviceImageUrl = widget.provider['servicePhotoUrl'] ?? 'https://images.unsplash.com/photo-1581578731548-c64695cc6952?q=80&w=2070&auto=format&fit=crop'; 
 
     return Scaffold(
@@ -33,7 +59,7 @@ class _ServiceDetailsScreenState extends State<ServiceDetailsScreen> {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                _buildHeader(context, serviceImageUrl, profileUrl),
+        _buildHeader(context, serviceImageUrl, profileUrl, name),
                 
                 Padding(
                   padding: const EdgeInsets.fromLTRB(24, 65, 24, 40), 
@@ -137,10 +163,16 @@ class _ServiceDetailsScreenState extends State<ServiceDetailsScreen> {
             ),
           ),
           const SizedBox(height: 16),
-          _buildDetailItem(Icons.check_circle_outline, 'Professional specialized equipment'),
-          _buildDetailItem(Icons.check_circle_outline, 'Verified & background-checked pro'),
-          _buildDetailItem(Icons.check_circle_outline, 'Satisfaction guaranteed service'),
-          _buildDetailItem(Icons.check_circle_outline, 'Insured up to RM10,000 damage cover'),
+          if (widget.provider['details'] != null && (widget.provider['details'] as List).isNotEmpty)
+            ...(widget.provider['details'] as List).map((detail) => 
+              _buildDetailItem(Icons.check_circle_outline, detail.toString())
+            )
+          else ...[
+            _buildDetailItem(Icons.check_circle_outline, 'Professional specialized equipment'),
+            _buildDetailItem(Icons.check_circle_outline, 'Verified & background-checked pro'),
+            _buildDetailItem(Icons.check_circle_outline, 'Satisfaction guaranteed service'),
+            _buildDetailItem(Icons.check_circle_outline, 'Insured up to RM10,000 damage cover'),
+          ],
           const SizedBox(height: 32),
           Container(
             padding: const EdgeInsets.all(20),
@@ -170,14 +202,24 @@ class _ServiceDetailsScreenState extends State<ServiceDetailsScreen> {
         ],
       );
     } else if (_activeTab == 1) {
-      final List<String> galleryImages = [
-        'https://images.unsplash.com/photo-1581578731548-c64695cc6952?q=80&w=600&auto=format&fit=crop',
-        'https://images.unsplash.com/photo-1595509552171-88846c4f0da0?q=80&w=600&auto=format&fit=crop',
-        'https://images.unsplash.com/photo-1541899481282-d53bffe3c35d?q=80&w=600&auto=format&fit=crop',
-        'https://images.unsplash.com/photo-1484154218962-a197022b5858?q=80&w=600&auto=format&fit=crop',
-        'https://images.unsplash.com/photo-1527515637462-cff94eecc1ac?q=80&w=600&auto=format&fit=crop',
-        'https://images.unsplash.com/photo-1560066984-138dadb4c035?q=80&w=600&auto=format&fit=crop',
-      ];
+      final List<dynamic> galleryItems = widget.provider['galleryUrls'] ?? [];
+      
+      if (galleryItems.isEmpty) {
+        return Center(
+          child: Column(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              const SizedBox(height: 40),
+              Icon(Icons.photo_library_outlined, size: 48, color: Colors.grey.shade300),
+              const SizedBox(height: 16),
+              Text(
+                'No gallery images uploaded',
+                style: GoogleFonts.outfit(color: Colors.grey.shade400, fontSize: 14),
+              ),
+            ],
+          ),
+        );
+      }
 
       return GridView.builder(
         shrinkWrap: true,
@@ -189,14 +231,14 @@ class _ServiceDetailsScreenState extends State<ServiceDetailsScreen> {
           crossAxisSpacing: 12,
           childAspectRatio: 1.0,
         ),
-        itemCount: galleryImages.length,
+        itemCount: galleryItems.length,
         itemBuilder: (context, index) {
+          final String path = galleryItems[index].toString();
           return ClipRRect(
             borderRadius: BorderRadius.circular(16),
-            child: Image.network(
-              galleryImages[index],
-              fit: BoxFit.cover,
-            ),
+            child: path.startsWith('http') 
+              ? Image.network(path, fit: BoxFit.cover, errorBuilder: (_, __, ___) => _imageError())
+              : Image.file(File(path), fit: BoxFit.cover, errorBuilder: (_, __, ___) => _imageError()),
           );
         },
       );
@@ -253,8 +295,9 @@ class _ServiceDetailsScreenState extends State<ServiceDetailsScreen> {
             children: [
               CircleAvatar(
                 radius: 20,
-                backgroundColor: Colors.white,
-                backgroundImage: NetworkImage('https://i.pravatar.cc/100?u=$name'),
+                backgroundColor: const Color(0xFFF1F5F9),
+                backgroundImage: null, // Hardcoded Reviews currently use pravatar, removing it
+                child: Text(name.isNotEmpty ? name[0].toUpperCase() : 'U', style: GoogleFonts.outfit(color: const Color(0xFF1F212C), fontSize: 14, fontWeight: FontWeight.bold)),
               ),
               const SizedBox(width: 12),
               Expanded(
@@ -321,7 +364,7 @@ class _ServiceDetailsScreenState extends State<ServiceDetailsScreen> {
     );
   }
 
-  Widget _buildHeader(BuildContext context, String bgUrl, String profileUrl) {
+  Widget _buildHeader(BuildContext context, String bgUrl, String profileUrl, String name) {
     return Stack(
       clipBehavior: Clip.none,
       children: [
@@ -329,7 +372,12 @@ class _ServiceDetailsScreenState extends State<ServiceDetailsScreen> {
           height: 240,
           width: double.infinity,
           decoration: BoxDecoration(
-            image: DecorationImage(image: NetworkImage(bgUrl), fit: BoxFit.cover),
+            image: DecorationImage(
+              image: bgUrl.startsWith('http') 
+                ? NetworkImage(bgUrl) 
+                : FileImage(File(bgUrl)) as ImageProvider, 
+              fit: BoxFit.cover
+            ),
           ),
           child: Container(
             decoration: BoxDecoration(
@@ -358,10 +406,11 @@ class _ServiceDetailsScreenState extends State<ServiceDetailsScreen> {
                   children: [
                     CircleAvatar(
                       radius: 32,
-                      backgroundColor: Colors.grey.shade100,
-                      backgroundImage: profileUrl.isNotEmpty 
-                          ? NetworkImage(profileUrl) 
-                          : NetworkImage('https://i.pravatar.cc/150?u=${widget.provider['name']}') as ImageProvider,
+                      backgroundColor: const Color(0xFFF1F5F9),
+                      backgroundImage: profileUrl.isNotEmpty ? NetworkImage(profileUrl) : null,
+                      child: profileUrl.isEmpty 
+                          ? Text(name.isNotEmpty ? name[0].toUpperCase() : 'P', style: GoogleFonts.outfit(color: const Color(0xFF1F212C), fontSize: 24, fontWeight: FontWeight.bold)) 
+                          : null,
                     ),
                     Positioned(
                       right: 0,
@@ -380,7 +429,7 @@ class _ServiceDetailsScreenState extends State<ServiceDetailsScreen> {
                     crossAxisAlignment: CrossAxisAlignment.start,
                     mainAxisSize: MainAxisSize.min,
                     children: [
-                      Text(widget.provider['name'] ?? 'Unknown Provider', style: GoogleFonts.outfit(fontSize: 18, fontWeight: FontWeight.w800, color: const Color(0xFF1E212C))),
+                      Text(name, style: GoogleFonts.outfit(fontSize: 18, fontWeight: FontWeight.w800, color: const Color(0xFF1E212C))),
                       const SizedBox(height: 4),
                       Row(
                         children: [
@@ -394,7 +443,14 @@ class _ServiceDetailsScreenState extends State<ServiceDetailsScreen> {
                     ],
                   ),
                 ),
-                _actionButton(Icons.chat_bubble_rounded),
+                _actionButton(Icons.chat_bubble_rounded, onTap: () {
+                  Navigator.push(
+                    context,
+                    MaterialPageRoute(
+                      builder: (context) => SingleChatScreen(provider: widget.provider),
+                    ),
+                  );
+                }),
               ],
             ),
           ),
@@ -403,12 +459,15 @@ class _ServiceDetailsScreenState extends State<ServiceDetailsScreen> {
     );
   }
 
-  Widget _actionButton(IconData icon) {
-    return Container(
-      width: 48,
-      height: 48,
-      decoration: const BoxDecoration(color: Color(0xFFF1F5F9), shape: BoxShape.circle),
-      child: Icon(icon, color: const Color(0xFF1E212C), size: 20),
+  Widget _actionButton(IconData icon, {VoidCallback? onTap}) {
+    return GestureDetector(
+      onTap: onTap,
+      child: Container(
+        width: 48,
+        height: 48,
+        decoration: const BoxDecoration(color: Color(0xFFF1F5F9), shape: BoxShape.circle),
+        child: Icon(icon, color: const Color(0xFF1E212C), size: 20),
+      ),
     );
   }
 
@@ -484,6 +543,15 @@ class _ServiceDetailsScreenState extends State<ServiceDetailsScreen> {
             ),
           ),
         ],
+      ),
+    );
+  }
+
+  Widget _imageError() {
+    return Container(
+      color: Colors.grey.shade100,
+      child: Center(
+        child: Icon(Icons.broken_image_outlined, color: Colors.grey.shade300, size: 32),
       ),
     );
   }
