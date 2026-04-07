@@ -310,6 +310,8 @@ class _SearchPageState extends State<SearchPage> {
                   _buildSortChip('Lowest Price'),
                   const SizedBox(width: 8),
                   _buildSortChip('Nearest'),
+                  const SizedBox(width: 8),
+                  _buildSortChip('Range'),
                 ],
               ),
             ),

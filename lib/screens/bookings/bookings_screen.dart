@@ -605,6 +605,8 @@ class _BookingsScreenState extends State<BookingsScreen> {
                           builder: (context) => BookingPage(
                             providerName: provider,
                             serviceName: title,
+                            serviceImage: 'https://images.unsplash.com/photo-1581578731548-c64695cc6954?q=80&w=800&auto=format&fit=crop',
+                            category: 'Service',
                             price: price,
                           ),
                         ),
@@ -699,6 +701,8 @@ class _BookingsScreenState extends State<BookingsScreen> {
                   builder: (context) => BookingPage(
                     providerName: 'Professional', 
                     serviceName: title,
+                    serviceImage: 'https://images.unsplash.com/photo-1581578731548-c64695cc6954?q=80&w=800&auto=format&fit=crop',
+                    category: 'Service',
                     price: '45.0',
                   ),
                 ),

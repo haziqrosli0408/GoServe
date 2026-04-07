@@ -8,6 +8,8 @@ import 'booking_success_screen.dart';
 class PaymentPage extends StatefulWidget {
   final String providerName;
   final String serviceName;
+  final String serviceImage;
+  final String category;
   final DateTime selectedDate;
   final String selectedTime;
   final double basePrice;
@@ -19,6 +21,8 @@ class PaymentPage extends StatefulWidget {
     super.key,
     required this.providerName,
     required this.serviceName,
+    required this.serviceImage,
+    required this.category,
     required this.selectedDate,
     required this.selectedTime,
     required this.basePrice,
@@ -33,6 +37,28 @@ class PaymentPage extends StatefulWidget {
 
 class _PaymentPageState extends State<PaymentPage> {
   String selectedMethod = 'card';
+  String? selectedBank;
+  final List<String> banks = [
+    'Maybank', 'CIMB Bank', 'Public Bank', 'RHB Bank', 'Hong Leong Bank',
+    'AmBank', 'UOB Bank', 'Bank Rakyat', 'Bank Islam', 'OCBC Bank',
+    'HSBC Bank', 'Alliance Bank', 'Affin Bank', 'Standard Chartered'
+  ];
+  final Map<String, String> bankDomains = {
+    'Maybank': 'maybank.com.my',
+    'CIMB Bank': 'cimb.com.my',
+    'Public Bank': 'pbebank.com',
+    'RHB Bank': 'rhbgroup.com',
+    'Hong Leong Bank': 'hlb.com.my',
+    'AmBank': 'ambankgroup.com',
+    'UOB Bank': 'uob.com.my',
+    'Bank Rakyat': 'bankrakyat.com.my',
+    'Bank Islam': 'bankislam.com.my',
+    'OCBC Bank': 'ocbc.com.my',
+    'HSBC Bank': 'hsbc.com.my',
+    'Alliance Bank': 'alliancebank.com.my',
+    'Affin Bank': 'affinbank.com.my',
+    'Standard Chartered': 'sc.com'
+  };
   final Color primaryGreen = const Color(0xFFFF6B00);
 
   @override
@@ -64,6 +90,11 @@ class _PaymentPageState extends State<PaymentPage> {
             if (selectedMethod == 'card') ...[
               const SizedBox(height: 24),
               _buildCardForm(),
+            ],
+
+            if (selectedMethod == 'fpx') ...[
+              const SizedBox(height: 24),
+              _buildFPXForm(),
             ],
 
             const SizedBox(height: 24),
@@ -126,6 +157,128 @@ class _PaymentPageState extends State<PaymentPage> {
                 border: Border.all(color: isSelected ? primaryGreen : Colors.grey.shade300, width: 2),
               ),
               child: isSelected ? Center(child: Container(width: 10, height: 10, decoration: BoxDecoration(color: primaryGreen, shape: BoxShape.circle))) : null,
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildFPXForm() {
+    return Container(
+      padding: const EdgeInsets.all(20),
+      decoration: BoxDecoration(color: const Color(0xFFF1F5F9).withValues(alpha: 0.5), borderRadius: BorderRadius.circular(16)),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          _formLabel('CHOOSE YOUR BANK'),
+          GestureDetector(
+            onTap: () => _showBankPicker(),
+            child: Container(
+              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+              decoration: BoxDecoration(
+                color: Colors.white,
+                borderRadius: BorderRadius.circular(8),
+                border: Border.all(color: Colors.transparent),
+              ),
+              child: Row(
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                children: [
+                   Row(
+                    children: [
+                      if (selectedBank != null) ...[
+                        Container(
+                          width: 24, height: 24,
+                          margin: const EdgeInsets.only(right: 12),
+                          decoration: BoxDecoration(borderRadius: BorderRadius.circular(4), color: const Color(0xFFF1F5F9)),
+                          child: ClipRRect(
+                            borderRadius: BorderRadius.circular(4),
+                            child: Image.network(
+                              'https://logo.clearbit.com/${bankDomains[selectedBank]}',
+                              errorBuilder: (context, error, stackTrace) => Center(child: Text(selectedBank![0], style: GoogleFonts.outfit(fontSize: 10, fontWeight: FontWeight.bold, color: primaryGreen))),
+                            ),
+                          ),
+                        ),
+                      ],
+                      Text(
+                        selectedBank ?? 'Select your bank',
+                        style: GoogleFonts.outfit(
+                          fontSize: 14,
+                          color: selectedBank == null ? Colors.grey.shade400 : Colors.black87,
+                          fontWeight: selectedBank == null ? FontWeight.normal : FontWeight.w500,
+                        ),
+                      ),
+                    ],
+                  ),
+                  const Icon(Icons.keyboard_arrow_down, color: Color(0xFF64748B), size: 20),
+                ],
+              ),
+            ),
+          ),
+          const SizedBox(height: 12),
+          Text(
+            'You will be redirected to your bank login page to complete the payment.',
+            style: GoogleFonts.outfit(fontSize: 11, color: const Color(0xFF64748B), fontStyle: FontStyle.italic),
+          ),
+        ],
+      ),
+    );
+  }
+
+  void _showBankPicker() {
+    showModalBottomSheet(
+      context: context,
+      isScrollControlled: true,
+      backgroundColor: Colors.transparent,
+      builder: (context) => Container(
+        height: MediaQuery.of(context).size.height * 0.7,
+        decoration: const BoxDecoration(
+          color: Colors.white,
+          borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
+        ),
+        child: Column(
+          children: [
+            const SizedBox(height: 12),
+            Container(width: 40, height: 4, decoration: BoxDecoration(color: Colors.grey.shade200, borderRadius: BorderRadius.circular(2))),
+            const SizedBox(height: 20),
+            Text('Select Bank', style: GoogleFonts.outfit(fontSize: 18, fontWeight: FontWeight.bold, color: const Color(0xFF1E293B))),
+            const SizedBox(height: 20),
+            Expanded(
+              child: ListView.separated(
+                padding: const EdgeInsets.symmetric(horizontal: 20),
+                itemCount: banks.length,
+                separatorBuilder: (context, index) => Divider(height: 1, color: Colors.grey.shade100),
+                itemBuilder: (context, index) {
+                  final bank = banks[index];
+                  final isSelected = selectedBank == bank;
+                  return ListTile(
+                    contentPadding: const EdgeInsets.symmetric(vertical: 4, horizontal: 8),
+                    leading: Container(
+                      width: 40, height: 40,
+                      decoration: BoxDecoration(color: const Color(0xFFF1F5F9), borderRadius: BorderRadius.circular(8)),
+                      child: ClipRRect(
+                        borderRadius: BorderRadius.circular(8),
+                        child: Padding(
+                          padding: const EdgeInsets.all(6),
+                          child: Image.network(
+                            'https://logo.clearbit.com/${bankDomains[bank]}',
+                            fit: BoxFit.contain,
+                            errorBuilder: (context, error, stackTrace) => Center(
+                              child: Text(bank[0], style: GoogleFonts.outfit(fontWeight: FontWeight.bold, color: primaryGreen)),
+                            ),
+                          ),
+                        ),
+                      ),
+                    ),
+                    title: Text(bank, style: GoogleFonts.outfit(fontSize: 15, fontWeight: isSelected ? FontWeight.bold : FontWeight.w500, color: const Color(0xFF1E293B))),
+                    trailing: isSelected ? Icon(Icons.check_circle, color: primaryGreen, size: 20) : null,
+                    onTap: () {
+                      setState(() => selectedBank = bank);
+                      Navigator.pop(context);
+                    },
+                  );
+                },
+              ),
             ),
           ],
         ),
@@ -230,7 +383,10 @@ class _PaymentPageState extends State<PaymentPage> {
                 width: 70, height: 70,
                 decoration: BoxDecoration(
                   borderRadius: BorderRadius.circular(12),
-                  image: const DecorationImage(image: NetworkImage('https://images.unsplash.com/photo-1581578731548-c64695cc6954?auto=format&fit=crop&q=80&w=300'), fit: BoxFit.cover),
+                  image: DecorationImage(
+                    image: NetworkImage(widget.serviceImage),
+                    fit: BoxFit.cover,
+                  ),
                 ),
               ),
               const SizedBox(width: 16),
@@ -240,7 +396,7 @@ class _PaymentPageState extends State<PaymentPage> {
                   children: [
                     Text(widget.serviceName, style: GoogleFonts.outfit(fontSize: 15, fontWeight: FontWeight.bold, color: const Color(0xFF1E293B))),
                     const SizedBox(height: 4),
-                    Text('Premium Service', style: GoogleFonts.outfit(fontSize: 12, color: const Color(0xFF64748B))),
+                    Text(widget.category, style: GoogleFonts.outfit(fontSize: 12, color: const Color(0xFF64748B))),
                     const SizedBox(height: 6),
                     Row(
                       children: [
@@ -271,8 +427,10 @@ class _PaymentPageState extends State<PaymentPage> {
           _summaryRow('Service Price', 'RM ${widget.basePrice.toStringAsFixed(2)}'),
           ...widget.selectedAddOns.map((item) => Padding(
             padding: const EdgeInsets.only(top: 12),
-            child: _summaryRow('Add-on: ${item['name']}', 'RM ${item['price'].toDouble().toStringAsFixed(2)}'),
+            child: _summaryRow('Add-on: ${item['name']}', 'RM ${((item['price'] is String ? double.tryParse(item['price']) : (item['price'] as num).toDouble()) ?? 0.0).toStringAsFixed(2)}'),
           )),
+          const SizedBox(height: 12),
+          _summaryRow('Service Fee (15%)', 'RM ${(widget.totalPrice - widget.basePrice - widget.selectedAddOns.fold(0.0, (sum, item) => sum + ((item['price'] is String ? double.tryParse(item['price']) : (item['price'] as num).toDouble()) ?? 0.0))).toStringAsFixed(2)}'),
           const SizedBox(height: 24),
           Row(
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
@@ -302,7 +460,7 @@ class _PaymentPageState extends State<PaymentPage> {
       mainAxisAlignment: MainAxisAlignment.spaceBetween,
       children: [
         Text(label, style: GoogleFonts.outfit(fontSize: 13, color: const Color(0xFF64748B))),
-        Text(value, style: GoogleFonts.outfit(fontSize: 13, fontWeight: FontWeight.bold, color: const Color(0xFF1E293B))),
+        Text(value, style: GoogleFonts.outfit(fontSize: 13, fontWeight: FontWeight.w600, color: const Color(0xFF1E293B))),
       ],
     );
   }
@@ -324,7 +482,7 @@ class _PaymentPageState extends State<PaymentPage> {
           children: [
             Text('Confirm & Pay', style: GoogleFonts.outfit(fontSize: 16, fontWeight: FontWeight.bold)),
             const SizedBox(width: 12),
-            const Icon(Icons.arrow_forward_rounded, size: 20),
+            const Icon(Icons.arrow_forward, size: 20, color: Colors.white),
           ],
         ),
       ),

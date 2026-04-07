@@ -15,7 +15,7 @@ class ServiceDetailsScreen extends StatefulWidget {
 }
 
 class _ServiceDetailsScreenState extends State<ServiceDetailsScreen> {
-  int _activeTab = 0; // 0: About, 1: Gallery, 2: Reviews
+  int _activeTab = 0; // 0: About, 1: Add-ons, 2: Gallery, 3: Reviews
   bool _isSaved = false;
   String? _liveProfileUrl;
 
@@ -93,19 +93,24 @@ class _ServiceDetailsScreenState extends State<ServiceDetailsScreen> {
           ),
         ],
       ),
-      bottomNavigationBar: _buildFooter(context, name, category, price),
+      bottomNavigationBar: _buildFooter(context, name, category, price, serviceImageUrl),
     );
   }
 
   Widget _buildTabBar() {
-    return Row(
-      children: [
-        _tabItem(0, 'About'),
-        const SizedBox(width: 12),
-        _tabItem(1, 'Gallery'),
-        const SizedBox(width: 12),
-        _tabItem(2, 'Reviews'),
-      ],
+    return SingleChildScrollView(
+      scrollDirection: Axis.horizontal,
+      child: Row(
+        children: [
+          _tabItem(0, 'About'),
+          const SizedBox(width: 8),
+          _tabItem(1, 'Add-ons'),
+          const SizedBox(width: 8),
+          _tabItem(2, 'Gallery'),
+          const SizedBox(width: 8),
+          _tabItem(3, 'Reviews'),
+        ],
+      ),
     );
   }
 
@@ -114,7 +119,9 @@ class _ServiceDetailsScreenState extends State<ServiceDetailsScreen> {
     return GestureDetector(
       onTap: () => setState(() => _activeTab = index),
       child: Container(
-        padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 12),
+        width: 100,
+        padding: const EdgeInsets.symmetric(vertical: 12),
+        alignment: Alignment.center,
         decoration: BoxDecoration(
           color: isActive ? const Color(0xFFFF6B00) : const Color(0xFFF1F5F9), 
           borderRadius: BorderRadius.circular(16),
@@ -177,15 +184,16 @@ class _ServiceDetailsScreenState extends State<ServiceDetailsScreen> {
           Container(
             padding: const EdgeInsets.all(20),
             decoration: BoxDecoration(
-              color: const Color(0xFFF1F8F5),
+              color: Colors.white,
               borderRadius: BorderRadius.circular(16),
-              border: Border.all(color: const Color(0xFFFF6B00).withValues(alpha: 0.1)),
+              border: Border.all(color: Colors.grey.shade100),
+              boxShadow: [BoxShadow(color: Colors.black.withValues(alpha: 0.02), blurRadius: 10, offset: const Offset(0, 4))],
             ),
             child: Row(
               children: [
                 Container(
                   padding: const EdgeInsets.all(12),
-                  decoration: const BoxDecoration(color: Colors.white, shape: BoxShape.circle),
+                  decoration: const BoxDecoration(color: Color(0xFFF1F5F9), shape: BoxShape.circle),
                   child: const Icon(Icons.payments_outlined, color: Color(0xFFFF6B00)),
                 ),
                 const SizedBox(width: 16),
@@ -202,6 +210,106 @@ class _ServiceDetailsScreenState extends State<ServiceDetailsScreen> {
         ],
       );
     } else if (_activeTab == 1) {
+      final List<dynamic> addOns = widget.provider['addOns'] ?? [];
+      
+      if (addOns.isEmpty) {
+        return Center(
+          child: Column(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              const SizedBox(height: 40),
+              Icon(Icons.extension_off_outlined, size: 48, color: Colors.grey.shade300),
+              const SizedBox(height: 16),
+              Text(
+                'No add-ons available',
+                style: GoogleFonts.outfit(color: Colors.grey.shade400, fontSize: 14),
+              ),
+            ],
+          ),
+        );
+      }
+
+      return Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(
+            'Available Add-ons',
+            style: GoogleFonts.outfit(
+              fontSize: 16,
+              fontWeight: FontWeight.bold,
+              color: const Color(0xFF1E293B),
+            ),
+          ),
+          const SizedBox(height: 16),
+          ...addOns.map((addOn) {
+            final data = Map<String, dynamic>.from(addOn);
+            return Container(
+              margin: const EdgeInsets.only(bottom: 12),
+              padding: const EdgeInsets.all(16),
+              decoration: BoxDecoration(
+                color: Colors.white,
+                borderRadius: BorderRadius.circular(12),
+                border: Border.all(color: const Color(0xFFF1F5F9)),
+                boxShadow: [
+                  BoxShadow(
+                    color: Colors.black.withValues(alpha: 0.02),
+                    blurRadius: 8,
+                    offset: const Offset(0, 2),
+                  )
+                ],
+              ),
+              child: Row(
+                children: [
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          data['name'] ?? 'Extra Service',
+                          style: GoogleFonts.outfit(
+                            fontSize: 15,
+                            fontWeight: FontWeight.w600,
+                            color: const Color(0xFF1E293B),
+                          ),
+                        ),
+                        const SizedBox(height: 4),
+                        if (data['description'] != null && data['description'].toString().isNotEmpty)
+                          Text(
+                            data['description'],
+                            maxLines: 2,
+                            overflow: TextOverflow.ellipsis,
+                            style: GoogleFonts.outfit(
+                              fontSize: 12,
+                              color: const Color(0xFF64748B),
+                              height: 1.4,
+                            ),
+                          ),
+                      ],
+                    ),
+                  ),
+                  const SizedBox(width: 16),
+                  Container(
+                    padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+                    decoration: BoxDecoration(
+                      color: const Color(0xFFFF6B00).withValues(alpha: 0.08),
+                      borderRadius: BorderRadius.circular(8),
+                    ),
+                    child: Text(
+                      '+ RM${data['price']}',
+                      style: GoogleFonts.outfit(
+                        fontSize: 13,
+                        fontWeight: FontWeight.bold,
+                        color: const Color(0xFFFF6B00),
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+            );
+          }),
+        ],
+      );
+    } else if (_activeTab == 2) {
       final List<dynamic> galleryItems = widget.provider['galleryUrls'] ?? [];
       
       if (galleryItems.isEmpty) {
@@ -284,9 +392,10 @@ class _ServiceDetailsScreenState extends State<ServiceDetailsScreen> {
       padding: const EdgeInsets.all(20),
       margin: const EdgeInsets.only(bottom: 16),
       decoration: BoxDecoration(
-        color: const Color(0xFFF8FAFC),
+        color: Colors.white,
         borderRadius: BorderRadius.circular(16),
         border: Border.all(color: Colors.grey.shade100),
+        boxShadow: [BoxShadow(color: Colors.black.withValues(alpha: 0.02), blurRadius: 10, offset: const Offset(0, 4))],
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -296,7 +405,6 @@ class _ServiceDetailsScreenState extends State<ServiceDetailsScreen> {
               CircleAvatar(
                 radius: 20,
                 backgroundColor: const Color(0xFFF1F5F9),
-                backgroundImage: null, // Hardcoded Reviews currently use pravatar, removing it
                 child: Text(name.isNotEmpty ? name[0].toUpperCase() : 'U', style: GoogleFonts.outfit(color: const Color(0xFF1F212C), fontSize: 14, fontWeight: FontWeight.bold)),
               ),
               const SizedBox(width: 12),
@@ -484,7 +592,7 @@ class _ServiceDetailsScreenState extends State<ServiceDetailsScreen> {
     );
   }
 
-  Widget _buildFooter(BuildContext context, String name, String category, String price) {
+  Widget _buildFooter(BuildContext context, String name, String category, String price, String serviceImageUrl) {
     return Container(
       padding: const EdgeInsets.fromLTRB(24, 16, 24, 20),
       decoration: BoxDecoration(
@@ -499,7 +607,7 @@ class _ServiceDetailsScreenState extends State<ServiceDetailsScreen> {
             width: 56,
             decoration: BoxDecoration(
               color: const Color(0xFFF1F5F9),
-              borderRadius: BorderRadius.circular(16),
+              borderRadius: BorderRadius.circular(12),
             ),
             child: IconButton(
               icon: Icon(
@@ -527,15 +635,18 @@ class _ServiceDetailsScreenState extends State<ServiceDetailsScreen> {
               child: ElevatedButton(
                 onPressed: () {
                   Navigator.push(context, MaterialPageRoute(builder: (context) => BookingPage(
-                    serviceName: category,
+                    serviceName: name,
                     providerName: name,
-                    price: 'RM$price/hr',
+                    serviceImage: serviceImageUrl,
+                    category: category,
+                    price: price,
+                    addOns: widget.provider['addOns'],
                   )));
                 },
                 style: ElevatedButton.styleFrom(
                   backgroundColor: const Color(0xFFFF6B00),
                   foregroundColor: Colors.white,
-                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
                   elevation: 0,
                 ),
                 child: Text('Book Now', style: GoogleFonts.outfit(fontSize: 16, fontWeight: FontWeight.bold)),

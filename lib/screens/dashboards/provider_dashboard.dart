@@ -26,16 +26,16 @@ class _ProviderDashboardState extends State<ProviderDashboard>
     _index = widget.initialIndex;
   }
 
-  final List<Widget> screens = [
-    const ProviderHomeScreen(),
-    const ProviderBookingsScreen(),
-    const SizedBox.shrink(), // Placeholder for center button
-    const ChatScreen(),
-    const MyServicesScreen(),
-  ];
-
   @override
   Widget build(BuildContext context) {
+    final List<Widget> screens = [
+      const ProviderHomeScreen(),
+      const ProviderBookingsScreen(),
+      const SizedBox.shrink(), // Placeholder for center button
+      const MyServicesScreen(),
+      const ChatScreen(),
+    ];
+
     return Scaffold(
       backgroundColor: Colors.white,
       body: AnimatedSwitcher(
@@ -79,8 +79,8 @@ class _ProviderDashboardState extends State<ProviderDashboard>
               _navItem(0, Icons.home_rounded, 'Home'),
               _navItem(1, Icons.calendar_month_rounded, 'Bookings'),
               _navItem(2, Icons.add_rounded, 'Add'),
-              _navItem(3, Icons.chat_rounded, 'Chat'),
-              _navItem(4, Icons.storefront_rounded, 'Services'),
+              _navItem(3, Icons.storefront_rounded, 'Services'),
+              _navItem(4, Icons.chat_rounded, 'Chat'),
             ],
           ),
         ),

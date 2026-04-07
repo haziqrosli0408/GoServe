@@ -1,18 +1,26 @@
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:intl/intl.dart';
+import 'package:geolocator/geolocator.dart';
+import 'package:geocoding/geocoding.dart';
 import 'payment_page.dart';
 
 class BookingPage extends StatefulWidget {
   final String providerName;
   final String serviceName;
+  final String serviceImage;
+  final String category;
   final String price;
+  final List<dynamic>? addOns;
 
   const BookingPage({
     super.key,
     required this.providerName,
     required this.serviceName,
+    required this.serviceImage,
+    required this.category,
     required this.price,
+    this.addOns,
   });
 
   @override
@@ -23,25 +31,37 @@ class _BookingPageState extends State<BookingPage> {
   int step = 1;
   DateTime selectedDate = DateTime.now();
   String? selectedTime = "09:30 AM";
+  bool isGettingLocation = false;
 
   // Price Logic
   double get basePriceValue => double.tryParse(widget.price.replaceAll('RM', '').split('/')[0]) ?? 85.0;
-  final double serviceFeeValue = 45.0; 
-  final double platformFeeValue = 5.0;
+  final double platformRate = 0.15;
   Set<int> selectedAddOnIndices = {};
   
-  final List<Map<String, dynamic>> addOns = [
-    {'name': 'Kitchen Deep Cleaning', 'description': 'Oven, cabinets, and splash-back restoration.', 'price': 30.0},
-    {'name': 'Aircond Cleaning', 'description': 'Standard filter and coil chemical service.', 'price': 120.0},
-    {'name': 'Exterior Window Cleaning', 'description': 'Detailed polishing for glass surfaces.', 'price': 45.0},
-  ];
+  double get currentSubtotal {
+    double total = basePriceValue;
+    final list = addOns;
+    for (var index in selectedAddOnIndices) {
+      final p = list[index]['price'];
+      total += (p is String ? double.tryParse(p) : (p as num).toDouble()) ?? 0.0;
+    }
+    return total;
+  }
+
+  double get platformFeeValue => currentSubtotal * platformRate;
+  
+  List<Map<String, dynamic>> get addOns {
+    if (widget.addOns == null || widget.addOns!.isEmpty) {
+      return [
+        {'name': 'Professional Cleaning Pack', 'description': 'Industrial grade eco-friendly supplies.', 'price': 25.0},
+        {'name': 'Priority Scheduling', 'description': 'Move to the front of the queue.', 'price': 15.0},
+      ];
+    }
+    return widget.addOns!.map((e) => Map<String, dynamic>.from(e)).toList();
+  }
 
   String get calculatedTotal {
-    double total = basePriceValue + platformFeeValue;
-    for (var index in selectedAddOnIndices) {
-      total += addOns[index]['price'];
-    }
-    return 'RM${total.toStringAsFixed(0)}';
+    return 'RM${(currentSubtotal + platformFeeValue).toStringAsFixed(0)}';
   }
 
   String address = '';
@@ -298,6 +318,7 @@ class _BookingPageState extends State<BookingPage> {
           return GestureDetector(
             onTap: () => setState(() => isSelected ? selectedAddOnIndices.remove(index) : selectedAddOnIndices.add(index)),
             child: Container(
+              height: 140,
               margin: const EdgeInsets.only(bottom: 16),
               padding: const EdgeInsets.all(20),
               decoration: BoxDecoration(color: Colors.white, borderRadius: BorderRadius.circular(16), border: Border.all(color: isSelected ? primaryGreen : Colors.grey.shade100, width: 2), boxShadow: [BoxShadow(color: Colors.black.withValues(alpha: 0.02), blurRadius: 10, offset: const Offset(0, 4))]),
@@ -305,9 +326,9 @@ class _BookingPageState extends State<BookingPage> {
                   Expanded(child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
                         Text(item['name'], style: GoogleFonts.outfit(fontSize: 16, fontWeight: FontWeight.bold, color: const Color(0xFF1E293B))),
                         const SizedBox(height: 4),
-                        Text(item['description'], style: GoogleFonts.outfit(fontSize: 12, color: const Color(0xFF64748B))),
+                        Text(item['description'], maxLines: 2, overflow: TextOverflow.ellipsis, style: GoogleFonts.outfit(fontSize: 12, color: const Color(0xFF64748B))),
                         const SizedBox(height: 12),
-                        Text('+ RM${item['price'].toStringAsFixed(0)}', style: GoogleFonts.outfit(fontSize: 14, fontWeight: FontWeight.bold, color: primaryGreen)),
+                        Text('+ RM${(item['price'] is String ? double.tryParse(item['price']) : (item['price'] as num).toDouble())?.toStringAsFixed(0) ?? '0'}', style: GoogleFonts.outfit(fontSize: 14, fontWeight: FontWeight.bold, color: primaryGreen)),
                   ])),
                   const SizedBox(width: 16),
                   Container(width: 24, height: 24, decoration: BoxDecoration(color: isSelected ? primaryGreen : Colors.white, borderRadius: BorderRadius.circular(6), border: Border.all(color: isSelected ? primaryGreen : Colors.grey.shade300)), child: isSelected ? const Icon(Icons.check, size: 16, color: Colors.white) : null),
@@ -318,9 +339,54 @@ class _BookingPageState extends State<BookingPage> {
     ]);
   }
 
-  String unitNo = '';
-  String streetName = '';
-  String entryInstructions = '';
+  final TextEditingController unitNoController = TextEditingController();
+  final TextEditingController streetNameController = TextEditingController();
+  final TextEditingController postcodeController = TextEditingController();
+  final TextEditingController cityController = TextEditingController();
+  final TextEditingController entryInstructionsController = TextEditingController();
+
+  @override
+  void dispose() {
+    unitNoController.dispose();
+    streetNameController.dispose();
+    postcodeController.dispose();
+    cityController.dispose();
+    entryInstructionsController.dispose();
+    super.dispose();
+  }
+
+  Future<void> _getCurrentLocation() async {
+    setState(() => isGettingLocation = true);
+    try {
+      bool serviceEnabled = await Geolocator.isLocationServiceEnabled();
+      if (!serviceEnabled) throw Exception('Location services are disabled.');
+
+      LocationPermission permission = await Geolocator.checkPermission();
+      if (permission == LocationPermission.denied) {
+        permission = await Geolocator.requestPermission();
+        if (permission == LocationPermission.denied) throw Exception('Location permissions are denied');
+      }
+
+      if (permission == LocationPermission.deniedForever) throw Exception('Location permissions are permanently denied.');
+
+      Position position = await Geolocator.getCurrentPosition(locationSettings: const LocationSettings(accuracy: LocationAccuracy.high));
+      List<Placemark> placemarks = await placemarkFromCoordinates(position.latitude, position.longitude);
+      
+      if (placemarks.isNotEmpty) {
+        Placemark place = placemarks[0];
+        setState(() {
+          unitNoController.text = place.subThoroughfare ?? '';
+          streetNameController.text = place.thoroughfare ?? place.name ?? '';
+          postcodeController.text = place.postalCode ?? '';
+          cityController.text = place.locality ?? place.subAdministrativeArea ?? '';
+        });
+      }
+    } catch (e) {
+      if (mounted) ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(e.toString())));
+    } finally {
+      if (mounted) setState(() => isGettingLocation = false);
+    }
+  }
 
   Widget _buildLocationStep() {
     return Column(
@@ -330,14 +396,44 @@ class _BookingPageState extends State<BookingPage> {
           'Enter Your Address',
           style: GoogleFonts.outfit(fontSize: 18, fontWeight: FontWeight.bold, color: const Color(0xFF1E293B)),
         ),
-        const SizedBox(height: 24),
+        const SizedBox(height: 16),
+        
+        // 🔹 USE CURRENT LOCATION BUTTON
+        GestureDetector(
+          onTap: isGettingLocation ? null : _getCurrentLocation,
+          child: Container(
+            width: double.infinity,
+            padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 16),
+            decoration: BoxDecoration(
+              color: Colors.black,
+              borderRadius: BorderRadius.circular(12),
+            ),
+            child: Row(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                isGettingLocation 
+                  ? const SizedBox(width: 20, height: 20, child: CircularProgressIndicator(color: Colors.white, strokeWidth: 2))
+                  : const Icon(Icons.my_location, color: Colors.white, size: 20),
+                const SizedBox(width: 12),
+                Text(
+                  isGettingLocation ? 'GETTING LOCATION...' : 'Use current location',
+                  style: GoogleFonts.outfit(color: Colors.white, fontWeight: FontWeight.w600, fontSize: 16, letterSpacing: 0.5),
+                ),
+                const Spacer(),
+                const Icon(Icons.arrow_forward_ios, color: Colors.white54, size: 14),
+              ],
+            ),
+          ),
+        ),
+        
+        const SizedBox(height: 32),
         Text(
           'UNIT / HOUSE NO.',
           style: GoogleFonts.outfit(fontSize: 10, fontWeight: FontWeight.bold, color: const Color(0xFF64748B), letterSpacing: 0.5),
         ),
         const SizedBox(height: 8),
         TextField(
-          onChanged: (val) => setState(() => unitNo = val),
+          controller: unitNoController,
           decoration: InputDecoration(
             hintText: 'e.g. 4B',
             hintStyle: GoogleFonts.outfit(color: Colors.grey.shade400, fontSize: 14),
@@ -359,7 +455,7 @@ class _BookingPageState extends State<BookingPage> {
         ),
         const SizedBox(height: 8),
         TextField(
-          onChanged: (val) => setState(() => streetName = val),
+          controller: streetNameController,
           decoration: InputDecoration(
             hintText: 'e.g. Jalan Sultan Ismail',
             hintStyle: GoogleFonts.outfit(color: Colors.grey.shade400, fontSize: 14),
@@ -373,13 +469,76 @@ class _BookingPageState extends State<BookingPage> {
           style: GoogleFonts.outfit(fontSize: 14, color: Colors.black87),
         ),
         const SizedBox(height: 24),
+
+        // Postcode & City
+        Row(
+          children: [
+            Expanded(
+              flex: 2,
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    'POSTCODE',
+                    style: GoogleFonts.outfit(fontSize: 10, fontWeight: FontWeight.bold, color: const Color(0xFF64748B), letterSpacing: 0.5),
+                  ),
+                  const SizedBox(height: 8),
+                  TextField(
+                    controller: postcodeController,
+                    keyboardType: TextInputType.number,
+                    decoration: InputDecoration(
+                      hintText: 'e.g. 50450',
+                      hintStyle: GoogleFonts.outfit(color: Colors.grey.shade400, fontSize: 14),
+                      filled: true,
+                      fillColor: Colors.white,
+                      border: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: BorderSide(color: Colors.grey.shade100)),
+                      enabledBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: BorderSide(color: Colors.grey.shade100)),
+                      focusedBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: BorderSide(color: primaryGreen, width: 1.5)),
+                      contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 16),
+                    ),
+                    style: GoogleFonts.outfit(fontSize: 14, color: Colors.black87),
+                  ),
+                ],
+              ),
+            ),
+            const SizedBox(width: 16),
+            Expanded(
+              flex: 3,
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    'CITY',
+                    style: GoogleFonts.outfit(fontSize: 10, fontWeight: FontWeight.bold, color: const Color(0xFF64748B), letterSpacing: 0.5),
+                  ),
+                  const SizedBox(height: 8),
+                  TextField(
+                    controller: cityController,
+                    decoration: InputDecoration(
+                      hintText: 'e.g. Kuala Lumpur',
+                      hintStyle: GoogleFonts.outfit(color: Colors.grey.shade400, fontSize: 14),
+                      filled: true,
+                      fillColor: Colors.white,
+                      border: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: BorderSide(color: Colors.grey.shade100)),
+                      enabledBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: BorderSide(color: Colors.grey.shade100)),
+                      focusedBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: BorderSide(color: primaryGreen, width: 1.5)),
+                      contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 16),
+                    ),
+                    style: GoogleFonts.outfit(fontSize: 14, color: Colors.black87),
+                  ),
+                ],
+              ),
+            ),
+          ],
+        ),
+        const SizedBox(height: 24),
         Text(
           'ENTRY INSTRUCTIONS',
           style: GoogleFonts.outfit(fontSize: 10, fontWeight: FontWeight.bold, color: const Color(0xFF64748B), letterSpacing: 0.5),
         ),
         const SizedBox(height: 8),
         TextField(
-          onChanged: (val) => setState(() => entryInstructions = val),
+          controller: entryInstructionsController,
           maxLines: 5,
           decoration: InputDecoration(
             hintText: 'Gate code, side door, or parking info...',
@@ -408,9 +567,9 @@ class _BookingPageState extends State<BookingPage> {
           if (!isLastStep) ...[
             Expanded(
               child: Column(crossAxisAlignment: CrossAxisAlignment.start, mainAxisSize: MainAxisSize.min, children: [
-                  Text(step == 2 ? 'TOTAL PRICE' : 'SELECTED DATE', style: GoogleFonts.outfit(fontSize: 10, fontWeight: FontWeight.bold, color: const Color(0xFF64748B))),
+                  Text(step == 2 ? 'SUBTOTAL' : 'SELECTED DATE', style: GoogleFonts.outfit(fontSize: 10, fontWeight: FontWeight.bold, color: const Color(0xFF64748B))),
                   const SizedBox(height: 4),
-                  Text(step == 2 ? calculatedTotal : '${DateFormat('MMM dd').format(selectedDate)}, ${selectedTime ?? 'Not selected'}', style: GoogleFonts.outfit(fontSize: 16, fontWeight: FontWeight.bold, color: primaryGreen)),
+                  Text(step == 2 ? 'RM${currentSubtotal.toStringAsFixed(0)}' : '${DateFormat('MMM dd').format(selectedDate)}, ${selectedTime ?? 'Not selected'}', style: GoogleFonts.outfit(fontSize: 16, fontWeight: FontWeight.bold, color: primaryGreen)),
               ]),
             ),
             const SizedBox(width: 16),
@@ -447,6 +606,11 @@ class _BookingPageState extends State<BookingPage> {
   }
 
   void _showBookingSummary() {
+    final unitNo = unitNoController.text;
+    final streetName = streetNameController.text;
+    final postcode = postcodeController.text;
+    final city = cityController.text;
+
     if (unitNo.trim().isEmpty) {
       ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Please enter your unit/house number')));
       return;
@@ -455,10 +619,13 @@ class _BookingPageState extends State<BookingPage> {
     // Calculations
     double base = basePriceValue;
     double addOnsSum = 0;
+    final list = addOns;
     for (var idx in selectedAddOnIndices) {
-      addOnsSum += addOns[idx]['price'];
+      final p = list[idx]['price'];
+      addOnsSum += (p is String ? double.tryParse(p) : (p as num).toDouble()) ?? 0.0;
     }
-    double finalTotal = base + addOnsSum;
+    double platformFee = (base + addOnsSum) * platformRate;
+    double finalTotal = base + addOnsSum + platformFee;
 
     showModalBottomSheet(
       context: context,
@@ -480,6 +647,11 @@ class _BookingPageState extends State<BookingPage> {
               Text('Summary', style: GoogleFonts.outfit(fontSize: 24, fontWeight: FontWeight.bold, color: const Color(0xFF1E293B))),
               const SizedBox(height: 32),
               
+              _summaryRow('Address', 'Unit $unitNo, $streetName, $postcode $city'),
+              const SizedBox(height: 32),
+              const Divider(height: 1),
+              const SizedBox(height: 32),
+              
               _summaryRow('Service Price', 'RM ${base.toStringAsFixed(2)}'),
               const SizedBox(height: 16),
               
@@ -494,9 +666,17 @@ class _BookingPageState extends State<BookingPage> {
                       padding: const EdgeInsets.symmetric(vertical: 4),
                       child: Row(
                         mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                        crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
                           Text(addOns[idx]['name'], style: GoogleFonts.outfit(fontSize: 13, color: const Color(0xFF64748B))),
-                          Text('RM ${addOns[idx]['price'].toStringAsFixed(2)}', style: GoogleFonts.outfit(fontSize: 13, color: const Color(0xFF64748B))),
+                          const SizedBox(width: 24),
+                          Expanded(
+                            child: Text(
+                              'RM ${((addOns[idx]['price'] is String ? double.tryParse(addOns[idx]['price']) : (addOns[idx]['price'] as num).toDouble()) ?? 0.0).toStringAsFixed(2)}', 
+                              textAlign: TextAlign.right,
+                              style: GoogleFonts.outfit(fontSize: 13, color: const Color(0xFF64748B)),
+                            ),
+                          ),
                         ],
                       ),
                     )).toList(),
@@ -505,7 +685,7 @@ class _BookingPageState extends State<BookingPage> {
                 const SizedBox(height: 16),
               ],
               
-              _summaryRow('Address', 'Unit $unitNo, $streetName'),
+              _summaryRow('Service Fee (15%)', 'RM ${platformFee.toStringAsFixed(2)}'),
               
               const SizedBox(height: 32),
               const Divider(height: 1),
@@ -556,11 +736,13 @@ class _BookingPageState extends State<BookingPage> {
                         builder: (context) => PaymentPage(
                           providerName: widget.providerName,
                           serviceName: widget.serviceName,
+                          serviceImage: widget.serviceImage,
+                          category: widget.category,
                           selectedDate: selectedDate,
                           selectedTime: selectedTime ?? '',
                           basePrice: basePriceValue,
                           selectedAddOns: selectedAddOnIndices.map((idx) => addOns[idx]).toList(),
-                          address: 'Unit $unitNo, $streetName',
+                          address: 'Unit $unitNo, $streetName, $postcode $city',
                           totalPrice: finalTotal,
                         ),
                       ),
@@ -577,7 +759,7 @@ class _BookingPageState extends State<BookingPage> {
                     children: [
                       Text('Continue to Payment', style: GoogleFonts.outfit(fontSize: 16, fontWeight: FontWeight.bold)),
                       const SizedBox(width: 12),
-                      const Icon(Icons.arrow_forward_rounded, size: 20),
+                      const Icon(Icons.arrow_forward_rounded, size: 20, color: Colors.white),
                     ],
                   ),
                 ),
@@ -603,9 +785,17 @@ class _BookingPageState extends State<BookingPage> {
   Widget _summaryRow(String label, String value) {
     return Row(
       mainAxisAlignment: MainAxisAlignment.spaceBetween,
+      crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         Text(label, style: GoogleFonts.outfit(fontSize: 15, color: const Color(0xFF64748B), fontWeight: FontWeight.w500)),
-        Text(value, style: GoogleFonts.outfit(fontSize: 15, fontWeight: FontWeight.bold, color: const Color(0xFF1E293B))),
+        const SizedBox(width: 24),
+        Expanded(
+          child: Text(
+            value, 
+            textAlign: TextAlign.right,
+            style: GoogleFonts.outfit(fontSize: 15, fontWeight: FontWeight.w600, color: const Color(0xFF1E293B)),
+          ),
+        ),
       ],
     );
   }

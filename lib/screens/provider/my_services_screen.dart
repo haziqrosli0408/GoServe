@@ -2,7 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
-import 'add_service_screen.dart';
+import 'edit_service_screen.dart';
 
 class MyServicesScreen extends StatefulWidget {
   const MyServicesScreen({super.key});
@@ -26,39 +26,6 @@ class _MyServicesScreenState extends State<MyServicesScreen>
   void dispose() {
     _tabController.dispose();
     super.dispose();
-  }
-
-  Stream<List<Map<String, dynamic>>> _getServicesStream({bool? isActive}) {
-    final user = FirebaseAuth.instance.currentUser;
-    if (user == null) return Stream.value([]);
-
-    Query query = FirebaseFirestore.instance
-        .collection('services')
-        .where('providerId', isEqualTo: user.uid);
-
-    if (isActive != null) {
-      query = query.where('isActive', isEqualTo: isActive);
-    }
-
-    return query
-        .snapshots()
-        .map((snapshot) {
-          final docs = snapshot.docs.map((doc) {
-            final data = doc.data() as Map<String, dynamic>;
-            data['id'] = doc.id;
-            return data;
-          }).toList();
-
-          // Client-side sorting by createdAt to avoid needing a Firestore composite index
-          docs.sort((a, b) {
-            final aTime = a['createdAt'] as Timestamp?;
-            final bTime = b['createdAt'] as Timestamp?;
-            if (aTime == null || bTime == null) return 0;
-            return bTime.compareTo(aTime); // Descending
-          });
-
-          return docs;
-        });
   }
 
   Future<void> _toggleActive(String serviceId, bool currentValue) async {
@@ -144,16 +111,7 @@ class _MyServicesScreenState extends State<MyServicesScreen>
   Widget _buildHeader() {
     return Container(
       width: double.infinity,
-      decoration: BoxDecoration(
-        gradient: LinearGradient(
-          begin: Alignment.topLeft,
-          end: Alignment.bottomRight,
-          colors: [
-            primaryIndigo.withValues(alpha: 0.12),
-            primaryIndigo.withValues(alpha: 0.04),
-          ],
-        ),
-      ),
+      color: Colors.white,
       padding: const EdgeInsets.fromLTRB(24, 60, 24, 24),
       child: Row(
         crossAxisAlignment: CrossAxisAlignment.end,
@@ -190,6 +148,7 @@ class _MyServicesScreenState extends State<MyServicesScreen>
   Widget _buildTabBar() {
     return Container(
       margin: const EdgeInsets.fromLTRB(24, 16, 24, 0),
+      padding: const EdgeInsets.all(4), // Move padding here from TabBar
       decoration: BoxDecoration(
         color: const Color(0xFFF1F5F9),
         borderRadius: BorderRadius.circular(10),
@@ -201,13 +160,14 @@ class _MyServicesScreenState extends State<MyServicesScreen>
           borderRadius: BorderRadius.circular(8),
         ),
         indicatorSize: TabBarIndicatorSize.tab,
+        indicatorPadding: EdgeInsets.zero, // Add this
+        labelPadding: EdgeInsets.zero, // Add this
         dividerColor: Colors.transparent,
         labelColor: Colors.white,
         unselectedLabelColor: Colors.grey.shade600,
         labelStyle: GoogleFonts.outfit(fontSize: 13, fontWeight: FontWeight.bold),
         unselectedLabelStyle:
             GoogleFonts.outfit(fontSize: 13, fontWeight: FontWeight.w500),
-        padding: const EdgeInsets.all(4),
         tabs: const [
           Tab(text: 'All'),
           Tab(text: 'Active'),
@@ -218,8 +178,72 @@ class _MyServicesScreenState extends State<MyServicesScreen>
   }
 
   Widget _buildServiceList(bool? isActive) {
+    return _ServiceListContent(
+      isActive: isActive,
+      primaryIndigo: primaryIndigo,
+      toggleActive: _toggleActive,
+      deleteService: _deleteService,
+    );
+  }
+}
+
+class _ServiceListContent extends StatefulWidget {
+  final bool? isActive;
+  final Color primaryIndigo;
+  final Function(String, bool) toggleActive;
+  final Function(String) deleteService;
+
+  const _ServiceListContent({
+    required this.isActive,
+    required this.primaryIndigo,
+    required this.toggleActive,
+    required this.deleteService,
+  });
+
+  @override
+  State<_ServiceListContent> createState() => _ServiceListContentState();
+}
+
+class _ServiceListContentState extends State<_ServiceListContent>
+    with AutomaticKeepAliveClientMixin {
+  @override
+  bool get wantKeepAlive => true;
+
+  Stream<List<Map<String, dynamic>>> _getServicesStream() {
+    final user = FirebaseAuth.instance.currentUser;
+    if (user == null) return Stream.value([]);
+
+    Query query = FirebaseFirestore.instance
+        .collection('services')
+        .where('providerId', isEqualTo: user.uid);
+
+    if (widget.isActive != null) {
+      query = query.where('isActive', isEqualTo: widget.isActive);
+    }
+
+    return query.snapshots().map((snapshot) {
+      final docs = snapshot.docs.map((doc) {
+        final data = doc.data() as Map<String, dynamic>;
+        data['id'] = doc.id;
+        return data;
+      }).toList();
+
+      docs.sort((a, b) {
+        final aTime = a['createdAt'] as Timestamp?;
+        final bTime = b['createdAt'] as Timestamp?;
+        if (aTime == null || bTime == null) return 0;
+        return bTime.compareTo(aTime);
+      });
+
+      return docs;
+    });
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    super.build(context);
     return StreamBuilder<List<Map<String, dynamic>>>(
-      stream: _getServicesStream(isActive: isActive),
+      stream: _getServicesStream(),
       builder: (context, snapshot) {
         if (snapshot.connectionState == ConnectionState.waiting) {
           return const Center(
@@ -241,8 +265,6 @@ class _MyServicesScreenState extends State<MyServicesScreen>
                     textAlign: TextAlign.center,
                     style: GoogleFonts.outfit(color: Colors.redAccent),
                   ),
-                  const SizedBox(height: 12),
-                  const Text('Ensure Firestore indexes are created.'),
                 ],
               ),
             ),
@@ -250,7 +272,7 @@ class _MyServicesScreenState extends State<MyServicesScreen>
         }
 
         if (!snapshot.hasData || snapshot.data!.isEmpty) {
-          return _buildEmptyState(isActive);
+          return _buildEmptyState(widget.isActive);
         }
 
         final services = snapshot.data!;
@@ -258,8 +280,7 @@ class _MyServicesScreenState extends State<MyServicesScreen>
           padding: const EdgeInsets.fromLTRB(24, 20, 24, 24),
           itemCount: services.length,
           separatorBuilder: (_, __) => const SizedBox(height: 14),
-          itemBuilder: (context, index) =>
-              _buildServiceCard(services[index]),
+          itemBuilder: (context, index) => _buildServiceCard(services[index]),
         );
       },
     );
@@ -269,10 +290,12 @@ class _MyServicesScreenState extends State<MyServicesScreen>
     String message;
     IconData icon;
     if (isActive == null) {
-      message = "You haven't published any services yet.\nTap + to create your first listing.";
+      message =
+          "You haven't published any services yet.\nTap + to create your first listing.";
       icon = Icons.storefront_outlined;
     } else if (isActive) {
-      message = "No active services.\nActivate a service to make it visible to customers.";
+      message =
+          "No active services.\nActivate a service to make it visible to customers.";
       icon = Icons.toggle_off_outlined;
     } else {
       message = "No inactive services.";
@@ -288,10 +311,11 @@ class _MyServicesScreenState extends State<MyServicesScreen>
             Container(
               padding: const EdgeInsets.all(24),
               decoration: BoxDecoration(
-                color: primaryIndigo.withValues(alpha: 0.06),
+                color: widget.primaryIndigo.withValues(alpha: 0.06),
                 shape: BoxShape.circle,
               ),
-              child: Icon(icon, size: 48, color: primaryIndigo.withValues(alpha: 0.5)),
+              child: Icon(icon,
+                  size: 48, color: widget.primaryIndigo.withValues(alpha: 0.5)),
             ),
             const SizedBox(height: 20),
             Text(
@@ -328,14 +352,14 @@ class _MyServicesScreenState extends State<MyServicesScreen>
         borderRadius: BorderRadius.circular(16),
         border: Border.all(
           color: isActive
-              ? primaryIndigo.withValues(alpha: 0.15)
+              ? widget.primaryIndigo.withValues(alpha: 0.15)
               : Colors.grey.shade200,
           width: 1.5,
         ),
         boxShadow: [
           BoxShadow(
             color: isActive
-                ? primaryIndigo.withValues(alpha: 0.05)
+                ? widget.primaryIndigo.withValues(alpha: 0.05)
                 : Colors.black.withValues(alpha: 0.02),
             blurRadius: 12,
             offset: const Offset(0, 4),
@@ -347,7 +371,6 @@ class _MyServicesScreenState extends State<MyServicesScreen>
         child: Row(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            // Image
             ClipRRect(
               borderRadius: BorderRadius.circular(12),
               child: Container(
@@ -366,14 +389,12 @@ class _MyServicesScreenState extends State<MyServicesScreen>
                       )
                     : Icon(
                         Icons.home_repair_service_rounded,
-                        color: primaryIndigo.withValues(alpha: 0.4),
+                        color: widget.primaryIndigo.withValues(alpha: 0.4),
                         size: 32,
                       ),
               ),
             ),
             const SizedBox(width: 14),
-
-            // Details
             Expanded(
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
@@ -394,7 +415,6 @@ class _MyServicesScreenState extends State<MyServicesScreen>
                         ),
                       ),
                       const SizedBox(width: 8),
-                      // Status badge
                       Container(
                         padding: const EdgeInsets.symmetric(
                             horizontal: 8, vertical: 3),
@@ -433,9 +453,7 @@ class _MyServicesScreenState extends State<MyServicesScreen>
                       ),
                     ],
                   ),
-
                   const SizedBox(height: 4),
-
                   if (subCategory.isNotEmpty)
                     Text(
                       subCategory,
@@ -444,26 +462,20 @@ class _MyServicesScreenState extends State<MyServicesScreen>
                         color: Colors.grey.shade500,
                       ),
                     ),
-
                   const SizedBox(height: 8),
-
                   Text(
                     'RM $price / $priceType',
                     style: GoogleFonts.outfit(
                       fontSize: 14,
                       fontWeight: FontWeight.w600,
-                      color: primaryIndigo,
+                      color: widget.primaryIndigo,
                     ),
                   ),
-
                   const SizedBox(height: 12),
-
-                  // Actions row
                   Row(
                     children: [
-                      // Toggle Active switch
                       GestureDetector(
-                        onTap: () => _toggleActive(serviceId, isActive),
+                        onTap: () => widget.toggleActive(serviceId, isActive),
                         child: AnimatedContainer(
                           duration: const Duration(milliseconds: 250),
                           padding: const EdgeInsets.symmetric(
@@ -500,12 +512,9 @@ class _MyServicesScreenState extends State<MyServicesScreen>
                           ),
                         ),
                       ),
-
                       const Spacer(),
-
-                      // Delete
                       GestureDetector(
-                        onTap: () => _deleteService(serviceId),
+                        onTap: () => widget.deleteService(serviceId),
                         child: Container(
                           padding: const EdgeInsets.all(7),
                           decoration: BoxDecoration(
@@ -519,17 +528,14 @@ class _MyServicesScreenState extends State<MyServicesScreen>
                           ),
                         ),
                       ),
-
                       const SizedBox(width: 8),
-
-                      // Edit
                       GestureDetector(
                         onTap: () {
                           Navigator.push(
                             context,
                             MaterialPageRoute(
-                              builder: (_) => AddServiceScreen(
-                                initialDraftData: service,
+                              builder: (_) => EditServiceScreen(
+                                serviceData: service,
                               ),
                             ),
                           );
@@ -538,7 +544,7 @@ class _MyServicesScreenState extends State<MyServicesScreen>
                           padding: const EdgeInsets.symmetric(
                               horizontal: 14, vertical: 7),
                           decoration: BoxDecoration(
-                            color: primaryIndigo,
+                            color: widget.primaryIndigo,
                             borderRadius: BorderRadius.circular(8),
                           ),
                           child: Text(
