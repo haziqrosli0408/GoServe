@@ -20,7 +20,7 @@ class PlatformOverviewScreen extends StatelessWidget {
               'Platform Overview',
               style: TextStyle(
                 fontSize: 26,
-                fontWeight: FontWeight.bold,
+                fontWeight: FontWeight.w600,
               ),
             ),
             const SizedBox(height: 8),
@@ -120,7 +120,7 @@ class PlatformOverviewScreen extends StatelessWidget {
                   title,
                   style: const TextStyle(
                     fontSize: 16,
-                    fontWeight: FontWeight.bold,
+                    fontWeight: FontWeight.w600,
                   ),
                 ),
                 const SizedBox(height: 6),

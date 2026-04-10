@@ -223,7 +223,7 @@ class _SettingsModalState extends State<SettingsModal>
                   "Settings",
                   style: TextStyle(
                     fontSize: 18,
-                    fontWeight: FontWeight.bold,
+                    fontWeight: FontWeight.w600,
                     color: Color(0xFF000000),
                   ),
                 ),

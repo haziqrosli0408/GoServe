@@ -133,7 +133,7 @@ class _BookingSuccessScreenState extends State<BookingSuccessScreen> with Single
                           'Booking Confirmed!',
                           style: GoogleFonts.outfit(
                             fontSize: 28,
-                            fontWeight: FontWeight.w800,
+                            fontWeight: FontWeight.w600,
                             color: const Color(0xFF1F212C),
                           ),
                         ),
@@ -195,7 +195,7 @@ class _BookingSuccessScreenState extends State<BookingSuccessScreen> with Single
                                 'RM ${widget.totalPrice.toStringAsFixed(2)}',
                                 style: GoogleFonts.outfit(
                                   fontSize: 18,
-                                  fontWeight: FontWeight.bold,
+                                  fontWeight: FontWeight.w600,
                                   color: const Color(0xFFFF6B00),
                                 ),
                               ),
@@ -236,7 +236,7 @@ class _BookingSuccessScreenState extends State<BookingSuccessScreen> with Single
                               'Track My Booking',
                               style: GoogleFonts.outfit(
                                 fontSize: 16,
-                                fontWeight: FontWeight.bold,
+                                fontWeight: FontWeight.w600,
                               ),
                             ),
                           ),
@@ -287,7 +287,7 @@ class _BookingSuccessScreenState extends State<BookingSuccessScreen> with Single
             value,
             textAlign: TextAlign.end,
             style: GoogleFonts.outfit(
-              fontWeight: FontWeight.bold,
+              fontWeight: FontWeight.w600,
               color: const Color(0xFF1F212C),
             ),
           ),

@@ -53,7 +53,7 @@ class _GoogleRoleSelectScreenState extends State<GoogleRoleSelectScreen> {
                 "One Last\nStep",
                 style: TextStyle(
                   fontSize: 32,
-                  fontWeight: FontWeight.bold,
+                  fontWeight: FontWeight.w600,
                   color: Color(0xFF2D3748),
                   height: 1.1,
                 ),
@@ -125,7 +125,7 @@ class _GoogleRoleSelectScreenState extends State<GoogleRoleSelectScreen> {
                 children: [
                   Text(
                     title,
-                    style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold, color: color),
+                    style: TextStyle(fontSize: 18, fontWeight: FontWeight.w600, color: color),
                   ),
                   const SizedBox(height: 4),
                   Text(

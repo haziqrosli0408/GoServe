@@ -6,6 +6,7 @@ import 'package:firebase_auth/firebase_auth.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_storage/firebase_storage.dart';
 import 'package:path/path.dart' as path_pkg;
+import 'package:geocoding/geocoding.dart';
 
 class AddServiceScreen extends StatefulWidget {
   final bool startNew;
@@ -184,7 +185,12 @@ class _AddServiceScreenState extends State<AddServiceScreen> {
   }
 
   Future<void> _pickMainImage() async {
-    final XFile? image = await _picker.pickImage(source: ImageSource.gallery);
+    final XFile? image = await _picker.pickImage(
+      source: ImageSource.gallery,
+      imageQuality: 50,
+      maxWidth: 800,
+      maxHeight: 800,
+    );
     if (image != null) {
       setState(() => _mainImage = File(image.path));
     }
@@ -192,7 +198,11 @@ class _AddServiceScreenState extends State<AddServiceScreen> {
 
   Future<void> _pickGalleryImages() async {
     if (_galleryImages.length >= 6) return;
-    final List<XFile> images = await _picker.pickMultiImage();
+    final List<XFile> images = await _picker.pickMultiImage(
+      imageQuality: 40,
+      maxWidth: 800,
+      maxHeight: 800,
+    );
     if (images.isNotEmpty) {
       setState(() {
         for (var image in images) {
@@ -348,7 +358,7 @@ class _AddServiceScreenState extends State<AddServiceScreen> {
             title,
             style: GoogleFonts.outfit(
               fontSize: 26,
-              fontWeight: FontWeight.bold,
+              fontWeight: FontWeight.w600,
               color: const Color(0xFF1E293B),
             ),
           ),
@@ -488,7 +498,7 @@ class _AddServiceScreenState extends State<AddServiceScreen> {
                   catName,
                   style: GoogleFonts.outfit(
                     fontSize: 17,
-                    fontWeight: FontWeight.bold,
+                    fontWeight: FontWeight.w600,
                     color: const Color(0xFF1E293B),
                   ),
                 ),
@@ -598,14 +608,14 @@ class _AddServiceScreenState extends State<AddServiceScreen> {
           child: Row(
             mainAxisAlignment: MainAxisAlignment.center,
             children: [
-              Text('RM', style: GoogleFonts.outfit(fontSize: 24, fontWeight: FontWeight.bold, color: primaryIndigo)),
+              Text('RM', style: GoogleFonts.outfit(fontSize: 24, fontWeight: FontWeight.w600, color: primaryIndigo)),
               const SizedBox(width: 8),
               Expanded(
                 child: TextField(
                   controller: _priceController,
                   keyboardType: TextInputType.number,
                   textAlign: TextAlign.center,
-                  style: GoogleFonts.outfit(fontSize: 36, fontWeight: FontWeight.bold, color: const Color(0xFF1E293B)),
+                  style: GoogleFonts.outfit(fontSize: 36, fontWeight: FontWeight.w600, color: const Color(0xFF1E293B)),
                   decoration: const InputDecoration(
                     border: InputBorder.none,
                     hintText: '0.00',
@@ -653,7 +663,7 @@ class _AddServiceScreenState extends State<AddServiceScreen> {
                 type == 'per hour' ? 'Per Hour' : 'One-time',
                 style: GoogleFonts.outfit(
                   fontSize: 16,
-                  fontWeight: FontWeight.bold,
+                  fontWeight: FontWeight.w600,
                   color: isSelected ? primaryIndigo : const Color(0xFF1E293B),
                 ),
               ),
@@ -697,7 +707,7 @@ class _AddServiceScreenState extends State<AddServiceScreen> {
       label,
       style: GoogleFonts.outfit(
         fontSize: 16,
-        fontWeight: FontWeight.bold,
+        fontWeight: FontWeight.w600,
         color: const Color(0xFF1E293B),
       ),
     );
@@ -910,7 +920,8 @@ class _AddServiceScreenState extends State<AddServiceScreen> {
             separatorBuilder: (context, index) => const SizedBox(height: 12),
             itemBuilder: (context, index) {
               return Container(
-                padding: const EdgeInsets.all(16),
+                height: 100,
+                padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
                 decoration: BoxDecoration(
                   color: Colors.white,
                   borderRadius: BorderRadius.circular(8),
@@ -928,7 +939,7 @@ class _AddServiceScreenState extends State<AddServiceScreen> {
                       child: Column(
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
-                          Text(_addOns[index]['name'], style: GoogleFonts.outfit(fontWeight: FontWeight.bold, fontSize: 14)),
+                          Text(_addOns[index]['name'], style: GoogleFonts.outfit(fontWeight: FontWeight.w600, fontSize: 14)),
                           Text(_addOns[index]['description'] ?? '', style: GoogleFonts.outfit(color: Colors.grey.shade500, fontSize: 12, height: 1.2)),
                           const SizedBox(height: 4),
                           Text('RM ${_addOns[index]['price']}', style: GoogleFonts.outfit(color: primaryIndigo, fontWeight: FontWeight.w600, fontSize: 13)),
@@ -970,7 +981,7 @@ class _AddServiceScreenState extends State<AddServiceScreen> {
                   minimumSize: const Size(0, 56),
                   shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
                 ),
-                child: Text('Back', style: GoogleFonts.outfit(color: const Color(0xFF64748B), fontWeight: FontWeight.bold)),
+                child: Text('Back', style: GoogleFonts.outfit(color: const Color(0xFF64748B), fontWeight: FontWeight.w600)),
               ),
             ),
           if (step > 1) const SizedBox(width: 16),
@@ -1005,7 +1016,7 @@ class _AddServiceScreenState extends State<AddServiceScreen> {
                       step < totalSteps ? 'Continue' : 'Publish Service',
                       style: GoogleFonts.outfit(
                           color: Colors.white,
-                          fontWeight: FontWeight.bold,
+                          fontWeight: FontWeight.w600,
                           fontSize: 16),
                     ),
             ),
@@ -1065,6 +1076,19 @@ class _AddServiceScreenState extends State<AddServiceScreen> {
       final String providerAddress = providerData['address'] ?? 'Kuala Lumpur, Malaysia';
       final String providerProfileUrl = providerData['profileUrl'] ?? '';
 
+      // Geocode providerAddress to LatLng
+      double providerLat = 0.0;
+      double providerLng = 0.0;
+      try {
+        List<Location> locations = await locationFromAddress(providerAddress);
+        if (locations.isNotEmpty) {
+          providerLat = locations.first.latitude;
+          providerLng = locations.first.longitude;
+        }
+      } catch (e) {
+        debugPrint('Error geocoding provider address: $e');
+      }
+
       // 🔹 2. Create Service ID (if new)
       final CollectionReference servicesCollection = FirebaseFirestore.instance.collection('services');
       DocumentReference serviceDoc;
@@ -1106,6 +1130,8 @@ class _AddServiceScreenState extends State<AddServiceScreen> {
         'providerId': user.uid,
         'providerName': providerName,
         'providerAddress': providerAddress,
+        'providerLat': providerLat,
+        'providerLng': providerLng,
         'providerProfileUrl': providerProfileUrl,
         'title': _titleController.text.trim(),
         'category': selectedCategory,
@@ -1157,12 +1183,12 @@ class _AddServiceScreenState extends State<AddServiceScreen> {
       showDialog(
         context: context,
         builder: (ctx) => AlertDialog(
-          title: Text('Publishing Failed', style: GoogleFonts.outfit(fontWeight: FontWeight.bold)),
+          title: Text('Publishing Failed', style: GoogleFonts.outfit(fontWeight: FontWeight.w600)),
           content: Text(e.toString().replaceAll("Exception: ", ""), style: GoogleFonts.outfit()),
           actions: [
             TextButton(
               onPressed: () => Navigator.pop(ctx),
-              child: Text('OK', style: GoogleFonts.outfit(fontWeight: FontWeight.bold)),
+              child: Text('OK', style: GoogleFonts.outfit(fontWeight: FontWeight.w600)),
             ),
           ],
         ),

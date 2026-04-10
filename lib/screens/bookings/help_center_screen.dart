@@ -30,7 +30,7 @@ class _HelpCenterScreenState extends State<HelpCenterScreen> {
           'Help Center',
           style: GoogleFonts.outfit(
             color: Colors.black,
-            fontWeight: FontWeight.bold,
+            fontWeight: FontWeight.w600,
             fontSize: 20,
           ),
         ),
@@ -46,7 +46,7 @@ class _HelpCenterScreenState extends State<HelpCenterScreen> {
               'FREQUENTLY ASKED QUESTIONS',
               style: GoogleFonts.outfit(
                 fontSize: 12,
-                fontWeight: FontWeight.bold,
+                fontWeight: FontWeight.w600,
                 color: Colors.grey.shade400,
                 letterSpacing: 1.2,
               ),
@@ -60,7 +60,7 @@ class _HelpCenterScreenState extends State<HelpCenterScreen> {
               'REPORT A PROBLEM',
               style: GoogleFonts.outfit(
                 fontSize: 12,
-                fontWeight: FontWeight.bold,
+                fontWeight: FontWeight.w600,
                 color: Colors.grey.shade400,
                 letterSpacing: 1.2,
               ),
@@ -176,7 +176,7 @@ class _HelpCenterScreenState extends State<HelpCenterScreen> {
               ),
               child: Text(
                 'Submit Report',
-                style: GoogleFonts.outfit(fontWeight: FontWeight.bold, fontSize: 14),
+                style: GoogleFonts.outfit(fontWeight: FontWeight.w600, fontSize: 14),
               ),
             ),
           ),

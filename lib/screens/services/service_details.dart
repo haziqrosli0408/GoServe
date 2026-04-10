@@ -49,7 +49,8 @@ class _ServiceDetailsScreenState extends State<ServiceDetailsScreen> {
     final String description = widget.provider['description'] ?? 'No description available for this service provider.';
     final String price = widget.provider['price'] ?? '0';
     final String profileUrl = _liveProfileUrl ?? widget.provider['providerProfileUrl'] ?? widget.provider['profileUrl'] ?? '';
-    final String serviceImageUrl = widget.provider['servicePhotoUrl'] ?? 'https://images.unsplash.com/photo-1581578731548-c64695cc6952?q=80&w=2070&auto=format&fit=crop'; 
+    final String serviceImageUrl = widget.provider['servicePhotoUrl'] ?? 'https://images.unsplash.com/photo-1581578731548-c64695cc6952?q=80&w=2070&auto=format&fit=crop';
+    final String serviceTitle = widget.provider['title'] ?? widget.provider['serviceName'] ?? 'Elite Service';
 
     return Scaffold(
       backgroundColor: Colors.white,
@@ -93,7 +94,7 @@ class _ServiceDetailsScreenState extends State<ServiceDetailsScreen> {
           ),
         ],
       ),
-      bottomNavigationBar: _buildFooter(context, name, category, price, serviceImageUrl),
+      bottomNavigationBar: _buildFooter(context, name, serviceTitle, category, price, serviceImageUrl),
     );
   }
 
@@ -130,7 +131,7 @@ class _ServiceDetailsScreenState extends State<ServiceDetailsScreen> {
           label,
           style: GoogleFonts.outfit(
             fontSize: 14,
-            fontWeight: FontWeight.bold,
+            fontWeight: FontWeight.w600,
             color: isActive ? Colors.white : const Color(0xFF64748B),
           ),
         ),
@@ -140,14 +141,25 @@ class _ServiceDetailsScreenState extends State<ServiceDetailsScreen> {
 
   Widget _buildTabContent(String description, String price) {
     if (_activeTab == 0) {
+      final String serviceTitle = widget.provider['title'] ?? widget.provider['serviceName'] ?? 'Elite Service';
       return Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Text(
+            serviceTitle,
+            style: GoogleFonts.outfit(
+              fontSize: 24,
+              fontWeight: FontWeight.w600,
+              color: const Color(0xFF1E293B),
+              height: 1.2,
+            ),
+          ),
+          const SizedBox(height: 24),
+          Text(
             'Description',
             style: GoogleFonts.outfit(
               fontSize: 16,
-              fontWeight: FontWeight.bold,
+              fontWeight: FontWeight.w600,
               color: const Color(0xFF1E293B),
             ),
           ),
@@ -165,7 +177,7 @@ class _ServiceDetailsScreenState extends State<ServiceDetailsScreen> {
             'Service Details',
             style: GoogleFonts.outfit(
               fontSize: 16,
-              fontWeight: FontWeight.bold,
+              fontWeight: FontWeight.w600,
               color: const Color(0xFF1E293B),
             ),
           ),
@@ -201,7 +213,7 @@ class _ServiceDetailsScreenState extends State<ServiceDetailsScreen> {
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     Text('Pricing Model', style: GoogleFonts.outfit(fontSize: 12, color: Colors.black54)),
-                    Text('Starting from RM$price/hr', style: GoogleFonts.outfit(fontSize: 16, fontWeight: FontWeight.bold, color: const Color(0xFF1E293B))),
+                    Text('Starting from RM$price${widget.provider['priceType'] == 'one-time' ? '' : '/hr'}', style: GoogleFonts.outfit(fontSize: 16, fontWeight: FontWeight.w600, color: const Color(0xFF1E293B))),
                   ],
                 ),
               ],
@@ -236,7 +248,7 @@ class _ServiceDetailsScreenState extends State<ServiceDetailsScreen> {
             'Available Add-ons',
             style: GoogleFonts.outfit(
               fontSize: 16,
-              fontWeight: FontWeight.bold,
+              fontWeight: FontWeight.w600,
               color: const Color(0xFF1E293B),
             ),
           ),
@@ -245,7 +257,8 @@ class _ServiceDetailsScreenState extends State<ServiceDetailsScreen> {
             final data = Map<String, dynamic>.from(addOn);
             return Container(
               margin: const EdgeInsets.only(bottom: 12),
-              padding: const EdgeInsets.all(16),
+              height: 110,
+              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
               decoration: BoxDecoration(
                 color: Colors.white,
                 borderRadius: BorderRadius.circular(12),
@@ -281,7 +294,7 @@ class _ServiceDetailsScreenState extends State<ServiceDetailsScreen> {
                             style: GoogleFonts.outfit(
                               fontSize: 12,
                               color: const Color(0xFF64748B),
-                              height: 1.4,
+                              height: 1.3,
                             ),
                           ),
                       ],
@@ -298,7 +311,7 @@ class _ServiceDetailsScreenState extends State<ServiceDetailsScreen> {
                       '+ RM${data['price']}',
                       style: GoogleFonts.outfit(
                         fontSize: 13,
-                        fontWeight: FontWeight.bold,
+                        fontWeight: FontWeight.w600,
                         color: const Color(0xFFFF6B00),
                       ),
                     ),
@@ -405,7 +418,7 @@ class _ServiceDetailsScreenState extends State<ServiceDetailsScreen> {
               CircleAvatar(
                 radius: 20,
                 backgroundColor: const Color(0xFFF1F5F9),
-                child: Text(name.isNotEmpty ? name[0].toUpperCase() : 'U', style: GoogleFonts.outfit(color: const Color(0xFF1F212C), fontSize: 14, fontWeight: FontWeight.bold)),
+                child: Text(name.isNotEmpty ? name[0].toUpperCase() : 'U', style: GoogleFonts.outfit(color: const Color(0xFF1F212C), fontSize: 14, fontWeight: FontWeight.w600)),
               ),
               const SizedBox(width: 12),
               Expanded(
@@ -414,7 +427,7 @@ class _ServiceDetailsScreenState extends State<ServiceDetailsScreen> {
                   children: [
                     Text(
                       name,
-                      style: GoogleFonts.outfit(fontWeight: FontWeight.bold, fontSize: 15, color: const Color(0xFF1E293B)),
+                      style: GoogleFonts.outfit(fontWeight: FontWeight.w600, fontSize: 15, color: const Color(0xFF1E293B)),
                     ),
                     Text(
                       date,
@@ -517,7 +530,7 @@ class _ServiceDetailsScreenState extends State<ServiceDetailsScreen> {
                       backgroundColor: const Color(0xFFF1F5F9),
                       backgroundImage: profileUrl.isNotEmpty ? NetworkImage(profileUrl) : null,
                       child: profileUrl.isEmpty 
-                          ? Text(name.isNotEmpty ? name[0].toUpperCase() : 'P', style: GoogleFonts.outfit(color: const Color(0xFF1F212C), fontSize: 24, fontWeight: FontWeight.bold)) 
+                          ? Text(name.isNotEmpty ? name[0].toUpperCase() : 'P', style: GoogleFonts.outfit(color: const Color(0xFF1F212C), fontSize: 24, fontWeight: FontWeight.w600)) 
                           : null,
                     ),
                     Positioned(
@@ -537,13 +550,13 @@ class _ServiceDetailsScreenState extends State<ServiceDetailsScreen> {
                     crossAxisAlignment: CrossAxisAlignment.start,
                     mainAxisSize: MainAxisSize.min,
                     children: [
-                      Text(name, style: GoogleFonts.outfit(fontSize: 18, fontWeight: FontWeight.w800, color: const Color(0xFF1E212C))),
+                      Text(name, style: GoogleFonts.outfit(fontSize: 18, fontWeight: FontWeight.w600, color: const Color(0xFF1E212C))),
                       const SizedBox(height: 4),
                       Row(
                         children: [
                           const Icon(Icons.star, color: Colors.amber, size: 16),
                           const SizedBox(width: 4),
-                          Text('4.9', style: GoogleFonts.outfit(fontSize: 13, fontWeight: FontWeight.bold, color: const Color(0xFF1E293B))),
+                          Text('4.9', style: GoogleFonts.outfit(fontSize: 13, fontWeight: FontWeight.w600, color: const Color(0xFF1E293B))),
                           const SizedBox(width: 4),
                           Text('(128 reviews)', style: GoogleFonts.outfit(fontSize: 13, color: Colors.grey.shade400)),
                         ],
@@ -555,7 +568,15 @@ class _ServiceDetailsScreenState extends State<ServiceDetailsScreen> {
                   Navigator.push(
                     context,
                     MaterialPageRoute(
-                      builder: (context) => SingleChatScreen(provider: widget.provider),
+                      builder: (context) => SingleChatScreen(
+                        provider: {
+                          ...widget.provider,
+                          'providerId': widget.provider['providerId'] ?? widget.provider['id'] ?? '',
+                          'providerName': name,
+                          'serviceId': widget.provider['serviceId'] ?? widget.provider['id'] ?? '',
+                          'title': widget.provider['title'] ?? widget.provider['name'] ?? '',
+                        },
+                      ),
                     ),
                   );
                 }),
@@ -592,7 +613,7 @@ class _ServiceDetailsScreenState extends State<ServiceDetailsScreen> {
     );
   }
 
-  Widget _buildFooter(BuildContext context, String name, String category, String price, String serviceImageUrl) {
+  Widget _buildFooter(BuildContext context, String providerName, String serviceTitle, String category, String price, String serviceImageUrl) {
     return Container(
       padding: const EdgeInsets.fromLTRB(24, 16, 24, 20),
       decoration: BoxDecoration(
@@ -635,8 +656,9 @@ class _ServiceDetailsScreenState extends State<ServiceDetailsScreen> {
               child: ElevatedButton(
                 onPressed: () {
                   Navigator.push(context, MaterialPageRoute(builder: (context) => BookingPage(
-                    serviceName: name,
-                    providerName: name,
+                    serviceName: serviceTitle,
+                    providerName: providerName,
+                    providerId: widget.provider['providerId'] ?? widget.provider['id'] ?? widget.provider['uid'] ?? '',
                     serviceImage: serviceImageUrl,
                     category: category,
                     price: price,
@@ -649,7 +671,7 @@ class _ServiceDetailsScreenState extends State<ServiceDetailsScreen> {
                   shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
                   elevation: 0,
                 ),
-                child: Text('Book Now', style: GoogleFonts.outfit(fontSize: 16, fontWeight: FontWeight.bold)),
+                child: Text('Book Now', style: GoogleFonts.outfit(fontSize: 16, fontWeight: FontWeight.w600)),
               ),
             ),
           ),

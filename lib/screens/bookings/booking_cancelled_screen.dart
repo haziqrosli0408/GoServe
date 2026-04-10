@@ -36,7 +36,7 @@ class BookingCancelledScreen extends StatelessWidget {
                 'Booking Cancelled',
                 style: GoogleFonts.outfit(
                   fontSize: 24,
-                  fontWeight: FontWeight.bold,
+                  fontWeight: FontWeight.w600,
                   color: const Color(0xFF1F212C),
                 ),
               ),
@@ -76,7 +76,7 @@ class BookingCancelledScreen extends StatelessWidget {
                     'Back to Home',
                     style: GoogleFonts.outfit(
                       fontSize: 16,
-                      fontWeight: FontWeight.bold,
+                      fontWeight: FontWeight.w600,
                     ),
                   ),
                 ),

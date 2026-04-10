@@ -3,10 +3,11 @@ import 'package:google_fonts/google_fonts.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import '../profile/profile_screen.dart';
-import '../services/add_service.dart';
+
 import '../profile/provider_reviews.dart';
 import '../provider/my_services_screen.dart';
 import '../provider/provider_activity_screen.dart';
+import '../provider/service_selector.dart';
 
 class ProviderHomeScreen extends StatefulWidget {
   const ProviderHomeScreen({super.key});
@@ -20,15 +21,24 @@ class _ProviderHomeScreenState extends State<ProviderHomeScreen> {
   Map<String, dynamic>? providerData;
   bool isOnline = true;
 
+  // Real Stats
+  double totalEarnings = 0.0;
+  int totalBookings = 0;
+  double averageRating = 0.0;
+
   @override
   void initState() {
     super.initState();
     _fetchProviderData();
+    _fetchProviderStats();
   }
 
   Future<void> _fetchProviderData() async {
     if (user == null) return;
-    final doc = await FirebaseFirestore.instance.collection('providers').doc(user!.uid).get();
+    final doc = await FirebaseFirestore.instance
+        .collection('providers')
+        .doc(user!.uid)
+        .get();
     if (doc.exists && mounted) {
       setState(() {
         providerData = doc.data();
@@ -37,12 +47,75 @@ class _ProviderHomeScreenState extends State<ProviderHomeScreen> {
     }
   }
 
+  Future<void> _fetchProviderStats() async {
+    if (user == null) return;
+
+    // 1. Fetch Total Bookings
+    FirebaseFirestore.instance
+        .collection('bookings')
+        .where('providerId', isEqualTo: user!.uid)
+        .get()
+        .then((snapshot) {
+      if (mounted) {
+        setState(() => totalBookings = snapshot.size);
+      }
+    });
+
+    // 2. Calculate Total Earnings (from completed bookings)
+    FirebaseFirestore.instance
+        .collection('bookings')
+        .where('providerId', isEqualTo: user!.uid)
+        .where('status', isEqualTo: 'Completed')
+        .get()
+        .then((snapshot) {
+      if (mounted) {
+        double total = 0;
+        for (var doc in snapshot.docs) {
+          final data = doc.data();
+          final priceStr = data['totalPrice'] ?? data['price'] ?? '0';
+          final cleanPrice = priceStr.toString().replaceAll('RM', '').trim();
+          total += double.tryParse(cleanPrice) ?? 0.0;
+        }
+        setState(() => totalEarnings = total);
+      }
+    });
+
+    // 3. Calculate Average Rating
+    FirebaseFirestore.instance
+        .collection('reviews')
+        .where('providerId', isEqualTo: user!.uid)
+        .get()
+        .then((snapshot) {
+      if (snapshot.docs.isNotEmpty && mounted) {
+        double totalRating = 0;
+        for (var doc in snapshot.docs) {
+          totalRating += (doc.data()['rating'] as num).toDouble();
+        }
+        setState(() => averageRating = totalRating / snapshot.docs.length);
+      }
+    });
+  }
+
   Future<void> _toggleOnline(bool value) async {
     setState(() => isOnline = value);
     if (user != null) {
-      await FirebaseFirestore.instance.collection('providers').doc(user!.uid).update({
+      await FirebaseFirestore.instance
+          .collection('providers')
+          .doc(user!.uid)
+          .update({
         'isOnline': value,
       });
+    }
+  }
+
+  String _getGreeting() {
+    final hour = DateTime.now().hour;
+    if (hour < 12) {
+      return 'Good Morning,';
+    } else if (hour < 17) {
+      return 'Good Afternoon,';
+    } else {
+      return 'Good Evening,';
     }
   }
 
@@ -62,10 +135,9 @@ class _ProviderHomeScreenState extends State<ProviderHomeScreen> {
                   const SizedBox(height: 24),
                   _buildAvailabilityCard(),
                   const SizedBox(height: 24),
-                  _buildSectionHeader('Up Next', 'View All', () {}),
-                  const SizedBox(height: 16),
-                  _buildUpcomingBookings(),
+                  _buildNewRequestsSection(),
                   const SizedBox(height: 24),
+
                   _buildQuickActions(),
                   const SizedBox(height: 32),
                 ],
@@ -96,7 +168,7 @@ class _ProviderHomeScreenState extends State<ProviderHomeScreen> {
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   Text(
-                    'Good Morning,',
+                    _getGreeting(),
                     style: GoogleFonts.outfit(
                       color: Colors.black54,
                       fontSize: 16,
@@ -109,7 +181,7 @@ class _ProviderHomeScreenState extends State<ProviderHomeScreen> {
                     style: GoogleFonts.outfit(
                       color: const Color(0xFF1E293B),
                       fontSize: 24,
-                      fontWeight: FontWeight.bold,
+                      fontWeight: FontWeight.w600,
                     ),
                   ),
                 ],
@@ -119,18 +191,38 @@ class _ProviderHomeScreenState extends State<ProviderHomeScreen> {
               onTap: () {
                 Navigator.push(
                   context,
-                  MaterialPageRoute(builder: (context) => const ProfileScreen()),
+                  MaterialPageRoute(builder: (context) => const ProfileScreen(themeColor: Color(0xFF4F46E5))),
                 );
               },
-              child: CircleAvatar(
-                radius: 25,
-                backgroundColor: const Color(0xFFF1F5F9),
-                backgroundImage: (providerData?['profileUrl'] != null && providerData!['profileUrl'].isNotEmpty)
-                    ? NetworkImage(providerData!['profileUrl'])
-                    : null,
-                child: (providerData?['profileUrl'] == null || providerData!['profileUrl'].isEmpty)
-                    ? const Icon(Icons.person, color: Colors.grey)
-                    : null,
+              child: Container(
+                decoration: BoxDecoration(
+                  shape: BoxShape.circle,
+                  border: Border.all(color: Colors.white, width: 2),
+                  boxShadow: [
+                    BoxShadow(
+                      color: Colors.black.withValues(alpha: 0.1),
+                      blurRadius: 8,
+                      offset: const Offset(0, 2),
+                    ),
+                  ],
+                ),
+                child: CircleAvatar(
+                  radius: 25,
+                  backgroundColor: Colors.white,
+                  backgroundImage: (providerData?['profileUrl'] != null && providerData!['profileUrl'].toString().isNotEmpty)
+                      ? NetworkImage(providerData!['profileUrl'])
+                      : null,
+                  child: (providerData?['profileUrl'] == null || providerData!['profileUrl'].toString().isEmpty)
+                      ? Text(
+                          (providerData?['name'] ?? 'P')[0].toUpperCase(),
+                          style: GoogleFonts.outfit(
+                            fontSize: 18,
+                            fontWeight: FontWeight.w600,
+                            color: const Color(0xFF4F46E5),
+                          ),
+                        )
+                      : null,
+                ),
               ),
             ),
           ],
@@ -145,9 +237,15 @@ class _ProviderHomeScreenState extends State<ProviderHomeScreen> {
       child: Row(
         mainAxisAlignment: MainAxisAlignment.spaceBetween,
         children: [
-          _statItem('RM 1,240', 'Earnings', Icons.insights, Colors.blue),
-          _statItem('24', 'Bookings', Icons.calendar_today, const Color(0xFF4F46E5)),
-          _statItem('4.9', 'Rating', Icons.star, Colors.amber),
+          _statItem(
+              'RM ${totalEarnings >= 1000 ? "${(totalEarnings / 1000).toStringAsFixed(1)}k" : totalEarnings.toStringAsFixed(0)}',
+              'Earnings',
+              Icons.insights,
+              Colors.blue),
+          _statItem(totalBookings.toString(), 'Bookings', Icons.calendar_today,
+              const Color(0xFF4F46E5)),
+          _statItem(averageRating == 0 ? '0.0' : averageRating.toStringAsFixed(1),
+              'Rating', Icons.star, Colors.amber),
         ],
       ),
     );
@@ -176,7 +274,7 @@ class _ProviderHomeScreenState extends State<ProviderHomeScreen> {
           Text(
             value,
             style: GoogleFonts.outfit(
-              fontWeight: FontWeight.bold,
+              fontWeight: FontWeight.w600,
               fontSize: 16,
               color: const Color(0xFF1E293B),
             ),
@@ -222,7 +320,7 @@ class _ProviderHomeScreenState extends State<ProviderHomeScreen> {
                   Text(
                     isOnline ? 'You are Online' : 'You are Offline',
                     style: GoogleFonts.outfit(
-                      fontWeight: FontWeight.bold,
+                      fontWeight: FontWeight.w600,
                       fontSize: 16,
                       color: isOnline ? Colors.teal.shade900 : Colors.red.shade900,
                     ),
@@ -248,73 +346,7 @@ class _ProviderHomeScreenState extends State<ProviderHomeScreen> {
     );
   }
 
-  Widget _buildUpcomingBookings() {
-    return SizedBox(
-      height: 140,
-      child: ListView.builder(
-        scrollDirection: Axis.horizontal,
-        padding: const EdgeInsets.symmetric(horizontal: 24),
-        itemCount: 3,
-        itemBuilder: (context, index) {
-          return Container(
-            width: 280,
-            margin: const EdgeInsets.only(right: 16),
-            padding: const EdgeInsets.all(16),
-            decoration: BoxDecoration(
-              color: Colors.white,
-              borderRadius: BorderRadius.circular(8),
-              border: Border.all(color: Colors.grey.shade100, width: 1.5),
-            ),
-            child: Row(
-              children: [
-                ClipRRect(
-                  borderRadius: BorderRadius.circular(12),
-                  child: Image.network(
-                    'https://i.pravatar.cc/150?u=Hanim',
-                    width: 60,
-                    height: 60,
-                    fit: BoxFit.cover,
-                  ),
-                ),
-                const SizedBox(width: 16),
-                Expanded(
-                  child: Column(
-                    mainAxisAlignment: MainAxisAlignment.center,
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Text(
-                        'Hanim',
-                        style: GoogleFonts.outfit(fontWeight: FontWeight.bold, fontSize: 16),
-                      ),
-                      Text(
-                        'Office Cleaning',
-                        style: GoogleFonts.outfit(color: Colors.grey, fontSize: 13),
-                      ),
-                      const SizedBox(height: 8),
-                      Row(
-                        children: [
-                          const Icon(Icons.access_time, size: 14, color: Color(0xFF4F46E5)),
-                          const SizedBox(width: 4),
-                          Text(
-                            '10:00 AM Today',
-                            style: GoogleFonts.outfit(
-                              color: const Color(0xFF4F46E5),
-                              fontWeight: FontWeight.w600,
-                              fontSize: 12,
-                            ),
-                          ),
-                        ],
-                      ),
-                    ],
-                  ),
-                ),
-              ],
-            ),
-          );
-        },
-      ),
-    );
-  }
+
 
   Widget _buildQuickActions() {
     return Padding(
@@ -327,7 +359,7 @@ class _ProviderHomeScreenState extends State<ProviderHomeScreen> {
           Row(
             children: [
               _actionCard('Add Service', Icons.add_circle_outline, Colors.indigo, () {
-                 Navigator.push(context, MaterialPageRoute(builder: (context) => const AddServiceScreen()));
+                 ServiceSelector.show(context);
               }),
               const SizedBox(width: 12),
               _actionCard('My Reviews', Icons.star_outline, Colors.amber, () {
@@ -392,7 +424,7 @@ class _ProviderHomeScreenState extends State<ProviderHomeScreen> {
             title,
             style: GoogleFonts.outfit(
               fontSize: 18,
-              fontWeight: FontWeight.bold,
+              fontWeight: FontWeight.w600,
               color: const Color(0xFF1E293B),
             ),
           ),
@@ -403,7 +435,7 @@ class _ProviderHomeScreenState extends State<ProviderHomeScreen> {
                 action,
                 style: GoogleFonts.outfit(
                   color: const Color(0xFF4F46E5),
-                  fontWeight: FontWeight.bold,
+                  fontWeight: FontWeight.w600,
                   fontSize: 13,
                 ),
               ),
@@ -411,5 +443,193 @@ class _ProviderHomeScreenState extends State<ProviderHomeScreen> {
         ],
       ),
     );
+  }
+
+  Widget _buildNewRequestsSection() {
+    return StreamBuilder<QuerySnapshot>(
+      stream: FirebaseFirestore.instance
+          .collection('bookings')
+          .where('providerId', isEqualTo: user?.uid)
+          .where('status', isEqualTo: 'Pending')
+          .snapshots(),
+      builder: (context, snapshot) {
+        if (!snapshot.hasData || snapshot.data!.docs.isEmpty) {
+          return const SizedBox.shrink();
+        }
+
+        return Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            _buildSectionHeader('New Service Requests', '${snapshot.data!.docs.length}', () {}),
+            const SizedBox(height: 16),
+            SizedBox(
+              height: 205,
+              child: ListView.builder(
+                scrollDirection: Axis.horizontal,
+                padding: const EdgeInsets.symmetric(horizontal: 24),
+                itemCount: snapshot.data!.docs.length,
+                itemBuilder: (context, index) {
+                  final doc = snapshot.data!.docs[index];
+                  final data = doc.data() as Map<String, dynamic>;
+                  final String customerId = data['customerId'] ?? '';
+
+                  return FutureBuilder<DocumentSnapshot>(
+                    future: FirebaseFirestore.instance.collection('users').doc(customerId).get(),
+                    builder: (context, userSnapshot) {
+                      String customerName = 'Customer';
+                      String? profileUrl;
+                      if (userSnapshot.hasData && userSnapshot.data!.exists) {
+                        final userData = userSnapshot.data!.data() as Map<String, dynamic>;
+                        customerName = userData['name'] ?? 'Customer';
+                        profileUrl = userData['profileUrl'];
+                      }
+
+                      return Container(
+                        width: 280,
+                        margin: const EdgeInsets.only(right: 16),
+                        padding: const EdgeInsets.all(16),
+                        decoration: BoxDecoration(
+                          color: Colors.white,
+                          borderRadius: BorderRadius.circular(24),
+                          border: Border.all(color: Colors.grey.shade100, width: 1.5),
+                          boxShadow: [
+                            BoxShadow(
+                              color: Colors.black.withValues(alpha: 0.05),
+                              blurRadius: 15,
+                              offset: const Offset(0, 8),
+                            ),
+                          ],
+                        ),
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Row(
+                              children: [
+                                CircleAvatar(
+                                  radius: 20,
+                                  backgroundColor: Colors.grey[100],
+                                  backgroundImage: profileUrl != null ? NetworkImage(profileUrl) : null,
+                                  child: profileUrl == null ? const Icon(Icons.person, color: Colors.grey, size: 20) : null,
+                                ),
+                                const SizedBox(width: 12),
+                                Expanded(
+                                  child: SizedBox(
+                                    height: 48, // Fixed height for text section to align all cards
+                                    child: Column(
+                                      crossAxisAlignment: CrossAxisAlignment.start,
+                                      mainAxisAlignment: MainAxisAlignment.center,
+                                      children: [
+                                        Text(
+                                          customerName,
+                                          style: GoogleFonts.outfit(color: const Color(0xFF1E293B), fontWeight: FontWeight.w600, fontSize: 16),
+                                          maxLines: 1,
+                                          overflow: TextOverflow.ellipsis,
+                                        ),
+                                        Text(
+                                          data['serviceName'] ?? 'Service',
+                                          style: GoogleFonts.outfit(color: Colors.grey, fontSize: 13),
+                                          maxLines: 1,
+                                          overflow: TextOverflow.ellipsis,
+                                        ),
+                                      ],
+                                    ),
+                                  ),
+                                ),
+                                const SizedBox(width: 8),
+                                ClipRRect(
+                                  borderRadius: BorderRadius.circular(12),
+                                  child: data['serviceImage'] != null
+                                      ? Image.network(
+                                          data['serviceImage'],
+                                          width: 45,
+                                          height: 45,
+                                          fit: BoxFit.cover,
+                                        )
+                                      : Container(
+                                          width: 45,
+                                          height: 45,
+                                          color: Colors.grey[100],
+                                          child: const Icon(Icons.cleaning_services, size: 20, color: Colors.grey),
+                                        ),
+                                ),
+                              ],
+                            ),
+                            const Spacer(),
+                            Container(
+                              padding: const EdgeInsets.symmetric(horizontal: 2),
+                              child: Row(
+                                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                                children: [
+                                  Row(
+                                    children: [
+                                      Icon(Icons.calendar_today_outlined, size: 14, color: Colors.grey),
+                                      const SizedBox(width: 6),
+                                      Text(
+                                        data['date'] ?? 'No date',
+                                        style: GoogleFonts.outfit(color: Colors.black54, fontSize: 12, fontWeight: FontWeight.w500),
+                                      ),
+                                    ],
+                                  ),
+                                  Row(
+                                    children: [
+                                      Icon(Icons.access_time_outlined, size: 14, color: Colors.grey),
+                                      const SizedBox(width: 6),
+                                      Text(
+                                        data['time'] ?? 'No time',
+                                        style: GoogleFonts.outfit(color: Colors.black54, fontSize: 12, fontWeight: FontWeight.w500),
+                                      ),
+                                    ],
+                                  ),
+                                ],
+                              ),
+                            ),
+                            const SizedBox(height: 14),
+                            Row(
+                              children: [
+                                Expanded(
+                                  child: ElevatedButton(
+                                    onPressed: () {},
+                                    style: ElevatedButton.styleFrom(
+                                      backgroundColor: const Color(0xFFF1F5F9),
+                                      foregroundColor: const Color(0xFF1E293B),
+                                      elevation: 0,
+                                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                                    ),
+                                    child: const Text('Details'),
+                                  ),
+                                ),
+                                const SizedBox(width: 10),
+                                Expanded(
+                                  child: ElevatedButton(
+                                    onPressed: () => _updateBookingStatus(doc.id, 'Confirmed'),
+                                    style: ElevatedButton.styleFrom(
+                                      backgroundColor: const Color(0xFF4F46E5),
+                                      foregroundColor: Colors.white,
+                                      elevation: 0,
+                                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                                    ),
+                                    child: const Text('Accept'),
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ],
+                        ),
+                      );
+                    },
+                  );
+                },
+              ),
+            ),
+          ],
+        );
+      },
+    );
+  }
+
+  void _updateBookingStatus(String bookingId, String status) {
+    FirebaseFirestore.instance.collection('bookings').doc(bookingId).update({
+      'status': status,
+    });
   }
 }

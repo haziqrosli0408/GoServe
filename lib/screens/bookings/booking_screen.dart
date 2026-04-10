@@ -11,6 +11,7 @@ class BookingPage extends StatefulWidget {
   final String serviceImage;
   final String category;
   final String price;
+  final String? providerId;
   final List<dynamic>? addOns;
 
   const BookingPage({
@@ -20,6 +21,7 @@ class BookingPage extends StatefulWidget {
     required this.serviceImage,
     required this.category,
     required this.price,
+    this.providerId,
     this.addOns,
   });
 
@@ -51,12 +53,7 @@ class _BookingPageState extends State<BookingPage> {
   double get platformFeeValue => currentSubtotal * platformRate;
   
   List<Map<String, dynamic>> get addOns {
-    if (widget.addOns == null || widget.addOns!.isEmpty) {
-      return [
-        {'name': 'Professional Cleaning Pack', 'description': 'Industrial grade eco-friendly supplies.', 'price': 25.0},
-        {'name': 'Priority Scheduling', 'description': 'Move to the front of the queue.', 'price': 15.0},
-      ];
-    }
+    if (widget.addOns == null) return [];
     return widget.addOns!.map((e) => Map<String, dynamic>.from(e)).toList();
   }
 
@@ -174,7 +171,7 @@ class _BookingPageState extends State<BookingPage> {
             title,
             style: GoogleFonts.outfit(
               fontSize: 26,
-              fontWeight: FontWeight.bold,
+              fontWeight: FontWeight.w600,
               color: const Color(0xFF1E293B),
             ),
           ),
@@ -223,7 +220,7 @@ class _BookingPageState extends State<BookingPage> {
           children: [
             Text(
               'Select Date',
-              style: GoogleFonts.outfit(fontSize: 18, fontWeight: FontWeight.bold, color: const Color(0xFF1E293B)),
+              style: GoogleFonts.outfit(fontSize: 18, fontWeight: FontWeight.w600, color: const Color(0xFF1E293B)),
             ),
             Text(
               DateFormat('MMMM yyyy').format(selectedDate),
@@ -241,7 +238,7 @@ class _BookingPageState extends State<BookingPage> {
         Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            Text('Available Times', style: GoogleFonts.outfit(fontSize: 18, fontWeight: FontWeight.bold, color: const Color(0xFF1E293B))),
+            Text('Available Times', style: GoogleFonts.outfit(fontSize: 18, fontWeight: FontWeight.w600, color: const Color(0xFF1E293B))),
             const SizedBox(height: 4),
             Text('Select one slot', style: GoogleFonts.outfit(fontSize: 14, color: const Color(0xFF64748B))),
           ],
@@ -266,7 +263,7 @@ class _BookingPageState extends State<BookingPage> {
 
     List<Widget> gridItems = [];
     for (var day in ['MON', 'TUE', 'WED', 'THU', 'FRI', 'SAT', 'SUN']) {
-      gridItems.add(Center(child: Text(day.substring(0, 3), style: GoogleFonts.outfit(fontSize: 10, fontWeight: FontWeight.bold, color: Colors.grey.shade400))));
+      gridItems.add(Center(child: Text(day.substring(0, 3), style: GoogleFonts.outfit(fontSize: 10, fontWeight: FontWeight.w600, color: Colors.grey.shade400))));
     }
     for (int i = 0; i < blankDays; i++) {
       gridItems.add(const SizedBox());
@@ -281,7 +278,7 @@ class _BookingPageState extends State<BookingPage> {
         child: Container(
           margin: const EdgeInsets.all(2),
           decoration: BoxDecoration(color: isSelected ? primaryGreen : (isToday ? primaryGreen.withValues(alpha: 0.1) : Colors.transparent), borderRadius: BorderRadius.circular(6)),
-          child: Center(child: Text('$d', style: GoogleFonts.outfit(fontSize: 14, fontWeight: isSelected || isToday ? FontWeight.bold : FontWeight.w500, color: isSelected ? Colors.white : (isPast ? Colors.grey.shade200 : (isToday ? primaryGreen : Colors.black87))))),
+          child: Center(child: Text('$d', style: GoogleFonts.outfit(fontSize: 14, fontWeight: isSelected || isToday ? FontWeight.w600 : FontWeight.w500, color: isSelected ? Colors.white : (isPast ? Colors.grey.shade200 : (isToday ? primaryGreen : Colors.black87))))),
         ),
       ));
     }
@@ -290,7 +287,7 @@ class _BookingPageState extends State<BookingPage> {
 
   Widget _timeSection(String title, IconData icon, List<String> slots) {
     return Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-        Row(children: [Icon(icon, size: 16, color: primaryGreen), const SizedBox(width: 8), Text(title, style: GoogleFonts.outfit(fontSize: 10, fontWeight: FontWeight.bold, color: Colors.grey.shade600, letterSpacing: 0.5))]),
+        Row(children: [Icon(icon, size: 16, color: primaryGreen), const SizedBox(width: 8), Text(title, style: GoogleFonts.outfit(fontSize: 10, fontWeight: FontWeight.w600, color: Colors.grey.shade600, letterSpacing: 0.5))]),
         const SizedBox(height: 10),
         Row(mainAxisAlignment: MainAxisAlignment.spaceBetween, children: slots.map((s) => _timeSlot(s)).toList()),
     ]);
@@ -303,14 +300,42 @@ class _BookingPageState extends State<BookingPage> {
       child: Container(
         width: 100, height: 50,
         decoration: BoxDecoration(color: isSelected ? primaryGreen : Colors.white, borderRadius: BorderRadius.circular(8), boxShadow: [if (!isSelected) BoxShadow(color: Colors.black.withValues(alpha: 0.01), blurRadius: 4, offset: const Offset(0, 2))]),
-        child: Center(child: Text(time, style: GoogleFonts.outfit(fontSize: 14, fontWeight: FontWeight.bold, color: isSelected ? Colors.white : Colors.black87))),
+        child: Center(child: Text(time, style: GoogleFonts.outfit(fontSize: 14, fontWeight: FontWeight.w600, color: isSelected ? Colors.white : Colors.black87))),
       ),
     );
   }
 
   Widget _buildCustomiseStep() {
+    if (addOns.isEmpty) {
+      return Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text('Add-ons', style: GoogleFonts.outfit(fontSize: 18, fontWeight: FontWeight.w600, color: const Color(0xFF1E293B))),
+          const SizedBox(height: 60),
+          Center(
+            child: Column(
+              children: [
+                Icon(Icons.extension_off_outlined, size: 48, color: Colors.grey.shade300),
+                const SizedBox(height: 16),
+                Text(
+                  'No add-ons available for this service',
+                  style: GoogleFonts.outfit(color: Colors.grey.shade400, fontSize: 14),
+                ),
+                const SizedBox(height: 8),
+                Text(
+                  'Click continue to set your location',
+                  style: GoogleFonts.outfit(color: Colors.grey.shade500, fontSize: 12, fontWeight: FontWeight.w500),
+                ),
+              ],
+            ),
+          ),
+          const SizedBox(height: 40),
+        ],
+      );
+    }
+
     return Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-        Text('Add-ons', style: GoogleFonts.outfit(fontSize: 18, fontWeight: FontWeight.bold, color: const Color(0xFF1E293B))),
+        Text('Add-ons', style: GoogleFonts.outfit(fontSize: 18, fontWeight: FontWeight.w600, color: const Color(0xFF1E293B))),
         const SizedBox(height: 24),
         ...List.generate(addOns.length, (index) {
           final item = addOns[index];
@@ -318,17 +343,17 @@ class _BookingPageState extends State<BookingPage> {
           return GestureDetector(
             onTap: () => setState(() => isSelected ? selectedAddOnIndices.remove(index) : selectedAddOnIndices.add(index)),
             child: Container(
-              height: 140,
+              height: 120,
               margin: const EdgeInsets.only(bottom: 16),
-              padding: const EdgeInsets.all(20),
+              padding: const EdgeInsets.all(16),
               decoration: BoxDecoration(color: Colors.white, borderRadius: BorderRadius.circular(16), border: Border.all(color: isSelected ? primaryGreen : Colors.grey.shade100, width: 2), boxShadow: [BoxShadow(color: Colors.black.withValues(alpha: 0.02), blurRadius: 10, offset: const Offset(0, 4))]),
               child: Row(children: [
-                  Expanded(child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-                        Text(item['name'], style: GoogleFonts.outfit(fontSize: 16, fontWeight: FontWeight.bold, color: const Color(0xFF1E293B))),
-                        const SizedBox(height: 4),
-                        Text(item['description'], maxLines: 2, overflow: TextOverflow.ellipsis, style: GoogleFonts.outfit(fontSize: 12, color: const Color(0xFF64748B))),
-                        const SizedBox(height: 12),
-                        Text('+ RM${(item['price'] is String ? double.tryParse(item['price']) : (item['price'] as num).toDouble())?.toStringAsFixed(0) ?? '0'}', style: GoogleFonts.outfit(fontSize: 14, fontWeight: FontWeight.bold, color: primaryGreen)),
+                  Expanded(child: Column(crossAxisAlignment: CrossAxisAlignment.start, mainAxisAlignment: MainAxisAlignment.center, children: [
+                        Text(item['name'], style: GoogleFonts.outfit(fontSize: 16, fontWeight: FontWeight.w600, color: const Color(0xFF1E293B))),
+                        const SizedBox(height: 2),
+                        Text(item['description'], maxLines: 2, overflow: TextOverflow.ellipsis, style: GoogleFonts.outfit(fontSize: 12, color: const Color(0xFF64748B), height: 1.2)),
+                        const SizedBox(height: 8),
+                        Text('+ RM${(item['price'] is String ? double.tryParse(item['price']) : (item['price'] as num).toDouble())?.toStringAsFixed(0) ?? '0'}', style: GoogleFonts.outfit(fontSize: 14, fontWeight: FontWeight.w600, color: primaryGreen)),
                   ])),
                   const SizedBox(width: 16),
                   Container(width: 24, height: 24, decoration: BoxDecoration(color: isSelected ? primaryGreen : Colors.white, borderRadius: BorderRadius.circular(6), border: Border.all(color: isSelected ? primaryGreen : Colors.grey.shade300)), child: isSelected ? const Icon(Icons.check, size: 16, color: Colors.white) : null),
@@ -394,7 +419,7 @@ class _BookingPageState extends State<BookingPage> {
       children: [
         Text(
           'Enter Your Address',
-          style: GoogleFonts.outfit(fontSize: 18, fontWeight: FontWeight.bold, color: const Color(0xFF1E293B)),
+          style: GoogleFonts.outfit(fontSize: 18, fontWeight: FontWeight.w600, color: const Color(0xFF1E293B)),
         ),
         const SizedBox(height: 16),
         
@@ -429,7 +454,7 @@ class _BookingPageState extends State<BookingPage> {
         const SizedBox(height: 32),
         Text(
           'UNIT / HOUSE NO.',
-          style: GoogleFonts.outfit(fontSize: 10, fontWeight: FontWeight.bold, color: const Color(0xFF64748B), letterSpacing: 0.5),
+          style: GoogleFonts.outfit(fontSize: 10, fontWeight: FontWeight.w600, color: const Color(0xFF64748B), letterSpacing: 0.5),
         ),
         const SizedBox(height: 8),
         TextField(
@@ -451,7 +476,7 @@ class _BookingPageState extends State<BookingPage> {
         // Street Name
         Text(
           'STREET NAME',
-          style: GoogleFonts.outfit(fontSize: 10, fontWeight: FontWeight.bold, color: const Color(0xFF64748B), letterSpacing: 0.5),
+          style: GoogleFonts.outfit(fontSize: 10, fontWeight: FontWeight.w600, color: const Color(0xFF64748B), letterSpacing: 0.5),
         ),
         const SizedBox(height: 8),
         TextField(
@@ -480,7 +505,7 @@ class _BookingPageState extends State<BookingPage> {
                 children: [
                   Text(
                     'POSTCODE',
-                    style: GoogleFonts.outfit(fontSize: 10, fontWeight: FontWeight.bold, color: const Color(0xFF64748B), letterSpacing: 0.5),
+                    style: GoogleFonts.outfit(fontSize: 10, fontWeight: FontWeight.w600, color: const Color(0xFF64748B), letterSpacing: 0.5),
                   ),
                   const SizedBox(height: 8),
                   TextField(
@@ -509,7 +534,7 @@ class _BookingPageState extends State<BookingPage> {
                 children: [
                   Text(
                     'CITY',
-                    style: GoogleFonts.outfit(fontSize: 10, fontWeight: FontWeight.bold, color: const Color(0xFF64748B), letterSpacing: 0.5),
+                    style: GoogleFonts.outfit(fontSize: 10, fontWeight: FontWeight.w600, color: const Color(0xFF64748B), letterSpacing: 0.5),
                   ),
                   const SizedBox(height: 8),
                   TextField(
@@ -534,7 +559,7 @@ class _BookingPageState extends State<BookingPage> {
         const SizedBox(height: 24),
         Text(
           'ENTRY INSTRUCTIONS',
-          style: GoogleFonts.outfit(fontSize: 10, fontWeight: FontWeight.bold, color: const Color(0xFF64748B), letterSpacing: 0.5),
+          style: GoogleFonts.outfit(fontSize: 10, fontWeight: FontWeight.w600, color: const Color(0xFF64748B), letterSpacing: 0.5),
         ),
         const SizedBox(height: 8),
         TextField(
@@ -567,9 +592,9 @@ class _BookingPageState extends State<BookingPage> {
           if (!isLastStep) ...[
             Expanded(
               child: Column(crossAxisAlignment: CrossAxisAlignment.start, mainAxisSize: MainAxisSize.min, children: [
-                  Text(step == 2 ? 'SUBTOTAL' : 'SELECTED DATE', style: GoogleFonts.outfit(fontSize: 10, fontWeight: FontWeight.bold, color: const Color(0xFF64748B))),
+                  Text(step == 2 ? 'SUBTOTAL' : 'SELECTED DATE', style: GoogleFonts.outfit(fontSize: 10, fontWeight: FontWeight.w600, color: const Color(0xFF64748B))),
                   const SizedBox(height: 4),
-                  Text(step == 2 ? 'RM${currentSubtotal.toStringAsFixed(0)}' : '${DateFormat('MMM dd').format(selectedDate)}, ${selectedTime ?? 'Not selected'}', style: GoogleFonts.outfit(fontSize: 16, fontWeight: FontWeight.bold, color: primaryGreen)),
+                  Text(step == 2 ? 'RM${currentSubtotal.toStringAsFixed(0)}' : '${DateFormat('MMM dd').format(selectedDate)}, ${selectedTime ?? 'Not selected'}', style: GoogleFonts.outfit(fontSize: 16, fontWeight: FontWeight.w600, color: primaryGreen)),
               ]),
             ),
             const SizedBox(width: 16),
@@ -600,7 +625,7 @@ class _BookingPageState extends State<BookingPage> {
           shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)), 
           elevation: 0,
         ),
-        child: Text(step == 3 ? 'Confirm' : 'Continue', style: GoogleFonts.outfit(fontSize: 16, fontWeight: FontWeight.bold)),
+        child: Text(step == 3 ? 'Confirm' : 'Continue', style: GoogleFonts.outfit(fontSize: 16, fontWeight: FontWeight.w600)),
       ),
     );
   }
@@ -644,7 +669,7 @@ class _BookingPageState extends State<BookingPage> {
             children: [
               Center(child: Container(width: 40, height: 4, decoration: BoxDecoration(color: Colors.grey.shade200, borderRadius: BorderRadius.circular(2)))),
               const SizedBox(height: 24),
-              Text('Summary', style: GoogleFonts.outfit(fontSize: 24, fontWeight: FontWeight.bold, color: const Color(0xFF1E293B))),
+              Text('Summary', style: GoogleFonts.outfit(fontSize: 24, fontWeight: FontWeight.w600, color: const Color(0xFF1E293B))),
               const SizedBox(height: 32),
               
               _summaryRow('Address', 'Unit $unitNo, $streetName, $postcode $city'),
@@ -685,7 +710,7 @@ class _BookingPageState extends State<BookingPage> {
                 const SizedBox(height: 16),
               ],
               
-              _summaryRow('Service Fee (15%)', 'RM ${platformFee.toStringAsFixed(2)}'),
+              _summaryRow('Charge Fee (15%)', 'RM ${platformFee.toStringAsFixed(2)}'),
               
               const SizedBox(height: 32),
               const Divider(height: 1),
@@ -697,15 +722,15 @@ class _BookingPageState extends State<BookingPage> {
                   Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      Text('TOTAL AMOUNT', style: GoogleFonts.outfit(fontSize: 10, fontWeight: FontWeight.bold, color: primaryGreen, letterSpacing: 1.0)),
+                      Text('TOTAL AMOUNT', style: GoogleFonts.outfit(fontSize: 10, fontWeight: FontWeight.w600, color: primaryGreen, letterSpacing: 1.0)),
                       const SizedBox(height: 4),
-                      Text('RM ${finalTotal.toStringAsFixed(2)}', style: GoogleFonts.outfit(fontSize: 32, fontWeight: FontWeight.bold, color: const Color(0xFF1E293B))),
+                      Text('RM ${finalTotal.toStringAsFixed(2)}', style: GoogleFonts.outfit(fontSize: 32, fontWeight: FontWeight.w600, color: const Color(0xFF1E293B))),
                     ],
                   ),
                   Container(
                     padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
                     decoration: BoxDecoration(color: const Color(0xFFF0FDF4), borderRadius: BorderRadius.circular(8)),
-                    child: Text('SECURE PAY', style: GoogleFonts.outfit(fontSize: 10, fontWeight: FontWeight.bold, color: primaryGreen)),
+                    child: Text('SECURE PAY', style: GoogleFonts.outfit(fontSize: 10, fontWeight: FontWeight.w600, color: primaryGreen)),
                   ),
                 ],
               ),
@@ -735,6 +760,7 @@ class _BookingPageState extends State<BookingPage> {
                       MaterialPageRoute(
                         builder: (context) => PaymentPage(
                           providerName: widget.providerName,
+                          providerId: widget.providerId ?? '',
                           serviceName: widget.serviceName,
                           serviceImage: widget.serviceImage,
                           category: widget.category,
@@ -757,7 +783,7 @@ class _BookingPageState extends State<BookingPage> {
                   child: Row(
                     mainAxisAlignment: MainAxisAlignment.center,
                     children: [
-                      Text('Continue to Payment', style: GoogleFonts.outfit(fontSize: 16, fontWeight: FontWeight.bold)),
+                      Text('Continue to Payment', style: GoogleFonts.outfit(fontSize: 16, fontWeight: FontWeight.w600)),
                       const SizedBox(width: 12),
                       const Icon(Icons.arrow_forward_rounded, size: 20, color: Colors.white),
                     ],

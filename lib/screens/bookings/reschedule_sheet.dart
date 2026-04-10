@@ -65,7 +65,7 @@ class _RescheduleSheetState extends State<RescheduleSheet> {
             'Reschedule Booking',
             style: GoogleFonts.outfit(
               fontSize: 20,
-              fontWeight: FontWeight.bold,
+              fontWeight: FontWeight.w600,
               color: const Color(0xFF1E293B),
             ),
           ),
@@ -84,7 +84,7 @@ class _RescheduleSheetState extends State<RescheduleSheet> {
             children: [
               Text(
                 'Select Date',
-                style: GoogleFonts.outfit(fontSize: 16, fontWeight: FontWeight.bold),
+                style: GoogleFonts.outfit(fontSize: 16, fontWeight: FontWeight.w600),
               ),
               Text(
                 DateFormat('MMMM yyyy').format(selectedDate),
@@ -100,7 +100,7 @@ class _RescheduleSheetState extends State<RescheduleSheet> {
           // Time Selection
           Text(
             'Available Times',
-            style: GoogleFonts.outfit(fontSize: 16, fontWeight: FontWeight.bold),
+            style: GoogleFonts.outfit(fontSize: 16, fontWeight: FontWeight.w600),
           ),
           const SizedBox(height: 12),
           SizedBox(
@@ -135,7 +135,7 @@ class _RescheduleSheetState extends State<RescheduleSheet> {
               ),
               child: Text(
                 'Confirm Reschedule',
-                style: GoogleFonts.outfit(fontSize: 16, fontWeight: FontWeight.bold),
+                style: GoogleFonts.outfit(fontSize: 16, fontWeight: FontWeight.w600),
               ),
             ),
           ),
@@ -153,7 +153,7 @@ class _RescheduleSheetState extends State<RescheduleSheet> {
 
     List<Widget> gridItems = [];
     for (var day in ['M', 'T', 'W', 'T', 'F', 'S', 'S']) {
-      gridItems.add(Center(child: Text(day, style: GoogleFonts.outfit(fontSize: 10, fontWeight: FontWeight.bold, color: Colors.grey.shade400))));
+      gridItems.add(Center(child: Text(day, style: GoogleFonts.outfit(fontSize: 10, fontWeight: FontWeight.w600, color: Colors.grey.shade400))));
     }
     for (int i = 0; i < blankDays; i++) {
       gridItems.add(const SizedBox());
@@ -177,7 +177,7 @@ class _RescheduleSheetState extends State<RescheduleSheet> {
               '$d',
               style: GoogleFonts.outfit(
                 fontSize: 13,
-                fontWeight: isSelected ? FontWeight.bold : FontWeight.w500,
+                fontWeight: isSelected ? FontWeight.w600 : FontWeight.w500,
                 color: isSelected ? Colors.white : (isPast ? Colors.grey.shade300 : Colors.black87),
               ),
             ),
@@ -212,7 +212,7 @@ class _RescheduleSheetState extends State<RescheduleSheet> {
             time,
             style: GoogleFonts.outfit(
               fontSize: 12,
-              fontWeight: isSelected ? FontWeight.bold : FontWeight.w500,
+              fontWeight: isSelected ? FontWeight.w600 : FontWeight.w500,
               color: isSelected ? Colors.white : Colors.grey.shade600,
             ),
           ),

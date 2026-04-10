@@ -43,7 +43,7 @@ class _HowItWorksScreenState extends State<HowItWorksScreen> {
                   'How GoServe Works',
                   style: TextStyle(
                     fontSize: 28,
-                    fontWeight: FontWeight.bold,
+                    fontWeight: FontWeight.w600,
                   ),
                 ),
                 const SizedBox(height: 6),
@@ -83,7 +83,7 @@ class _HowItWorksScreenState extends State<HowItWorksScreen> {
                       'Get Started',
                       style: TextStyle(
                         fontSize: 16,
-                        fontWeight: FontWeight.bold,
+                        fontWeight: FontWeight.w600,
                         color: Colors.white,
                       ),
                     ),
@@ -146,7 +146,7 @@ class _HowItWorksScreenState extends State<HowItWorksScreen> {
             child: Text(
               label,
               style: TextStyle(
-                fontWeight: FontWeight.bold,
+                fontWeight: FontWeight.w600,
                 color: selected ? Colors.white : Colors.black54,
               ),
             ),
@@ -253,7 +253,7 @@ class _HowItWorksScreenState extends State<HowItWorksScreen> {
             child: Text(
               number,
               style: TextStyle(
-                fontWeight: FontWeight.bold,
+                fontWeight: FontWeight.w600,
                 color: accent,
                 fontSize: 18,
               ),
@@ -267,7 +267,7 @@ class _HowItWorksScreenState extends State<HowItWorksScreen> {
                 Text(
                   title,
                   style: const TextStyle(
-                    fontWeight: FontWeight.bold,
+                    fontWeight: FontWeight.w600,
                     fontSize: 16,
                   ),
                 ),

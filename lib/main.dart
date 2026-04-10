@@ -15,7 +15,7 @@ import 'screens/auth/intro_screen.dart';
 import 'screens/misc/how_it_works_screen.dart';
 import 'screens/auth/provider_register_screen.dart';
 import 'screens/dashboards/admin_dashboard.dart';
-import 'screens/services/add_service.dart';
+import 'screens/provider/add_service_screen.dart';
 import 'screens/auth/splash_screen.dart';
 
 void main() async {

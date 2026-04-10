@@ -59,7 +59,7 @@ class _IntroScreenState extends State<IntroScreen>
                 'Choose Account Type',
                 style: GoogleFonts.outfit(
                   fontSize: 22,
-                  fontWeight: FontWeight.bold,
+                  fontWeight: FontWeight.w600,
                   color: const Color(0xFF1E293B),
                 ),
               ),
@@ -92,8 +92,8 @@ class _IntroScreenState extends State<IntroScreen>
               // 🛠 SERVICE PROVIDER
               _accountOption(
                 icon: Icons.store_rounded,
-                color: const Color(0xFF64748B),
-                bgColor: const Color(0xFFF1F5F9),
+                color: const Color(0xFF4F46E5),
+                bgColor: const Color(0xFFF0F2FF),
                 title: 'Service Provider',
                 subtitle: 'Offer your services',
                 onTap: () {
@@ -176,7 +176,7 @@ class _IntroScreenState extends State<IntroScreen>
                   Text(
                     title,
                     style: GoogleFonts.outfit(
-                      fontWeight: FontWeight.bold,
+                      fontWeight: FontWeight.w600,
                       fontSize: 16,
                       color: const Color(0xFF1E293B),
                     ),
@@ -277,7 +277,7 @@ class _IntroScreenState extends State<IntroScreen>
                           elevation: 0,
                           padding: const EdgeInsets.symmetric(vertical: 18),
                           shape: RoundedRectangleBorder(
-                            borderRadius: BorderRadius.circular(8),
+                            borderRadius: BorderRadius.circular(12),
                           ),
                         ),
                         onPressed: () {
@@ -302,7 +302,7 @@ class _IntroScreenState extends State<IntroScreen>
                           elevation: 0,
                           padding: const EdgeInsets.symmetric(vertical: 18),
                           shape: RoundedRectangleBorder(
-                            borderRadius: BorderRadius.circular(8),
+                            borderRadius: BorderRadius.circular(12),
                           ),
                         ),
                         onPressed: () {

@@ -13,7 +13,7 @@ class AppTheme {
         backgroundColor: const Color(0xFFFF6B00),
         foregroundColor: Colors.white,
         shape: RoundedRectangleBorder(
-          borderRadius: BorderRadius.circular(8),
+          borderRadius: BorderRadius.circular(12),
         ),
       ),
     ),
@@ -33,7 +33,7 @@ class AppTheme {
         backgroundColor: const Color(0xFF4F46E5),
         foregroundColor: Colors.white,
         shape: RoundedRectangleBorder(
-          borderRadius: BorderRadius.circular(8),
+          borderRadius: BorderRadius.circular(12),
         ),
       ),
     ),

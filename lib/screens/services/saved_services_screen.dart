@@ -97,7 +97,7 @@ class _SavedServicesScreenState extends State<SavedServicesScreen> {
           'Saved Services',
           style: GoogleFonts.outfit(
             color: const Color(0xFF1B1B1B),
-            fontWeight: FontWeight.bold,
+            fontWeight: FontWeight.w600,
             fontSize: 20,
           ),
         ),
@@ -209,7 +209,7 @@ class _SavedServicesScreenState extends State<SavedServicesScreen> {
                     title,
                     style: GoogleFonts.outfit(
                       fontSize: 15,
-                      fontWeight: FontWeight.bold,
+                      fontWeight: FontWeight.w600,
                       color: const Color(0xFF1F2937),
                     ),
                     maxLines: 2,
@@ -243,7 +243,7 @@ class _SavedServicesScreenState extends State<SavedServicesScreen> {
                         text: 'RM$price/hr',
                         style: GoogleFonts.outfit(
                           fontSize: 14,
-                          fontWeight: FontWeight.bold,
+                          fontWeight: FontWeight.w600,
                           color: const Color(0xFFFF6B00),
                         ),
                       ),
@@ -277,7 +277,7 @@ class _SavedServicesScreenState extends State<SavedServicesScreen> {
                   backgroundColor: const Color(0xFFF1F5F9),
                   backgroundImage: providerProfileUrl.isNotEmpty ? NetworkImage(providerProfileUrl) : null,
                   child: providerProfileUrl.isEmpty 
-                    ? Text(name.isNotEmpty ? name[0].toUpperCase() : 'P', style: GoogleFonts.outfit(color: const Color(0xFF1F212C), fontSize: 8, fontWeight: FontWeight.bold)) 
+                    ? Text(name.isNotEmpty ? name[0].toUpperCase() : 'P', style: GoogleFonts.outfit(color: const Color(0xFF1F212C), fontSize: 8, fontWeight: FontWeight.w600)) 
                     : null,
                 ),
                 const SizedBox(width: 6),

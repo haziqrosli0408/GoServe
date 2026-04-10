@@ -81,7 +81,7 @@ class _ServiceListScreenState extends State<ServiceListScreen> {
             // 🔥 POPULAR CATEGORIES
             const Text(
               'Popular Categories',
-              style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+              style: TextStyle(fontSize: 18, fontWeight: FontWeight.w600),
             ),
             const SizedBox(height: 12),
             _popularCategoryScroller(),
@@ -139,7 +139,7 @@ class _ServiceListScreenState extends State<ServiceListScreen> {
             children: [
               Text(
                 'Auto Location Detection',
-                style: TextStyle(fontWeight: FontWeight.bold),
+                style: TextStyle(fontWeight: FontWeight.w600),
               ),
               Text(
                 'Find nearby providers instantly',
@@ -307,7 +307,7 @@ class _ServiceListScreenState extends State<ServiceListScreen> {
           const SizedBox(height: 10),
           Text(
             p['name']!,
-            style: const TextStyle(fontWeight: FontWeight.bold),
+            style: const TextStyle(fontWeight: FontWeight.w600),
           ),
           Text(
             p['service']!,
@@ -330,7 +330,7 @@ class _ServiceListScreenState extends State<ServiceListScreen> {
               Text(
                 p['price']!,
                 style: const TextStyle(
-                  fontWeight: FontWeight.bold,
+                  fontWeight: FontWeight.w600,
                   color: Color(0xFFFF6B00),
                 ),
               ),

@@ -40,7 +40,7 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
         automaticallyImplyLeading: false,
         title: const Text(
           'GoServe Admin',
-          style: TextStyle(color: Colors.black, fontWeight: FontWeight.bold),
+          style: TextStyle(color: Colors.black, fontWeight: FontWeight.w600),
         ),
         actions: [
           IconButton(
@@ -114,7 +114,7 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
               children: [
                 const Text(
                   'Reply the FAQ?',
-                  style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16),
+                  style: TextStyle(fontWeight: FontWeight.w600, fontSize: 16),
                 ),
                 Text(
                   '',
@@ -154,7 +154,7 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
         children: [
           const Text(
             'Admin Dashboard',
-            style: TextStyle(fontSize: 24, fontWeight: FontWeight.w900),
+            style: TextStyle(fontSize: 24, fontWeight: FontWeight.w600),
           ),
           const Text(
             'Manage your service marketplace',
@@ -231,7 +231,7 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
                     tabs[index]['id'].toUpperCase(),
                     style: TextStyle(
                       color: isSelected ? Colors.white : Colors.grey,
-                      fontWeight: FontWeight.bold,
+                      fontWeight: FontWeight.w600,
                       fontSize: 11,
                     ),
                   ),
@@ -403,7 +403,7 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
                           Text(
                             'Hajiq Rosli',
                             style: TextStyle(
-                              fontWeight: FontWeight.bold,
+                              fontWeight: FontWeight.w600,
                               fontSize: 16,
                             ),
                           ),
@@ -470,7 +470,7 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
             ),
             title: const Text(
               'Amirul Hakim',
-              style: TextStyle(fontWeight: FontWeight.bold),
+              style: TextStyle(fontWeight: FontWeight.w600),
             ),
             subtitle: const Text('amirul@gmail.com • Customer'),
             trailing: PopupMenuButton(
@@ -502,7 +502,7 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
                 const Row(
                   mainAxisAlignment: MainAxisAlignment.spaceBetween,
                   children: [
-                    Text('Miju', style: TextStyle(fontWeight: FontWeight.bold)),
+                    Text('Miju', style: TextStyle(fontWeight: FontWeight.w600)),
                     Text(
                       '2025-05-09',
                       style: TextStyle(color: Colors.grey, fontSize: 11),
@@ -573,7 +573,7 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
               alignment: Alignment.centerLeft,
               child: Text(
                 'Timeline',
-                style: TextStyle(fontWeight: FontWeight.bold),
+                style: TextStyle(fontWeight: FontWeight.w600),
               ),
             ),
             const SizedBox(height: 16),
@@ -630,7 +630,7 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
             const SizedBox(height: 12),
             const Text(
               'Hajiq Rosli',
-              style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold),
+              style: TextStyle(fontSize: 20, fontWeight: FontWeight.w600),
             ),
             const Text(
               'Hajiq@gmail.com',
@@ -708,7 +708,7 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
           const SizedBox(height: 8),
           Text(
             value,
-            style: const TextStyle(fontSize: 18, fontWeight: FontWeight.w900),
+            style: const TextStyle(fontSize: 18, fontWeight: FontWeight.w600),
           ),
           Text(title, style: const TextStyle(color: Colors.grey, fontSize: 11)),
         ],
@@ -749,7 +749,7 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  Text(s, style: const TextStyle(fontWeight: FontWeight.bold)),
+                  Text(s, style: const TextStyle(fontWeight: FontWeight.w600)),
                   Text(
                     'Provider: $p',
                     style: const TextStyle(color: Colors.grey, fontSize: 12),
@@ -763,7 +763,7 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
                 Text(
                   'RM $price',
                   style: const TextStyle(
-                    fontWeight: FontWeight.bold,
+                    fontWeight: FontWeight.w600,
                     color: Colors.teal,
                   ),
                 ),
@@ -781,7 +781,7 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
                     style: TextStyle(
                       color: c,
                       fontSize: 10,
-                      fontWeight: FontWeight.bold,
+                      fontWeight: FontWeight.w600,
                     ),
                   ),
                 ),
@@ -823,7 +823,7 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
                 children: [
                   Text(
                     name,
-                    style: const TextStyle(fontWeight: FontWeight.bold),
+                    style: const TextStyle(fontWeight: FontWeight.w600),
                   ),
                   Text(
                     'by $provider',
@@ -833,7 +833,7 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
                     'RM $price',
                     style: const TextStyle(
                       color: Colors.teal,
-                      fontWeight: FontWeight.bold,
+                      fontWeight: FontWeight.w600,
                     ),
                   ),
                 ],
@@ -876,7 +876,7 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
   Widget _providerStat(String l, String v) => Column(
         children: [
           Text(l, style: const TextStyle(color: Colors.grey, fontSize: 11)),
-          Text(v, style: const TextStyle(fontWeight: FontWeight.bold)),
+          Text(v, style: const TextStyle(fontWeight: FontWeight.w600)),
         ],
       );
 
@@ -896,7 +896,7 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
           children: [
             Text(
               t,
-              style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+              style: const TextStyle(fontSize: 18, fontWeight: FontWeight.w600),
             ),
             const Text(
               'View All',
@@ -923,7 +923,7 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
                 title,
                 style: const TextStyle(
                   fontSize: 20,
-                  fontWeight: FontWeight.bold,
+                  fontWeight: FontWeight.w600,
                 ),
               ),
               IconButton(
@@ -946,7 +946,7 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
           mainAxisAlignment: MainAxisAlignment.spaceBetween,
           children: [
             Text(l, style: const TextStyle(color: Colors.grey)),
-            Text(v, style: const TextStyle(fontWeight: FontWeight.bold)),
+            Text(v, style: const TextStyle(fontWeight: FontWeight.w600)),
           ],
         ),
       );

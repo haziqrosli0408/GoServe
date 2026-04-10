@@ -61,7 +61,7 @@ class _RateServiceScreenState extends State<RateServiceScreen> {
           'Rate Service',
           style: GoogleFonts.outfit(
             color: Colors.black87,
-            fontWeight: FontWeight.bold,
+            fontWeight: FontWeight.w600,
             fontSize: 18,
           ),
         ),
@@ -77,7 +77,7 @@ class _RateServiceScreenState extends State<RateServiceScreen> {
               'How was your experience?',
               style: GoogleFonts.outfit(
                 fontSize: 22,
-                fontWeight: FontWeight.bold,
+                fontWeight: FontWeight.w600,
                 color: const Color(0xFF1F212C),
               ),
             ),
@@ -150,7 +150,7 @@ class _RateServiceScreenState extends State<RateServiceScreen> {
               'SERVICE COMPLETED',
               style: GoogleFonts.outfit(
                 color: const Color(0xFFFF6B00),
-                fontWeight: FontWeight.bold,
+                fontWeight: FontWeight.w600,
                 fontSize: 10,
               ),
             ),
@@ -158,7 +158,7 @@ class _RateServiceScreenState extends State<RateServiceScreen> {
           const SizedBox(height: 16),
           Text(
             serviceName,
-            style: GoogleFonts.outfit(fontSize: 24, fontWeight: FontWeight.w800, color: const Color(0xFF1F212C)),
+            style: GoogleFonts.outfit(fontSize: 24, fontWeight: FontWeight.w600, color: const Color(0xFF1F212C)),
           ),
           const SizedBox(height: 6),
           RichText(
@@ -168,7 +168,7 @@ class _RateServiceScreenState extends State<RateServiceScreen> {
                 const TextSpan(text: 'Performed by '),
                 TextSpan(
                   text: providerName,
-                  style: const TextStyle(fontWeight: FontWeight.bold, color: Color(0xFF1F212C)),
+                  style: const TextStyle(fontWeight: FontWeight.w600, color: Color(0xFF1F212C)),
                 ),
               ],
             ),
@@ -271,7 +271,7 @@ class _RateServiceScreenState extends State<RateServiceScreen> {
       children: [
         Text(
           'Write a Review (Optional)',
-          style: GoogleFonts.outfit(fontSize: 13, fontWeight: FontWeight.bold, color: Colors.grey.shade600),
+          style: GoogleFonts.outfit(fontSize: 13, fontWeight: FontWeight.w600, color: Colors.grey.shade600),
         ),
         const SizedBox(height: 12),
         Container(
@@ -329,7 +329,7 @@ class _RateServiceScreenState extends State<RateServiceScreen> {
                     'ADD PHOTO',
                     style: GoogleFonts.outfit(
                       fontSize: 10,
-                      fontWeight: FontWeight.w800,
+                      fontWeight: FontWeight.w600,
                       color: Colors.grey.shade600,
                       letterSpacing: 1,
                     ),
@@ -404,7 +404,7 @@ class _RateServiceScreenState extends State<RateServiceScreen> {
         child: Center(
           child: Text(
             'Submit Review',
-            style: GoogleFonts.outfit(color: Colors.white, fontWeight: FontWeight.w800, fontSize: 16),
+            style: GoogleFonts.outfit(color: Colors.white, fontWeight: FontWeight.w600, fontSize: 16),
           ),
         ),
       ),
@@ -434,7 +434,7 @@ class ReviewSuccessScreen extends StatelessWidget {
               const SizedBox(height: 32),
               Text(
                 'Review Submitted!',
-                style: GoogleFonts.outfit(fontSize: 26, fontWeight: FontWeight.w800, color: const Color(0xFF1F212C)),
+                style: GoogleFonts.outfit(fontSize: 26, fontWeight: FontWeight.w600, color: const Color(0xFF1F212C)),
               ),
               const SizedBox(height: 16),
               Text(
@@ -462,7 +462,7 @@ class ReviewSuccessScreen extends StatelessWidget {
                   shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(30)),
                   elevation: 0,
                 ),
-                child: Text('Done', style: GoogleFonts.outfit(fontWeight: FontWeight.bold, fontSize: 16)),
+                child: Text('Done', style: GoogleFonts.outfit(fontWeight: FontWeight.w600, fontSize: 16)),
               ),
             ],
           ),

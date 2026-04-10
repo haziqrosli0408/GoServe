@@ -7,6 +7,7 @@ import 'booking_success_screen.dart';
 
 class PaymentPage extends StatefulWidget {
   final String providerName;
+  final String providerId;
   final String serviceName;
   final String serviceImage;
   final String category;
@@ -20,6 +21,7 @@ class PaymentPage extends StatefulWidget {
   const PaymentPage({
     super.key,
     required this.providerName,
+    required this.providerId,
     required this.serviceName,
     required this.serviceImage,
     required this.category,
@@ -73,7 +75,7 @@ class _PaymentPageState extends State<PaymentPage> {
           icon: const Icon(Icons.arrow_back, color: Color(0xFF1E293B)),
           onPressed: () => Navigator.pop(context),
         ),
-        title: Text('Payment', style: GoogleFonts.outfit(fontSize: 18, fontWeight: FontWeight.bold, color: const Color(0xFF1E293B))),
+        title: Text('Payment', style: GoogleFonts.outfit(fontSize: 18, fontWeight: FontWeight.w600, color: const Color(0xFF1E293B))),
         centerTitle: true,
       ),
       body: SingleChildScrollView(
@@ -81,7 +83,7 @@ class _PaymentPageState extends State<PaymentPage> {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            Text('Payment Method', style: GoogleFonts.outfit(fontSize: 16, fontWeight: FontWeight.bold, color: const Color(0xFF1E293B))),
+            Text('Payment Method', style: GoogleFonts.outfit(fontSize: 16, fontWeight: FontWeight.w600, color: const Color(0xFF1E293B))),
             const SizedBox(height: 16),
             _buildPaymentMethodTile('Credit / Debit Card', 'Visa, Mastercard, AMEX', Icons.credit_card, 'card'),
             _buildPaymentMethodTile('Online Banking (FPX)', 'All Malaysian major banks supported', Icons.account_balance, 'fpx'),
@@ -145,7 +147,7 @@ class _PaymentPageState extends State<PaymentPage> {
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  Text(title, style: GoogleFonts.outfit(fontSize: 14, fontWeight: FontWeight.bold, color: const Color(0xFF1E293B))),
+                  Text(title, style: GoogleFonts.outfit(fontSize: 14, fontWeight: FontWeight.w600, color: const Color(0xFF1E293B))),
                   Text(subtitle, style: GoogleFonts.outfit(fontSize: 11, color: const Color(0xFF64748B))),
                 ],
               ),
@@ -195,7 +197,7 @@ class _PaymentPageState extends State<PaymentPage> {
                             borderRadius: BorderRadius.circular(4),
                             child: Image.network(
                               'https://logo.clearbit.com/${bankDomains[selectedBank]}',
-                              errorBuilder: (context, error, stackTrace) => Center(child: Text(selectedBank![0], style: GoogleFonts.outfit(fontSize: 10, fontWeight: FontWeight.bold, color: primaryGreen))),
+                              errorBuilder: (context, error, stackTrace) => Center(child: Text(selectedBank![0], style: GoogleFonts.outfit(fontSize: 10, fontWeight: FontWeight.w600, color: primaryGreen))),
                             ),
                           ),
                         ),
@@ -241,7 +243,7 @@ class _PaymentPageState extends State<PaymentPage> {
             const SizedBox(height: 12),
             Container(width: 40, height: 4, decoration: BoxDecoration(color: Colors.grey.shade200, borderRadius: BorderRadius.circular(2))),
             const SizedBox(height: 20),
-            Text('Select Bank', style: GoogleFonts.outfit(fontSize: 18, fontWeight: FontWeight.bold, color: const Color(0xFF1E293B))),
+            Text('Select Bank', style: GoogleFonts.outfit(fontSize: 18, fontWeight: FontWeight.w600, color: const Color(0xFF1E293B))),
             const SizedBox(height: 20),
             Expanded(
               child: ListView.separated(
@@ -264,13 +266,13 @@ class _PaymentPageState extends State<PaymentPage> {
                             'https://logo.clearbit.com/${bankDomains[bank]}',
                             fit: BoxFit.contain,
                             errorBuilder: (context, error, stackTrace) => Center(
-                              child: Text(bank[0], style: GoogleFonts.outfit(fontWeight: FontWeight.bold, color: primaryGreen)),
+                              child: Text(bank[0], style: GoogleFonts.outfit(fontWeight: FontWeight.w600, color: primaryGreen)),
                             ),
                           ),
                         ),
                       ),
                     ),
-                    title: Text(bank, style: GoogleFonts.outfit(fontSize: 15, fontWeight: isSelected ? FontWeight.bold : FontWeight.w500, color: const Color(0xFF1E293B))),
+                    title: Text(bank, style: GoogleFonts.outfit(fontSize: 15, fontWeight: isSelected ? FontWeight.w600 : FontWeight.w500, color: const Color(0xFF1E293B))),
                     trailing: isSelected ? Icon(Icons.check_circle, color: primaryGreen, size: 20) : null,
                     onTap: () {
                       setState(() => selectedBank = bank);
@@ -322,7 +324,7 @@ class _PaymentPageState extends State<PaymentPage> {
   Widget _formLabel(String label) {
     return Padding(
       padding: const EdgeInsets.only(bottom: 8),
-      child: Text(label, style: GoogleFonts.outfit(fontSize: 10, fontWeight: FontWeight.bold, color: const Color(0xFF64748B), letterSpacing: 0.5)),
+      child: Text(label, style: GoogleFonts.outfit(fontSize: 10, fontWeight: FontWeight.w600, color: const Color(0xFF64748B), letterSpacing: 0.5)),
     );
   }
 
@@ -375,7 +377,7 @@ class _PaymentPageState extends State<PaymentPage> {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Text('Booking Summary', style: GoogleFonts.outfit(fontSize: 16, fontWeight: FontWeight.bold, color: const Color(0xFF1E293B))),
+          Text('Booking Summary', style: GoogleFonts.outfit(fontSize: 16, fontWeight: FontWeight.w600, color: const Color(0xFF1E293B))),
           const SizedBox(height: 20),
           Row(
             children: [
@@ -394,7 +396,7 @@ class _PaymentPageState extends State<PaymentPage> {
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    Text(widget.serviceName, style: GoogleFonts.outfit(fontSize: 15, fontWeight: FontWeight.bold, color: const Color(0xFF1E293B))),
+                    Text(widget.serviceName, style: GoogleFonts.outfit(fontSize: 15, fontWeight: FontWeight.w600, color: const Color(0xFF1E293B))),
                     const SizedBox(height: 4),
                     Text(widget.category, style: GoogleFonts.outfit(fontSize: 12, color: const Color(0xFF64748B))),
                     const SizedBox(height: 6),
@@ -411,7 +413,7 @@ class _PaymentPageState extends State<PaymentPage> {
             ],
           ),
           const SizedBox(height: 24),
-          Text('SERVICE LOCATION', style: GoogleFonts.outfit(fontSize: 10, fontWeight: FontWeight.bold, color: const Color(0xFF64748B), letterSpacing: 0.5)),
+          Text('SERVICE LOCATION', style: GoogleFonts.outfit(fontSize: 10, fontWeight: FontWeight.w600, color: const Color(0xFF64748B), letterSpacing: 0.5)),
           const SizedBox(height: 12),
           Row(
             crossAxisAlignment: CrossAxisAlignment.start,
@@ -430,7 +432,7 @@ class _PaymentPageState extends State<PaymentPage> {
             child: _summaryRow('Add-on: ${item['name']}', 'RM ${((item['price'] is String ? double.tryParse(item['price']) : (item['price'] as num).toDouble()) ?? 0.0).toStringAsFixed(2)}'),
           )),
           const SizedBox(height: 12),
-          _summaryRow('Service Fee (15%)', 'RM ${(widget.totalPrice - widget.basePrice - widget.selectedAddOns.fold(0.0, (sum, item) => sum + ((item['price'] is String ? double.tryParse(item['price']) : (item['price'] as num).toDouble()) ?? 0.0))).toStringAsFixed(2)}'),
+          _summaryRow('Charge Fee (15%)', 'RM ${(widget.totalPrice - widget.basePrice - widget.selectedAddOns.fold(0.0, (total, item) => total + ((item['price'] is String ? double.tryParse(item['price']) : (item['price'] as num).toDouble()) ?? 0.0))).toStringAsFixed(2)}'),
           const SizedBox(height: 24),
           Row(
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
@@ -438,15 +440,15 @@ class _PaymentPageState extends State<PaymentPage> {
               Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  Text('TOTAL AMOUNT', style: GoogleFonts.outfit(fontSize: 10, fontWeight: FontWeight.bold, color: const Color(0xFF64748B))),
+                  Text('TOTAL AMOUNT', style: GoogleFonts.outfit(fontSize: 10, fontWeight: FontWeight.w600, color: const Color(0xFF64748B))),
                   const SizedBox(height: 4),
-                  Text('RM ${widget.totalPrice.toStringAsFixed(2)}', style: GoogleFonts.outfit(fontSize: 24, fontWeight: FontWeight.bold, color: const Color(0xFF1E293B))),
+                  Text('RM ${widget.totalPrice.toStringAsFixed(2)}', style: GoogleFonts.outfit(fontSize: 24, fontWeight: FontWeight.w600, color: const Color(0xFF1E293B))),
                 ],
               ),
               Container(
                 padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
                 decoration: BoxDecoration(color: const Color(0xFFE8F5E9), borderRadius: BorderRadius.circular(6)),
-                child: Text('INSTANT CONFIRM', style: GoogleFonts.outfit(fontSize: 9, fontWeight: FontWeight.bold, color: const Color(0xFF2E7D32))),
+                child: Text('INSTANT CONFIRM', style: GoogleFonts.outfit(fontSize: 9, fontWeight: FontWeight.w600, color: const Color(0xFF2E7D32))),
               ),
             ],
           ),
@@ -480,7 +482,7 @@ class _PaymentPageState extends State<PaymentPage> {
         child: Row(
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
-            Text('Confirm & Pay', style: GoogleFonts.outfit(fontSize: 16, fontWeight: FontWeight.bold)),
+            Text('Confirm & Pay', style: GoogleFonts.outfit(fontSize: 16, fontWeight: FontWeight.w600)),
             const SizedBox(width: 12),
             const Icon(Icons.arrow_forward, size: 20, color: Colors.white),
           ],
@@ -498,14 +500,20 @@ class _PaymentPageState extends State<PaymentPage> {
     try {
       await FirebaseFirestore.instance.collection('bookings').add({
         'customerId': user.uid,
+        'providerId': widget.providerId,
         'providerName': widget.providerName,
         'serviceName': widget.serviceName,
+        'category': widget.category,
+        'serviceImage': widget.serviceImage,
         'date': DateFormat('yyyy-MM-dd').format(widget.selectedDate),
         'time': widget.selectedTime,
         'address': widget.address,
+        'basePrice': widget.basePrice,
+        'chargeFee': widget.totalPrice - widget.basePrice - widget.selectedAddOns.fold(0.0, (total, item) => total + ((item['price'] is String ? double.tryParse(item['price']) : (item['price'] as num).toDouble()) ?? 0.0)),
         'totalPrice': widget.totalPrice,
+        'selectedAddOns': widget.selectedAddOns,
         'paymentMethod': selectedMethod,
-        'status': 'Confirmed',
+        'status': 'Pending',
         'createdAt': FieldValue.serverTimestamp(),
       });
       

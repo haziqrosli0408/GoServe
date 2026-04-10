@@ -33,7 +33,7 @@ class ProviderActivityScreen extends StatelessWidget {
             'Activity',
             style: GoogleFonts.outfit(
               fontSize: 28,
-              fontWeight: FontWeight.bold,
+              fontWeight: FontWeight.w600,
               color: const Color(0xFF1E293B),
             ),
           ),
@@ -165,7 +165,7 @@ class ProviderActivityScreen extends StatelessWidget {
                     Text(
                       activity['title'],
                       style: GoogleFonts.outfit(
-                        fontWeight: FontWeight.bold,
+                        fontWeight: FontWeight.w600,
                         fontSize: 16,
                         color: const Color(0xFF1E293B),
                       ),

@@ -5,9 +5,9 @@ import 'package:firebase_storage/firebase_storage.dart';
 import 'package:geolocator/geolocator.dart';
 import 'package:geocoding/geocoding.dart';
 import 'package:image_picker/image_picker.dart';
-import 'dart:typed_data';
 import 'package:path/path.dart' as path;
 import 'package:gooservee/services/google_auth_service.dart';
+import 'package:flutter/services.dart';
 
 class RegisterScreen extends StatefulWidget {
   const RegisterScreen({super.key});
@@ -99,14 +99,13 @@ class _RegisterScreenState extends State<RegisterScreen> {
     bool hasLowercase = password.contains(RegExp(r'[a-z]'));
     bool hasUppercase = password.contains(RegExp(r'[A-Z]'));
     bool hasNumber = password.contains(RegExp(r'[0-9]'));
-    bool hasSymbol = password.contains(RegExp(r'[@#$!]'));
+    bool hasSymbol = password.contains(RegExp(r'[@#$!%^&*(),.?":{}|<>]'));
 
     if (hasLowercase && hasUppercase && hasNumber && hasSymbol) return 4;
     if (hasLowercase && hasUppercase && hasNumber) return 3;
     if (hasLowercase && hasUppercase) return 2;
-    // Rule: "text only = 1 bar"
-    // Also handling if they start with anything else
-    return 1;
+    if (hasLowercase) return 1;
+    return 0;
   }
   
   List<String> selectedServices = [];
@@ -154,6 +153,8 @@ class _RegisterScreenState extends State<RegisterScreen> {
     final XFile? pickedFile = await _picker.pickImage(
       source: ImageSource.gallery,
       imageQuality: 50,
+      maxWidth: 600,
+      maxHeight: 600,
     );
 
     if (pickedFile != null) {
@@ -432,7 +433,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
       children: [
         Text(
           title,
-          style: const TextStyle(fontSize: 32, fontWeight: FontWeight.bold, color: Color(0xFF2D3748), height: 1.1),
+          style: const TextStyle(fontSize: 32, fontWeight: FontWeight.w600, color: Color(0xFF2D3748), height: 1.1),
         ),
         const SizedBox(height: 12),
         Text(
@@ -461,7 +462,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
               validator: (v) => v!.isEmpty ? "Name is required" : null,
             ),
             const SizedBox(height: 20),
-            const Text("Phone number", style: TextStyle(fontSize: 10, fontWeight: FontWeight.w400, color: Colors.black54, letterSpacing: 1.2)),
+            const Text("Phone number", style: TextStyle(fontSize: 13, fontWeight: FontWeight.w400, color: Colors.black54, letterSpacing: 0.5)),
             const SizedBox(height: 8),
             Row(
               children: [
@@ -473,7 +474,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
                   ),
                   child: const Row(
                     children: [
-                      Text("+60", style: TextStyle(fontSize: 14, fontWeight: FontWeight.bold)),
+                      Text("+60", style: TextStyle(fontSize: 14, fontWeight: FontWeight.w600)),
                     ],
                   ),
                 ),
@@ -482,9 +483,14 @@ class _RegisterScreenState extends State<RegisterScreen> {
                   child: TextFormField(
                     controller: phoneController,
                     keyboardType: TextInputType.phone,
-                    validator: (v) => v!.isEmpty ? "Phone number required" : null,
+                    inputFormatters: [FilteringTextInputFormatter.digitsOnly],
+                    validator: (v) {
+                      if (v == null || v.isEmpty) return "Phone number required";
+                      if (v.length < 9 || v.length > 11) return "Enter a valid phone number (9-11 digits)";
+                      return null;
+                    },
                     decoration: InputDecoration(
-                      hintText: "12-345 6789",
+                      hintText: "123456789",
                       hintStyle: const TextStyle(color: Colors.black38, fontSize: 14),
                       filled: true,
                       fillColor: const Color(0xFFF1F5F9),
@@ -516,7 +522,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
                 const Text(
                   "Set Your Profile\nPhoto",
                   textAlign: TextAlign.center,
-                  style: TextStyle(fontSize: 28, fontWeight: FontWeight.bold, color: Color(0xFF2D3748), height: 1.1),
+                  style: TextStyle(fontSize: 28, fontWeight: FontWeight.w600, color: Color(0xFF2D3748), height: 1.1),
                 ),
                 const SizedBox(height: 12),
                 const Text(
@@ -653,7 +659,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
               },
             ),
             const SizedBox(height: 20),
-            const Text("Password", style: TextStyle(fontSize: 10, fontWeight: FontWeight.w400, color: Colors.black54, letterSpacing: 0.5)),
+            const Text("Password", style: TextStyle(fontSize: 13, fontWeight: FontWeight.w400, color: Colors.black54, letterSpacing: 0.5)),
             const SizedBox(height: 8),
             TextFormField(
               controller: passwordController,
@@ -661,6 +667,14 @@ class _RegisterScreenState extends State<RegisterScreen> {
               validator: (v) {
                 if (v!.isEmpty) return "Password required";
                 if (v.length < 8) return "Minimum 8 characters";
+                bool hasLowercase = v.contains(RegExp(r'[a-z]'));
+                bool hasUppercase = v.contains(RegExp(r'[A-Z]'));
+                bool hasNumber = v.contains(RegExp(r'[0-9]'));
+                bool hasSymbol = v.contains(RegExp(r'[@#$!%^&*(),.?":{}|<>]'));
+                
+                if (!hasLowercase || !hasUppercase || !hasNumber || !hasSymbol) {
+                  return "Must include Upper, Lower, Number & Symbol";
+                }
                 return null;
               },
               decoration: InputDecoration(
@@ -678,7 +692,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
             const SizedBox(height: 12),
             Row(
               children: [
-                const Text("Password strength", style: TextStyle(fontSize: 10, fontWeight: FontWeight.w400, color: Colors.black54, letterSpacing: 0.5)),
+                const Text("Password strength", style: TextStyle(fontSize: 13, fontWeight: FontWeight.w400, color: Colors.black54, letterSpacing: 0.5)),
                 const Spacer(),
                 Text(
                   _strength == 0
@@ -689,9 +703,13 @@ class _RegisterScreenState extends State<RegisterScreen> {
                               ? "Fair"
                               : (_strength == 3 ? "Strong" : "Very Strong"))),
                   style: TextStyle(
-                    color: _strength <= 1 ? Colors.red : (_strength == 2 ? Colors.orange : const Color(0xFF000000)),
+                    color: _strength == 1 
+                        ? Colors.red 
+                        : (_strength == 2 
+                            ? Colors.orange 
+                            : (_strength == 3 ? Colors.yellow.shade700 : (_strength == 4 ? Colors.green : Colors.grey))),
                     fontSize: 10,
-                    fontWeight: FontWeight.bold,
+                    fontWeight: FontWeight.w600,
                   ),
                 ),
               ],
@@ -705,9 +723,11 @@ class _RegisterScreenState extends State<RegisterScreen> {
                     height: 4,
                     decoration: BoxDecoration(
                       color: index < _strength
-                          ? (_strength <= 1
+                          ? (_strength == 1
                               ? Colors.red
-                              : (_strength == 2 ? Colors.orange : const Color(0xFFFF6B00)))
+                              : (_strength == 2 
+                                  ? Colors.orange 
+                                  : (_strength == 3 ? Colors.yellow : Colors.green)))
                           : Colors.grey.shade300,
                       borderRadius: BorderRadius.circular(2),
                     ),
@@ -719,7 +739,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
             const Text("Add a special character to make it very strong.", style: TextStyle(fontSize: 10, color: Colors.black54, fontStyle: FontStyle.italic)),
             const SizedBox(height: 20),
             
-            const Text("Confirm password", style: TextStyle(fontSize: 10, fontWeight: FontWeight.w400, color: Colors.black54, letterSpacing: 0.5)),
+            const Text("Confirm password", style: TextStyle(fontSize: 13, fontWeight: FontWeight.w400, color: Colors.black54, letterSpacing: 0.5)),
             const SizedBox(height: 8),
             TextFormField(
               controller: confirmController,
@@ -833,7 +853,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
                   },
                   child: Container(
                     decoration: BoxDecoration(
-                      color: isSelected ? const Color(0xFF9FF2C4) : Colors.white,
+                      color: isSelected ? const Color(0xFFFFEBD9) : Colors.white,
                       borderRadius: BorderRadius.circular(10),
                       border: Border.all(color: isSelected ? Colors.transparent : Colors.grey.shade200),
                     ),
@@ -869,7 +889,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
               child: Container(
                 width: double.infinity,
                 decoration: BoxDecoration(
-                  color: selectedServices.contains("Other") ? const Color(0xFF9FF2C4) : Colors.white,
+                  color: selectedServices.contains("Other") ? const Color(0xFFFFEBD9) : Colors.white,
                   borderRadius: BorderRadius.circular(10),
                   border: Border.all(color: selectedServices.contains("Other") ? Colors.transparent : Colors.grey.shade200),
                 ),

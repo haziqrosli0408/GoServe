@@ -5,11 +5,12 @@ import 'package:cloud_firestore/cloud_firestore.dart';
 import 'search_page.dart';
 import 'service_details.dart';
 import 'categories_screen.dart';
+import '../profile/profile_screen.dart';
+import '../misc/notifications_screen.dart';
 import 'package:animated_text_kit/animated_text_kit.dart';
 import 'dart:async';
 import 'package:geolocator/geolocator.dart';
 import 'package:geocoding/geocoding.dart';
-import 'saved_services_screen.dart';
 
 class HomeScreen extends StatefulWidget {
   const HomeScreen({super.key});
@@ -128,13 +129,20 @@ class _HomeScreenState extends State<HomeScreen> {
     try {
       final user = FirebaseAuth.instance.currentUser;
       if (user != null) {
-        final doc = await FirebaseFirestore.instance.collection('users').doc(user.uid).get();
+        // Try fetching from users first
+        DocumentSnapshot doc = await FirebaseFirestore.instance.collection('users').doc(user.uid).get();
+        
+        // If not found in users, try providers
+        if (!doc.exists) {
+          doc = await FirebaseFirestore.instance.collection('providers').doc(user.uid).get();
+        }
+
         if (doc.exists && mounted) {
-          final data = doc.data();
+          final data = doc.data() as Map<String, dynamic>;
           setState(() {
             _userData = data;
             // Sync saved services from Firestore
-            if (data != null && data['savedServices'] != null) {
+            if (data['savedServices'] != null) {
               _savedServiceIds.clear();
               _savedServiceIds.addAll(List<String>.from(data['savedServices']));
             }
@@ -187,10 +195,12 @@ class _HomeScreenState extends State<HomeScreen> {
       
       final title = (s['title'] as String?)?.toLowerCase() ?? '';
       final category = (s['category'] as String?)?.toLowerCase() ?? '';
+      final providerName = (s['providerName'] as String?)?.toLowerCase() ?? '';
       final providerAddress = (s['providerAddress'] as String?)?.toLowerCase() ?? '';
 
       final matchesSearch = title.contains(query) ||
           category.contains(query) ||
+          providerName.contains(query) ||
           providerAddress.contains(query);
 
       bool matchesCategory = true;
@@ -240,10 +250,29 @@ class _HomeScreenState extends State<HomeScreen> {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            _buildHeader(),
-            const SizedBox(height: 20),
-            _buildBanner(),
-            const SizedBox(height: 24),
+            Container(
+              width: double.infinity,
+              decoration: BoxDecoration(
+                gradient: LinearGradient(
+                  begin: Alignment.topCenter,
+                  end: Alignment.bottomCenter,
+                  colors: [
+                    const Color(0xFFFF6B00).withValues(alpha: 0.15), // Lighter top
+                    const Color(0xFFFF6B00).withValues(alpha: 0.65), // Darker at search bar area
+                    Colors.white, // Fade to white
+                  ],
+                  stops: const [0.0, 0.3, 1.0],
+                ),
+              ),
+              child: Column(
+                children: [
+                  _buildHeader(),
+                  const SizedBox(height: 20),
+                  _buildBanner(),
+                  const SizedBox(height: 32),
+                ],
+              ),
+            ),
             _buildSectionHeader('Categories', 'See All', () {
               Navigator.push(context, MaterialPageRoute(builder: (_) => const CategoriesScreen()));
             }),
@@ -272,18 +301,8 @@ class _HomeScreenState extends State<HomeScreen> {
       if (address.isEmpty) address = 'Detecting...';
     }
 
-    return Container(
+    return SizedBox(
       width: double.infinity,
-      decoration: BoxDecoration(
-        gradient: LinearGradient(
-          begin: Alignment.topCenter,
-          end: Alignment.bottomCenter,
-          colors: [
-            const Color(0xFFFF6B00).withValues(alpha: 0.56),
-            Colors.white,
-          ],
-        ),
-      ),
       child: Padding(
         padding: const EdgeInsets.fromLTRB(20, 60, 20, 20),
         child: Column(
@@ -315,7 +334,7 @@ class _HomeScreenState extends State<HomeScreen> {
                               style: GoogleFonts.outfit(
                                 color: Colors.black,
                                 fontSize: 16,
-                                fontWeight: FontWeight.bold,
+                                fontWeight: FontWeight.w600,
                               ),
                               maxLines: 1,
                               overflow: TextOverflow.ellipsis,
@@ -328,11 +347,17 @@ class _HomeScreenState extends State<HomeScreen> {
                 ),
                 GestureDetector(
                   onTap: () {
-                    Navigator.push(context, MaterialPageRoute(builder: (context) => const SavedServicesScreen()));
+                    Navigator.push(
+                      context,
+                      MaterialPageRoute(
+                        builder: (context) => const NotificationsScreen(),
+                      ),
+                    );
                   },
-                  child: const Padding(
-                    padding: EdgeInsets.only(left: 12),
-                    child: Icon(Icons.bookmark_outline, color: Colors.black, size: 28),
+                  child: const Icon(
+                    Icons.notifications_outlined,
+                    color: Color(0xFFFF6B00),
+                    size: 32,
                   ),
                 ),
               ],
@@ -567,7 +592,7 @@ class _HomeScreenState extends State<HomeScreen> {
                         title,
                         style: GoogleFonts.outfit(
                           fontSize: 22,
-                          fontWeight: FontWeight.w900,
+                          fontWeight: FontWeight.w600,
                           color: Colors.white,
                           height: 1.15,
                         ),
@@ -598,7 +623,7 @@ class _HomeScreenState extends State<HomeScreen> {
                           child: Text(
                             btnLabel,
                             style: GoogleFonts.outfit(
-                              fontWeight: FontWeight.bold,
+                              fontWeight: FontWeight.w600,
                               fontSize: 13,
                               color: Colors.white,
                             ),
@@ -682,7 +707,7 @@ class _HomeScreenState extends State<HomeScreen> {
                   cat['name'] as String,
                   style: GoogleFonts.outfit(
                     fontSize: 12,
-                    fontWeight: FontWeight.w700,
+                    fontWeight: FontWeight.w600,
                     color: const Color(0xFF1E293B),
                   ),
                 ),
@@ -756,31 +781,36 @@ class _HomeScreenState extends State<HomeScreen> {
             ),
             const SizedBox(height: 10),
             // Row 1: Title and Favorite Icon
-            Row(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              mainAxisAlignment: MainAxisAlignment.spaceBetween,
-              children: [
-                Expanded(
-                  child: Text(
-                    title,
-                    style: GoogleFonts.outfit(
-                      fontSize: 15,
-                      fontWeight: FontWeight.bold,
-                      color: const Color(0xFF1F2937),
+            SizedBox(
+              height: 42,
+              child: Row(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                children: [
+                  Expanded(
+                    child: Text(
+                      title,
+                      style: GoogleFonts.outfit(
+                        fontSize: 15,
+                        fontWeight: FontWeight.w600,
+                        color: const Color(0xFF1F2937),
+                        height: 1.2,
+                      ),
+                      maxLines: 2,
+                      overflow: TextOverflow.ellipsis,
                     ),
-                    maxLines: 2,
-                    overflow: TextOverflow.ellipsis,
                   ),
-                ),
-                GestureDetector(
-                  onTap: () => _toggleSaveService(serviceId),
-                  child: Icon(
-                    _savedServiceIds.contains(serviceId) ? Icons.bookmark : Icons.bookmark_border,
-                    size: 20,
-                    color: _savedServiceIds.contains(serviceId) ? const Color(0xFFFF6B00) : Colors.grey.shade400,
+                  const SizedBox(width: 8),
+                  GestureDetector(
+                    onTap: () => _toggleSaveService(serviceId),
+                    child: Icon(
+                      _savedServiceIds.contains(serviceId) ? Icons.bookmark : Icons.bookmark_border,
+                      size: 20,
+                      color: _savedServiceIds.contains(serviceId) ? const Color(0xFFFF6B00) : Colors.grey.shade400,
+                    ),
                   ),
-                ),
-              ],
+                ],
+              ),
             ),
             const SizedBox(height: 6),
 
@@ -798,10 +828,10 @@ class _HomeScreenState extends State<HomeScreen> {
                         ),
                       ),
                       TextSpan(
-                        text: 'RM$price/hr',
+                        text: 'RM$price${s['priceType'] == 'one-time' ? '' : '/hr'}',
                         style: GoogleFonts.outfit(
                           fontSize: 14,
-                          fontWeight: FontWeight.bold,
+                          fontWeight: FontWeight.w600,
                           color: const Color(0xFFFF6B00),
                         ),
                       ),
@@ -837,7 +867,7 @@ class _HomeScreenState extends State<HomeScreen> {
                   backgroundColor: const Color(0xFFF1F5F9),
                   backgroundImage: providerProfileUrl.isNotEmpty ? NetworkImage(providerProfileUrl) : null,
                   child: providerProfileUrl.isEmpty 
-                    ? Text(providerName.isNotEmpty ? providerName[0].toUpperCase() : 'P', style: GoogleFonts.outfit(color: const Color(0xFF1F212C), fontSize: 8, fontWeight: FontWeight.bold)) 
+                    ? Text(providerName.isNotEmpty ? providerName[0].toUpperCase() : 'P', style: GoogleFonts.outfit(color: const Color(0xFF1F212C), fontSize: 8, fontWeight: FontWeight.w600)) 
                     : null,
                 ),
                 const SizedBox(width: 6),
@@ -872,7 +902,7 @@ class _HomeScreenState extends State<HomeScreen> {
             title,
             style: GoogleFonts.outfit(
               fontSize: 18,
-              fontWeight: FontWeight.bold,
+              fontWeight: FontWeight.w600,
               color: Colors.black,
             ),
           ),
@@ -980,7 +1010,7 @@ class _HomeScreenState extends State<HomeScreen> {
                               title,
                               style: GoogleFonts.outfit(
                                 fontSize: 16,
-                                fontWeight: FontWeight.bold,
+                                fontWeight: FontWeight.w600,
                                 color: const Color(0xFF1E293B),
                               ),
                               maxLines: 1,
@@ -1018,34 +1048,6 @@ class _HomeScreenState extends State<HomeScreen> {
                           ),
                         ],
                       ),
-                      const SizedBox(height: 8),
-
-                      // Provider Profile Row
-                      Row(
-                        children: [
-                          CircleAvatar(
-                            radius: 9,
-                            backgroundColor: const Color(0xFFF1F5F9),
-                            backgroundImage: providerProfileUrl.isNotEmpty ? NetworkImage(providerProfileUrl) : null,
-                            child: providerProfileUrl.isEmpty 
-                              ? Text(providerName.isNotEmpty ? providerName[0].toUpperCase() : 'P', style: GoogleFonts.outfit(color: const Color(0xFF1F212C), fontSize: 8, fontWeight: FontWeight.bold)) 
-                              : null,
-                          ),
-                          const SizedBox(width: 6),
-                          Expanded(
-                            child: Text(
-                              providerName,
-                              style: GoogleFonts.outfit(
-                                fontSize: 15,
-                                fontWeight: FontWeight.w600,
-                                color: const Color(0xFF1E293B),
-                              ),
-                              maxLines: 1,
-                              overflow: TextOverflow.ellipsis,
-                            ),
-                          ),
-                        ],
-                      ),
                       const Spacer(), 
 
                       // Price
@@ -1064,20 +1066,49 @@ class _HomeScreenState extends State<HomeScreen> {
                               text: 'RM$price',
                               style: GoogleFonts.outfit(
                                 fontSize: 16,
-                                fontWeight: FontWeight.bold,
+                                fontWeight: FontWeight.w600,
                                 color: const Color(0xFFFF6B00),
                               ),
                             ),
-                            TextSpan(
-                              text: '/hr',
-                              style: GoogleFonts.outfit(
-                                fontSize: 13,
-                                fontWeight: FontWeight.w500,
-                                color: Colors.grey.shade400,
+                            if (s['priceType'] != 'one-time')
+                              TextSpan(
+                                text: '/hr',
+                                style: GoogleFonts.outfit(
+                                  fontSize: 13,
+                                  fontWeight: FontWeight.w500,
+                                  color: Colors.grey.shade400,
+                                ),
                               ),
-                            ),
                           ],
                         ),
+                      ),
+                      const SizedBox(height: 8),
+
+                      // Provider Profile Row
+                      Row(
+                        children: [
+                          CircleAvatar(
+                            radius: 9,
+                            backgroundColor: const Color(0xFFF1F5F9),
+                            backgroundImage: providerProfileUrl.isNotEmpty ? NetworkImage(providerProfileUrl) : null,
+                            child: providerProfileUrl.isEmpty 
+                              ? Text(providerName.isNotEmpty ? providerName[0].toUpperCase() : 'P', style: GoogleFonts.outfit(color: const Color(0xFF1F212C), fontSize: 8, fontWeight: FontWeight.w600)) 
+                              : null,
+                          ),
+                          const SizedBox(width: 6),
+                          Expanded(
+                            child: Text(
+                              providerName,
+                              style: GoogleFonts.outfit(
+                                fontSize: 12,
+                                fontWeight: FontWeight.normal,
+                                color: const Color(0xFF64748B),
+                              ),
+                              maxLines: 1,
+                              overflow: TextOverflow.ellipsis,
+                            ),
+                          ),
+                        ],
                       ),
                       const SizedBox(height: 4),
                     ],

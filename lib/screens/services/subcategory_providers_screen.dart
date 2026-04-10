@@ -115,7 +115,7 @@ class _SubcategoryProvidersScreenState extends State<SubcategoryProvidersScreen>
           widget.title,
           style: GoogleFonts.outfit(
             color: const Color(0xFF1E293B),
-            fontWeight: FontWeight.bold,
+            fontWeight: FontWeight.w600,
             fontSize: 18,
           ),
         ),
@@ -176,7 +176,7 @@ class _SubcategoryProvidersScreenState extends State<SubcategoryProvidersScreen>
         label,
         style: GoogleFonts.outfit(
           fontSize: 13,
-          fontWeight: isSelected ? FontWeight.bold : FontWeight.w500,
+          fontWeight: isSelected ? FontWeight.w600 : FontWeight.w500,
           color: isSelected ? Colors.white : const Color(0xFF64748B),
         ),
       ),
@@ -201,7 +201,7 @@ class _SubcategoryProvidersScreenState extends State<SubcategoryProvidersScreen>
             'No Providers Found',
             style: GoogleFonts.outfit(
               fontSize: 20,
-              fontWeight: FontWeight.bold,
+              fontWeight: FontWeight.w600,
               color: const Color(0xFF1E293B),
             ),
           ),
@@ -277,7 +277,7 @@ class _SubcategoryProvidersScreenState extends State<SubcategoryProvidersScreen>
                             title,
                             style: GoogleFonts.outfit(
                               fontSize: 16,
-                              fontWeight: FontWeight.bold,
+                              fontWeight: FontWeight.w600,
                               color: const Color(0xFF1E293B),
                             ),
                             maxLines: 1,
@@ -317,7 +317,7 @@ class _SubcategoryProvidersScreenState extends State<SubcategoryProvidersScreen>
                           backgroundColor: const Color(0xFFF1F5F9),
                           backgroundImage: profileUrl.isNotEmpty ? NetworkImage(profileUrl) : null,
                           child: profileUrl.isEmpty 
-                            ? Text(name.isNotEmpty ? name[0].toUpperCase() : 'P', style: GoogleFonts.outfit(color: const Color(0xFF1F212C), fontSize: 8, fontWeight: FontWeight.bold)) 
+                            ? Text(name.isNotEmpty ? name[0].toUpperCase() : 'P', style: GoogleFonts.outfit(color: const Color(0xFF1F212C), fontSize: 8, fontWeight: FontWeight.w600)) 
                             : null,
                         ),
                         const SizedBox(width: 6),
@@ -345,7 +345,7 @@ class _SubcategoryProvidersScreenState extends State<SubcategoryProvidersScreen>
                             text: 'RM$price',
                             style: GoogleFonts.outfit(
                               fontSize: 16,
-                              fontWeight: FontWeight.bold,
+                              fontWeight: FontWeight.w600,
                               color: const Color(0xFFFF6B00),
                             ),
                           ),

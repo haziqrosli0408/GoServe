@@ -27,8 +27,6 @@ class _CategoriesScreenState extends State<CategoriesScreen> {
     {'name': 'Gardening', 'icon': Icons.yard_outlined},
     {'name': 'Carpentry', 'icon': Icons.handyman_outlined},
     {'name': 'Pest Control', 'icon': Icons.bug_report_outlined},
-    {'name': 'Home Security', 'icon': Icons.security_outlined},
-    {'name': 'Interior Design', 'icon': Icons.home_work_outlined},
   ];
 
   // Map of Categories that have Subcategories
@@ -96,7 +94,7 @@ class _CategoriesScreenState extends State<CategoriesScreen> {
                 'All Categories',
                 style: GoogleFonts.outfit(
                   color: const Color(0xFF1E293B),
-                  fontWeight: FontWeight.bold,
+                  fontWeight: FontWeight.w600,
                   fontSize: 18,
                 ),
               ),
@@ -200,7 +198,7 @@ class _CategoriesScreenState extends State<CategoriesScreen> {
                           name,
                           style: GoogleFonts.outfit(
                             fontSize: 14,
-                            fontWeight: FontWeight.bold,
+                            fontWeight: FontWeight.w600,
                             color: const Color(0xFF1F2937),
                           ),
                           textAlign: TextAlign.center,

@@ -98,7 +98,7 @@ class _ProviderReviewsPageState extends State<ProviderReviewsPage> {
                           : 'Respond to Review',
                       style: const TextStyle(
                         fontSize: 18,
-                        fontWeight: FontWeight.bold,
+                        fontWeight: FontWeight.w600,
                       ),
                     ),
                     IconButton(
@@ -119,7 +119,7 @@ class _ProviderReviewsPageState extends State<ProviderReviewsPage> {
                     children: [
                       Text(
                         review.customerName,
-                        style: const TextStyle(fontWeight: FontWeight.bold),
+                        style: const TextStyle(fontWeight: FontWeight.w600),
                       ),
                       Text(
                         review.comment,
@@ -224,7 +224,7 @@ class _ProviderReviewsPageState extends State<ProviderReviewsPage> {
             children: [
               const Text(
                 "4.6",
-                style: TextStyle(fontSize: 40, fontWeight: FontWeight.bold),
+                style: TextStyle(fontSize: 40, fontWeight: FontWeight.w600),
               ),
               Row(
                 children: List.generate(
@@ -300,7 +300,7 @@ class _ProviderReviewsPageState extends State<ProviderReviewsPage> {
                   children: [
                     Text(
                       review.customerName,
-                      style: const TextStyle(fontWeight: FontWeight.bold),
+                      style: const TextStyle(fontWeight: FontWeight.w600),
                     ),
                     Text(
                       review.service,
@@ -350,7 +350,7 @@ class _ProviderReviewsPageState extends State<ProviderReviewsPage> {
                         "Your Response",
                         style: TextStyle(
                           fontSize: 12,
-                          fontWeight: FontWeight.bold,
+                          fontWeight: FontWeight.w600,
                           color: Colors.orange,
                         ),
                       ),

@@ -1,8 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
-import 'package:gooservee/services/google_auth_service.dart';
-import 'package:gooservee/screens/auth/google_role_select_screen.dart';
+import '../../services/google_auth_service.dart';
+import 'google_role_select_screen.dart';
 
 class LoginScreen extends StatefulWidget {
   const LoginScreen({super.key});
@@ -15,10 +15,10 @@ class _LoginScreenState extends State<LoginScreen> {
   final _formKey = GlobalKey<FormState>();
   final TextEditingController emailController = TextEditingController();
   final TextEditingController passwordController = TextEditingController();
+  final GoogleAuthService _googleAuthService = GoogleAuthService();
 
   bool hidePassword = true;
   bool isLoading = false;
-  final GoogleAuthService _googleAuthService = GoogleAuthService();
 
   Future<void> _googleLogin() async {
     setState(() => isLoading = true);
@@ -29,10 +29,9 @@ class _LoginScreenState extends State<LoginScreen> {
         return;
       }
 
-      final user = userCredential.user!;
-      final uid = user.uid;
+      final uid = userCredential.user!.uid;
 
-      // Check if user exists in 'users'
+      // Check if user exists in database
       final userDoc = await FirebaseFirestore.instance.collection("users").doc(uid).get();
       if (userDoc.exists) {
         if (!mounted) return;
@@ -40,7 +39,6 @@ class _LoginScreenState extends State<LoginScreen> {
         return;
       }
 
-      // Check if user exists in 'providers'
       final providerDoc = await FirebaseFirestore.instance.collection("providers").doc(uid).get();
       if (providerDoc.exists) {
         if (!mounted) return;
@@ -48,15 +46,16 @@ class _LoginScreenState extends State<LoginScreen> {
         return;
       }
 
-      // New user -> Role Selection
+      // If new Google user, go to role selection
       if (!mounted) return;
       Navigator.pushReplacement(
         context,
-        MaterialPageRoute(builder: (context) => GoogleRoleSelectScreen(user: user)),
+        MaterialPageRoute(builder: (context) => GoogleRoleSelectScreen(user: userCredential.user!)),
       );
     } catch (e) {
-      if (!mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(e.toString()), backgroundColor: Colors.red));
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(e.toString()), backgroundColor: Colors.red));
+      }
     } finally {
       if (mounted) setState(() => isLoading = false);
     }
@@ -159,7 +158,7 @@ class _LoginScreenState extends State<LoginScreen> {
                 const SizedBox(height: 12),
                 const Text(
                   "Login to continue using GoServe",
-                  style: TextStyle(fontSize: 16, color: Colors.black54),
+                  style: TextStyle(fontSize: 14, color: Colors.black54),
                 ),
                 const SizedBox(height: 40),
                 
@@ -266,12 +265,11 @@ class _LoginScreenState extends State<LoginScreen> {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        const Text("Email address", style: TextStyle(fontSize: 13, fontWeight: FontWeight.w400, color: Colors.black54, letterSpacing: 0.5)),
+        const Text("Email address", style: TextStyle(fontSize: 10, fontWeight: FontWeight.w400, color: Colors.black54, letterSpacing: 0.5)),
         const SizedBox(height: 6),
         TextFormField(
           controller: emailController,
           keyboardType: TextInputType.emailAddress,
-          style: const TextStyle(fontSize: 15),
           validator: (v) {
             if (v == null || v.isEmpty) return "Email is required";
             if (!RegExp(r"^[\w-\.]+@([\w-]+\.)+[\w]{2,4}$").hasMatch(v)) return "Invalid email";
@@ -279,7 +277,7 @@ class _LoginScreenState extends State<LoginScreen> {
           },
           decoration: InputDecoration(
             hintText: "name@example.com",
-            hintStyle: const TextStyle(color: Colors.black38, fontSize: 15),
+            hintStyle: const TextStyle(color: Colors.black38, fontSize: 13),
             prefixIcon: const Icon(Icons.email_outlined, color: Colors.black54, size: 20),
             filled: true,
             fillColor: const Color(0xFFF1F5F9),
@@ -298,16 +296,15 @@ class _LoginScreenState extends State<LoginScreen> {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        const Text("Password", style: TextStyle(fontSize: 13, fontWeight: FontWeight.w400, color: Colors.black54, letterSpacing: 0.5)),
+        const Text("Password", style: TextStyle(fontSize: 10, fontWeight: FontWeight.w400, color: Colors.black54, letterSpacing: 0.5)),
         const SizedBox(height: 6),
         TextFormField(
           controller: passwordController,
           obscureText: hidePassword,
-          style: const TextStyle(fontSize: 15),
           validator: (v) => (v == null || v.isEmpty) ? "Password is required" : null,
           decoration: InputDecoration(
             hintText: "••••••••••••",
-            hintStyle: const TextStyle(color: Colors.black38, fontSize: 15),
+            hintStyle: const TextStyle(color: Colors.black38, fontSize: 13),
             prefixIcon: const Icon(Icons.lock_outline, color: Colors.black54, size: 20),
             suffixIcon: IconButton(
               icon: Icon(hidePassword ? Icons.visibility_off : Icons.visibility, color: Colors.black54, size: 20),

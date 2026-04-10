@@ -34,7 +34,7 @@ class CategoryDetailScreen extends StatelessWidget {
               categoryName,
               style: GoogleFonts.outfit(
                 color: const Color(0xFF1E293B),
-                fontWeight: FontWeight.bold,
+                fontWeight: FontWeight.w600,
                 fontSize: 18,
               ),
             ),
@@ -51,7 +51,7 @@ class CategoryDetailScreen extends StatelessWidget {
                 'Select a Service',
                 style: GoogleFonts.outfit(
                   fontSize: 22,
-                  fontWeight: FontWeight.bold,
+                  fontWeight: FontWeight.w600,
                   color: const Color(0xFF1E293B),
                 ),
               ),
@@ -117,7 +117,7 @@ class CategoryDetailScreen extends StatelessWidget {
                               name,
                               style: GoogleFonts.outfit(
                                 fontSize: 13,
-                                fontWeight: FontWeight.bold,
+                                fontWeight: FontWeight.w600,
                                 color: const Color(0xFF1F2937),
                               ),
                               textAlign: TextAlign.center,

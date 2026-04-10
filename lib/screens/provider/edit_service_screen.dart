@@ -84,7 +84,12 @@ class _EditServiceScreenState extends State<EditServiceScreen> {
 
   // --- Image Pickers ---
   Future<void> _pickMainImage() async {
-    final XFile? image = await _picker.pickImage(source: ImageSource.gallery);
+    final XFile? image = await _picker.pickImage(
+      source: ImageSource.gallery,
+      imageQuality: 50,
+      maxWidth: 800,
+      maxHeight: 800,
+    );
     if (image != null) {
       setState(() => _newMainImage = File(image.path));
     }
@@ -94,7 +99,11 @@ class _EditServiceScreenState extends State<EditServiceScreen> {
     final int totalCount = _existingGalleryUrls.length + _newGalleryImages.length;
     if (totalCount >= 6) return;
     
-    final List<XFile> images = await _picker.pickMultiImage();
+    final List<XFile> images = await _picker.pickMultiImage(
+      imageQuality: 40,
+      maxWidth: 800,
+      maxHeight: 800,
+    );
     if (images.isNotEmpty) {
       setState(() {
         for (var image in images) {
@@ -171,6 +180,57 @@ class _EditServiceScreenState extends State<EditServiceScreen> {
     }
   }
 
+  Future<void> _deleteService() async {
+    final confirm = await showDialog<bool>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+        title: Text('Delete Service?',
+            style: GoogleFonts.outfit(fontWeight: FontWeight.w600, fontSize: 18)),
+        content: Text(
+            'This action cannot be undone. This service will be permanently removed from your listing.',
+            style: GoogleFonts.outfit(color: Colors.grey.shade600, fontSize: 14)),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(ctx, false),
+            child: Text('Cancel',
+                style: GoogleFonts.outfit(
+                    color: Colors.grey.shade600, fontWeight: FontWeight.w600)),
+          ),
+          TextButton(
+            onPressed: () => Navigator.pop(ctx, true),
+            child: Text('Delete',
+                style: GoogleFonts.outfit(
+                    color: Colors.red, fontWeight: FontWeight.bold)),
+          ),
+        ],
+      ),
+    );
+
+    if (confirm == true) {
+      setState(() => _isSaving = true);
+      try {
+        final String serviceId =
+            widget.serviceData['id'] ?? widget.serviceData['serviceId'];
+        await FirebaseFirestore.instance
+            .collection('services')
+            .doc(serviceId)
+            .delete();
+
+        if (!mounted) return;
+        Navigator.pop(context, true);
+      } catch (e) {
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(content: Text('Error deleting service: $e')),
+          );
+        }
+      } finally {
+        if (mounted) setState(() => _isSaving = false);
+      }
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -178,7 +238,7 @@ class _EditServiceScreenState extends State<EditServiceScreen> {
       appBar: AppBar(
         titleSpacing: 0,
         backgroundColor: Colors.white,
-        surfaceTintColor: Colors.grey.shade100, // Light grey when scrolled under
+        surfaceTintColor: Colors.grey.shade100,
         elevation: 0,
         scrolledUnderElevation: 2,
         leading: IconButton(
@@ -189,23 +249,29 @@ class _EditServiceScreenState extends State<EditServiceScreen> {
           'Edit Service',
           style: GoogleFonts.outfit(
             color: const Color(0xFF1E293B),
-            fontWeight: FontWeight.bold,
+            fontWeight: FontWeight.w600,
           ),
         ),
         actions: [
-          _isSaving 
-          ? const Center(child: Padding(padding: EdgeInsets.only(right: 16), child: SizedBox(width: 20, height: 20, child: CircularProgressIndicator(strokeWidth: 2))))
-          : TextButton(
-              onPressed: _saveChanges,
-              child: Text(
-                'Save',
-                style: GoogleFonts.outfit(
-                  color: primaryIndigo,
-                  fontWeight: FontWeight.bold,
-                  fontSize: 16,
+          _isSaving
+              ? const Center(
+                  child: Padding(
+                      padding: EdgeInsets.only(right: 16),
+                      child: SizedBox(
+                          width: 20,
+                          height: 20,
+                          child: CircularProgressIndicator(strokeWidth: 2))))
+              : TextButton(
+                  onPressed: _saveChanges,
+                  child: Text(
+                    'Save',
+                    style: GoogleFonts.outfit(
+                      color: primaryIndigo,
+                      fontWeight: FontWeight.w600,
+                      fontSize: 16,
+                    ),
+                  ),
                 ),
-              ),
-            ),
         ],
       ),
       body: SingleChildScrollView(
@@ -226,11 +292,13 @@ class _EditServiceScreenState extends State<EditServiceScreen> {
               ),
               child: Row(
                 children: [
-                  Icon(Icons.lock_outline_rounded, size: 16, color: Colors.grey.shade400),
+                  Icon(Icons.lock_outline_rounded,
+                      size: 16, color: Colors.grey.shade400),
                   const SizedBox(width: 8),
                   Text(
                     _selectedCategory ?? 'No Category Set',
-                    style: GoogleFonts.outfit(color: Colors.grey.shade600, fontSize: 15),
+                    style: GoogleFonts.outfit(
+                        color: Colors.grey.shade600, fontSize: 15),
                   ),
                 ],
               ),
@@ -243,7 +311,8 @@ class _EditServiceScreenState extends State<EditServiceScreen> {
             const SizedBox(height: 24),
 
             _buildFieldLabel('Description'),
-            _buildTextField(_descriptionController, 'Describe your service...', maxLines: 5),
+            _buildTextField(_descriptionController, 'Describe your service...',
+                maxLines: 5),
             const SizedBox(height: 32),
 
             // --- Media Section ---
@@ -270,7 +339,35 @@ class _EditServiceScreenState extends State<EditServiceScreen> {
 
             _buildFieldLabel('Add-ons (Optional)'),
             _buildAddOnsEditor(),
-            const SizedBox(height: 80),
+            const SizedBox(height: 48),
+
+            // 🔹 DELETE BUTTON
+            SizedBox(
+              width: double.infinity,
+              child: TextButton.icon(
+                onPressed: _isSaving ? null : _deleteService,
+                icon: const Icon(Icons.delete_outline_rounded,
+                    color: Colors.redAccent, size: 20),
+                label: Text(
+                  'Delete Service',
+                  style: GoogleFonts.outfit(
+                    color: Colors.redAccent,
+                    fontWeight: FontWeight.w600,
+                    fontSize: 16,
+                  ),
+                ),
+                style: TextButton.styleFrom(
+                  padding: const EdgeInsets.symmetric(vertical: 16),
+                  backgroundColor: Colors.redAccent.withValues(alpha: 0.05),
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(12),
+                    side: BorderSide(
+                        color: Colors.redAccent.withValues(alpha: 0.2)),
+                  ),
+                ),
+              ),
+            ),
+            const SizedBox(height: 40),
           ],
         ),
       ),
@@ -286,7 +383,7 @@ class _EditServiceScreenState extends State<EditServiceScreen> {
         label,
         style: GoogleFonts.outfit(
           fontSize: 15,
-          fontWeight: FontWeight.bold,
+          fontWeight: FontWeight.w600,
           color: const Color(0xFF1E293B),
         ),
       ),
@@ -431,13 +528,13 @@ class _EditServiceScreenState extends State<EditServiceScreen> {
         children: [
           Row(
             children: [
-              Text('RM', style: GoogleFonts.outfit(fontSize: 20, fontWeight: FontWeight.bold, color: primaryIndigo)),
+              Text('RM', style: GoogleFonts.outfit(fontSize: 20, fontWeight: FontWeight.w600, color: primaryIndigo)),
               const SizedBox(width: 12),
               Expanded(
                 child: TextField(
                   controller: _priceController,
                   keyboardType: TextInputType.number,
-                  style: GoogleFonts.outfit(fontSize: 24, fontWeight: FontWeight.bold),
+                  style: GoogleFonts.outfit(fontSize: 24, fontWeight: FontWeight.w600),
                   decoration: const InputDecoration(border: InputBorder.none, hintText: '0.00'),
                 ),
               ),
@@ -473,7 +570,7 @@ class _EditServiceScreenState extends State<EditServiceScreen> {
               type == 'per hour' ? 'Per Hour' : 'One-time',
               style: GoogleFonts.outfit(
                 color: isSelected ? Colors.white : Colors.grey.shade600,
-                fontWeight: FontWeight.bold,
+                fontWeight: FontWeight.w600,
                 fontSize: 13,
               ),
             ),
@@ -528,27 +625,39 @@ class _EditServiceScreenState extends State<EditServiceScreen> {
       children: [
         ..._addOns.asMap().entries.map((entry) {
           return Container(
+            height: 100,
             margin: const EdgeInsets.only(bottom: 12),
+            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
             decoration: BoxDecoration(
               color: Colors.white,
               borderRadius: BorderRadius.circular(10),
               border: Border.all(color: Colors.grey.shade200),
             ),
-            child: ListTile(
-              contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-              title: Text(entry.value['name'], style: GoogleFonts.outfit(fontWeight: FontWeight.bold, color: const Color(0xFF1E293B))),
-              subtitle: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text('RM ${entry.value['price']}', style: GoogleFonts.outfit(color: primaryIndigo, fontWeight: FontWeight.bold)),
-                  const SizedBox(height: 4),
-                  Text(entry.value['description'] ?? '', style: GoogleFonts.outfit(fontSize: 12, color: Colors.grey.shade500)),
-                ],
-              ),
-              trailing: IconButton(
-                icon: const Icon(Icons.remove_circle_outline, color: Colors.redAccent),
-                onPressed: () => setState(() => _addOns.removeAt(entry.key)),
-              ),
+            child: Row(
+              children: [
+                Container(
+                  padding: const EdgeInsets.all(8),
+                  decoration: BoxDecoration(color: primaryIndigo.withValues(alpha: 0.1), shape: BoxShape.circle),
+                  child: Icon(Icons.plus_one_rounded, color: primaryIndigo, size: 18),
+                ),
+                const SizedBox(width: 16),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    children: [
+                      Text(entry.value['name'], style: GoogleFonts.outfit(fontWeight: FontWeight.w600, fontSize: 14)),
+                      Text(entry.value['description'] ?? '', style: GoogleFonts.outfit(color: Colors.grey.shade500, fontSize: 11, height: 1.2), maxLines: 2, overflow: TextOverflow.ellipsis),
+                      const SizedBox(height: 2),
+                      Text('RM ${entry.value['price']}', style: GoogleFonts.outfit(color: primaryIndigo, fontWeight: FontWeight.w600, fontSize: 13)),
+                    ],
+                  ),
+                ),
+                IconButton(
+                  icon: const Icon(Icons.remove_circle_outline, color: Colors.redAccent, size: 20),
+                  onPressed: () => setState(() => _addOns.removeAt(entry.key)),
+                ),
+              ],
             ),
           );
         }),
@@ -591,7 +700,7 @@ class _EditServiceScreenState extends State<EditServiceScreen> {
                     elevation: 0,
                     shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
                   ),
-                  child: Text('Add Item', style: GoogleFonts.outfit(color: Colors.white, fontWeight: FontWeight.bold)),
+                  child: Text('Add Item', style: GoogleFonts.outfit(color: Colors.white, fontWeight: FontWeight.w600)),
                 ),
               ),
             ],

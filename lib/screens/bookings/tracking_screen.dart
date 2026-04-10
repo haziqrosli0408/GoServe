@@ -4,6 +4,11 @@ import 'package:cloud_firestore/cloud_firestore.dart';
 import '../chat/single_chat_screen.dart';
 import 'booking_cancelled_screen.dart';
 import 'help_center_screen.dart';
+import 'service_completed_screen.dart';
+import 'package:url_launcher/url_launcher.dart';
+import 'dart:math' as math;
+
+import 'package:google_maps_flutter/google_maps_flutter.dart';
 
 class TrackingScreen extends StatefulWidget {
   final Map<String, dynamic> bookingData;
@@ -15,6 +20,41 @@ class TrackingScreen extends StatefulWidget {
 }
 
 class _TrackingScreenState extends State<TrackingScreen> {
+  GoogleMapController? _mapController;
+  final Set<Marker> _markers = {};
+  
+  // Default center if no coordinates found
+  static const LatLng _defaultCenter = LatLng(3.1390, 101.6869); // Kuala Lumpur
+  
+  @override
+  void dispose() {
+    _mapController?.dispose();
+    super.dispose();
+  }
+  Future<void> _makeCall(String? phoneNumber) async {
+    if (phoneNumber == null || phoneNumber.isEmpty) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('Provider phone number not available')),
+        );
+      }
+      return;
+    }
+    final Uri launchUri = Uri(
+      scheme: 'tel',
+      path: phoneNumber,
+    );
+    if (await canLaunchUrl(launchUri)) {
+      await launchUrl(launchUri);
+    } else {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('Could not launch phone dialer')),
+        );
+      }
+    }
+  }
+
   void _showCancelConfirmation() {
     showModalBottomSheet(
       context: context,
@@ -41,7 +81,7 @@ class _TrackingScreenState extends State<TrackingScreen> {
               const SizedBox(height: 24),
               Text(
                 'Cancel Booking?',
-                style: GoogleFonts.outfit(fontSize: 22, fontWeight: FontWeight.bold, color: const Color(0xFF1F212C)),
+                style: GoogleFonts.outfit(fontSize: 22, fontWeight: FontWeight.w600, color: const Color(0xFF1F212C)),
               ),
               const SizedBox(height: 12),
               Text(
@@ -55,7 +95,7 @@ class _TrackingScreenState extends State<TrackingScreen> {
                   Expanded(
                     child: TextButton(
                       onPressed: () => Navigator.pop(context),
-                      child: Text('Keep Booking', style: GoogleFonts.outfit(color: Colors.grey.shade600, fontWeight: FontWeight.bold)),
+                      child: Text('Keep Booking', style: GoogleFonts.outfit(color: Colors.grey.shade600, fontWeight: FontWeight.w600)),
                     ),
                   ),
                   const SizedBox(width: 16),
@@ -67,7 +107,10 @@ class _TrackingScreenState extends State<TrackingScreen> {
                           await FirebaseFirestore.instance
                               .collection('bookings')
                               .doc(widget.bookingId)
-                              .update({'status': 'Cancelled'});
+                              .update({
+                            'status': 'Cancelled',
+                            'cancelledAt': FieldValue.serverTimestamp(),
+                          });
                         } catch (e) {
                           debugPrint('Error cancelling booking: $e');
                         }
@@ -86,7 +129,7 @@ class _TrackingScreenState extends State<TrackingScreen> {
                         padding: const EdgeInsets.symmetric(vertical: 16),
                         elevation: 0,
                       ),
-                      child: Text('Confirm Cancel', style: GoogleFonts.outfit(fontWeight: FontWeight.bold)),
+                      child: Text('Confirm Cancel', style: GoogleFonts.outfit(fontWeight: FontWeight.w600)),
                     ),
                   ),
                 ],
@@ -103,93 +146,207 @@ class _TrackingScreenState extends State<TrackingScreen> {
   Widget build(BuildContext context) {
     return Scaffold(
       backgroundColor: Colors.white,
-      body: Stack(
-        children: [
-          Column(
-            children: [
-              // Map Placeholder - Now filling the top
-              Expanded(
-                flex: 4,
-                child: SizedBox(
-                  width: double.infinity,
-                  child: Image.asset(
-                    'assets/images/map_mock.png',
-                    fit: BoxFit.cover,
-                  ),
-                ),
+      body: StreamBuilder<DocumentSnapshot>(
+        stream: FirebaseFirestore.instance.collection('bookings').doc(widget.bookingId).snapshots(),
+        builder: (context, snapshot) {
+          LatLng providerLatLng = _defaultCenter;
+          String arrivalTime = '15 mins';
+          String distanceText = '2.4 miles';
+          Map<String, dynamic>? data;
+          String currentStatus = 'Confirmed';
+
+          if (snapshot.hasData && snapshot.data!.exists) {
+            data = snapshot.data!.data() as Map<String, dynamic>;
+            currentStatus = data['status'] ?? 'Confirmed';
+            final GeoPoint? providerLoc = data['providerLocation'];
+            if (providerLoc != null) {
+              providerLatLng = LatLng(providerLoc.latitude, providerLoc.longitude);
+              
+              // Calculate real distance using customer data
+              double destLat = (widget.bookingData['latitude'] is double) 
+                  ? widget.bookingData['latitude'] 
+                  : double.tryParse(widget.bookingData['latitude'].toString()) ?? 0.0;
+              double destLng = (widget.bookingData['longitude'] is double) 
+                  ? widget.bookingData['longitude'] 
+                  : double.tryParse(widget.bookingData['longitude'].toString()) ?? 0.0;
+
+              if (destLat != 0 && destLng != 0) {
+                // Simplified distance calculation (Haversine-like)
+                const double R = 6371; // Earth's radius in km
+                double dLat = (destLat - providerLoc.latitude) * (math.pi / 180);
+                double dLon = (destLng - providerLoc.longitude) * (math.pi / 180);
+                double a = math.sin(dLat / 2) * math.sin(dLat / 2) +
+                    math.cos(providerLoc.latitude * (math.pi / 180)) * 
+                    math.cos(destLat * (math.pi / 180)) * 
+                    math.sin(dLon / 2) * math.sin(dLon / 2);
+                double c = 2 * math.atan2(math.sqrt(a), math.sqrt(1 - a));
+                double distance = R * c;
+
+                distanceText = "${distance.toStringAsFixed(1)} km";
+                // Estimate arrival time (assuming 30km/h average in city -> 2 mins per km)
+                int mins = (distance * 2).ceil();
+                if (mins < 1) mins = 1;
+                arrivalTime = "$mins mins";
+              }
+            }
+
+            _markers.clear();
+            _markers.add(
+              Marker(
+                markerId: const MarkerId('provider'),
+                position: providerLatLng,
+                icon: BitmapDescriptor.defaultMarkerWithHue(BitmapDescriptor.hueOrange),
+                infoWindow: InfoWindow(title: widget.bookingData['providerName'] ?? 'Provider'),
               ),
-              // Content Area
-              Expanded(
-                flex: 6,
-                child: Container(
-                  color: Colors.white,
-                  child: SingleChildScrollView(
-                    padding: const EdgeInsets.fromLTRB(20, 110, 20, 100),
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        _buildServiceStatus(),
-                      ],
+            );
+
+            if (_mapController != null && providerLoc != null) {
+              _mapController!.animateCamera(CameraUpdate.newLatLng(providerLatLng));
+            }
+          }
+
+          return Stack(
+            children: [
+              Column(
+                children: [
+                  Expanded(
+                    flex: 4,
+                    child: GoogleMap(
+                      initialCameraPosition: CameraPosition(target: providerLatLng, zoom: 15),
+                      markers: _markers,
+                      onMapCreated: (controller) => _mapController = controller,
+                      myLocationButtonEnabled: false,
+                      zoomControlsEnabled: false,
+                      mapToolbarEnabled: false,
                     ),
                   ),
-                ),
+                  Expanded(
+                    flex: 6,
+                    child: Container(
+                      color: Colors.white,
+                      child: SingleChildScrollView(
+                        padding: const EdgeInsets.fromLTRB(20, 95, 20, 100),
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            _buildServiceStatus(currentStatus),
+                            const SizedBox(height: 24),
+                            _buildOrderDetailSection(data ?? widget.bookingData),
+                            const SizedBox(height: 24),
+                          ],
+                        ),
+                      ),
+                    ),
+                  ),
+                ],
               ),
-            ],
-          ),
-          
-          // Floating Back Button
-          Positioned(
-            top: MediaQuery.of(context).padding.top + 10,
-            left: 20,
-            child: GestureDetector(
-              onTap: () => Navigator.pop(context),
-              child: Container(
-                padding: const EdgeInsets.all(12),
-                decoration: BoxDecoration(
-                  color: Colors.white,
-                  shape: BoxShape.circle,
-                  boxShadow: [
-                    BoxShadow(
-                      color: Colors.black.withValues(alpha: 0.1),
-                      blurRadius: 10,
-                      offset: const Offset(0, 4),
+              
+              Positioned(
+                top: MediaQuery.of(context).padding.top + 10,
+                left: 20,
+                right: 20,
+                child: Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                  children: [
+                    GestureDetector(
+                      onTap: () => Navigator.pop(context),
+                      child: Container(
+                        padding: const EdgeInsets.all(12),
+                        decoration: BoxDecoration(
+                          color: Colors.white,
+                          shape: BoxShape.circle,
+                          boxShadow: [
+                            BoxShadow(
+                              color: Colors.black.withValues(alpha: 0.1),
+                              blurRadius: 10,
+                              offset: const Offset(0, 4),
+                            ),
+                          ],
+                        ),
+                        child: const Icon(Icons.arrow_back, color: Colors.black87, size: 24),
+                      ),
+                    ),
+                    Row(
+                      children: [
+                        GestureDetector(
+                          onTap: () {
+                            Navigator.push(
+                              context,
+                              MaterialPageRoute(
+                                builder: (context) => HelpCenterScreen(bookingData: widget.bookingData),
+                              ),
+                            );
+                          },
+                          child: Container(
+                            padding: const EdgeInsets.all(12),
+                            decoration: BoxDecoration(
+                              color: Colors.white,
+                              shape: BoxShape.circle,
+                              boxShadow: [
+                                BoxShadow(
+                                  color: Colors.black.withValues(alpha: 0.1),
+                                  blurRadius: 10,
+                                  offset: const Offset(0, 4),
+                                ),
+                              ],
+                            ),
+                            child: const Icon(Icons.help_outline_rounded, color: Color(0xFFFF6B00), size: 24),
+                          ),
+                        ),
+                        const SizedBox(width: 12),
+                        GestureDetector(
+                          onTap: _showCancelConfirmation,
+                          child: Container(
+                            padding: const EdgeInsets.all(12),
+                            decoration: BoxDecoration(
+                              color: Colors.white,
+                              shape: BoxShape.circle,
+                              boxShadow: [
+                                BoxShadow(
+                                  color: Colors.black.withValues(alpha: 0.1),
+                                  blurRadius: 10,
+                                  offset: const Offset(0, 4),
+                                ),
+                              ],
+                            ),
+                            child: const Icon(Icons.cancel_outlined, color: Colors.redAccent, size: 24),
+                          ),
+                        ),
+                      ],
                     ),
                   ],
                 ),
-                child: const Icon(Icons.arrow_back, color: Colors.black87, size: 24),
               ),
-            ),
-          ),
-          
-          // Floating Stats Card (Arrival/Distance)
-          Positioned(
-            top: MediaQuery.of(context).size.height * 0.31,
-            left: 20,
-            right: 20,
-            child: _buildFloatingStats(),
-          ),
+              
+              if (currentStatus == 'On the way')
+                Positioned(
+                  top: MediaQuery.of(context).size.height * 0.31,
+                  left: 20,
+                  right: 20,
+                  child: _buildFloatingStats(arrivalTime, distanceText),
+                ),
 
-          // Provider Info Card
-          Positioned(
-            top: MediaQuery.of(context).size.height * 0.38,
-            left: 20,
-            right: 20,
-            child: _buildProviderCard(),
-          ),
+              Positioned(
+                top: MediaQuery.of(context).size.height * 0.38,
+                left: 20,
+                right: 20,
+                child: _buildProviderCard(data),
+              ),
 
-          // Bottom Buttons
-          Positioned(
-            bottom: 0,
-            left: 0,
-            right: 0,
-            child: _buildBottomActions(),
-          ),
-        ],
+              Positioned(
+                bottom: 0,
+                left: 0,
+                right: 0,
+                child: _buildBottomActions(),
+              ),
+            ],
+          );
+        }
       ),
     );
   }
 
-  Widget _buildFloatingStats() {
+  Widget _buildFloatingStats(String arrivalTime, String distanceText) {
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 10),
       decoration: BoxDecoration(
@@ -207,9 +364,9 @@ class _TrackingScreenState extends State<TrackingScreen> {
         child: Row(
           mainAxisAlignment: MainAxisAlignment.spaceAround,
           children: [
-            _statItem(Icons.access_time_filled, 'ESTIMATED ARRIVAL', '15 mins'),
+            _statItem(Icons.access_time_filled, 'ESTIMATED ARRIVAL', arrivalTime),
             VerticalDivider(color: Colors.grey.shade200, thickness: 1, width: 1),
-            _statItem(null, 'DISTANCE', '2.4 miles'),
+            _statItem(null, 'DISTANCE', distanceText),
           ],
         ),
       ),
@@ -236,11 +393,11 @@ class _TrackingScreenState extends State<TrackingScreen> {
           children: [
             Text(
               label,
-              style: GoogleFonts.outfit(fontSize: 8, fontWeight: FontWeight.bold, color: Colors.grey.shade400, letterSpacing: 0.5),
+              style: GoogleFonts.outfit(fontSize: 8, fontWeight: FontWeight.w600, color: Colors.grey.shade400, letterSpacing: 0.5),
             ),
             Text(
               value,
-              style: GoogleFonts.outfit(fontSize: 15, fontWeight: FontWeight.w800, color: const Color(0xFF1F212C)),
+              style: GoogleFonts.outfit(fontSize: 15, fontWeight: FontWeight.w600, color: const Color(0xFF1F212C)),
             ),
           ],
         ),
@@ -248,8 +405,11 @@ class _TrackingScreenState extends State<TrackingScreen> {
     );
   }
 
-  Widget _buildProviderCard() {
-    String name = widget.bookingData['providerName'] ?? 'Ali\'s Expert Cleaning';
+  Widget _buildProviderCard(Map<String, dynamic>? data) {
+    String name = data?['providerName'] ?? widget.bookingData['providerName'] ?? 'Provider';
+    String photoUrl = data?['providerProfileUrl'] ?? data?['profileUrl'] ?? '';
+    String providerId = data?['providerId'] ?? widget.bookingData['providerId'] ?? '';
+
     return Container(
       padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
@@ -269,8 +429,11 @@ class _TrackingScreenState extends State<TrackingScreen> {
             children: [
               CircleAvatar(
                 radius: 32,
-                backgroundColor: Colors.grey.shade100,
-                backgroundImage: NetworkImage('https://i.pravatar.cc/150?u=$name'),
+                backgroundColor: const Color(0xFFF1F5F9),
+                backgroundImage: photoUrl.isNotEmpty ? NetworkImage(photoUrl) : null,
+                child: photoUrl.isEmpty 
+                  ? Text(name.isNotEmpty ? name[0].toUpperCase() : 'P', style: GoogleFonts.outfit(color: const Color(0xFF1F212C), fontSize: 18, fontWeight: FontWeight.w600)) 
+                  : null,
               ),
               Positioned(
                 right: 0,
@@ -297,7 +460,7 @@ class _TrackingScreenState extends State<TrackingScreen> {
                   name,
                   style: GoogleFonts.outfit(
                     fontSize: 18,
-                    fontWeight: FontWeight.w800,
+                    fontWeight: FontWeight.w600,
                     color: const Color(0xFF1E212C),
                   ),
                 ),
@@ -310,7 +473,7 @@ class _TrackingScreenState extends State<TrackingScreen> {
                       '4.9',
                       style: GoogleFonts.outfit(
                         fontSize: 13,
-                        fontWeight: FontWeight.bold,
+                        fontWeight: FontWeight.w600,
                         color: const Color(0xFF1E293B),
                       ),
                     ),
@@ -327,6 +490,21 @@ class _TrackingScreenState extends State<TrackingScreen> {
               ],
             ),
           ),
+          FutureBuilder<DocumentSnapshot>(
+            future: FirebaseFirestore.instance.collection('providers').doc(providerId).get(),
+            builder: (context, snapshot) {
+              String? phone;
+              if (snapshot.hasData && snapshot.data!.exists) {
+                final pData = snapshot.data!.data() as Map<String, dynamic>?;
+                phone = pData?['phone'];
+              }
+              return GestureDetector(
+                onTap: () => _makeCall(phone ?? data?['providerPhone'] ?? widget.bookingData['providerPhone'] ?? '011-23456789'),
+                child: _actionIcon(Icons.phone_rounded, color: const Color(0xFF4ADE80)),
+              );
+            }
+          ),
+          const SizedBox(width: 12),
           GestureDetector(
             onTap: () {
               Navigator.push(
@@ -334,8 +512,9 @@ class _TrackingScreenState extends State<TrackingScreen> {
                 MaterialPageRoute(
                   builder: (context) => SingleChatScreen(
                     provider: {
-                      'name': name,
-                      'profileUrl': 'https://i.pravatar.cc/150?u=$name',
+                      'providerId': providerId,
+                      'providerName': name,
+                      'providerProfileUrl': photoUrl,
                     },
                   ),
                 ),
@@ -348,7 +527,7 @@ class _TrackingScreenState extends State<TrackingScreen> {
     );
   }
 
-  Widget _actionIcon(IconData icon) {
+  Widget _actionIcon(IconData icon, {Color? color}) {
     return Container(
       width: 48,
       height: 48,
@@ -356,56 +535,205 @@ class _TrackingScreenState extends State<TrackingScreen> {
         color: Color(0xFFF1F5F9),
         shape: BoxShape.circle,
       ),
-      child: Icon(icon, color: const Color(0xFF1E212C), size: 20),
+      child: Icon(icon, color: color ?? const Color(0xFF1E212C), size: 20),
     );
   }
 
-  Widget _buildServiceStatus() {
+  Widget _buildOrderDetailSection(Map<String, dynamic> data) {
+    String serviceName = data['serviceName'] ?? 'Service';
+    double totalPaid = (data['totalPrice'] is num) 
+        ? (data['totalPrice'] as num).toDouble() 
+        : (double.tryParse(data['totalPrice']?.toString().replaceAll('RM', '').trim() ?? '0') ?? 0.0);
+    
+    double basePrice = (data['basePrice'] is num) 
+        ? (data['basePrice'] as num).toDouble() 
+        : totalPaid; // Fallback for legacy bookings
+
+    List<dynamic> addOns = data['selectedAddOns'] ?? [];
+    
+    // If we have add-ons but basePrice is total, recalculate basePrice for display
+    if (addOns.isNotEmpty && basePrice == totalPaid) {
+      double addOnsTotal = 0;
+      for (var addon in addOns) {
+        final val = addon['price'];
+        addOnsTotal += (val is num) ? val.toDouble() : (double.tryParse(val.toString()) ?? 0.0);
+      }
+      basePrice = totalPaid - addOnsTotal;
+    }
+
+    double chargeFee = (data['chargeFee'] is num) 
+        ? (data['chargeFee'] as num).toDouble() 
+        : (totalPaid - basePrice - addOns.fold(0.0, (t, a) => t + (zval(a['price']))));
+
     return Container(
       width: double.infinity,
       padding: const EdgeInsets.all(24),
       decoration: BoxDecoration(
-        color: const Color(0xFFF9F7F5),
+        color: Colors.white,
         borderRadius: BorderRadius.circular(32),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withValues(alpha: 0.04),
+            blurRadius: 20,
+            offset: const Offset(0, 8),
+          ),
+        ],
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(
+            'Order Detail',
+            style: GoogleFonts.outfit(fontSize: 16, fontWeight: FontWeight.w600, color: const Color(0xFF1F212C)),
+          ),
+          const SizedBox(height: 20),
+          Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            children: [
+              Text(
+                serviceName,
+                style: GoogleFonts.outfit(fontSize: 15, color: const Color(0xFF64748B)),
+              ),
+              Text(
+                'RM ${basePrice.toStringAsFixed(2)}',
+                style: GoogleFonts.outfit(fontSize: 15, fontWeight: FontWeight.w600, color: const Color(0xFF1F212C)),
+              ),
+            ],
+          ),
+          if (addOns.isNotEmpty) ...[
+            const SizedBox(height: 12),
+            const Divider(height: 1, color: Color(0xFFF1F5F9)),
+            const SizedBox(height: 12),
+            ...addOns.map((addon) {
+              final a = Map<String, dynamic>.from(addon);
+              return Padding(
+                padding: const EdgeInsets.only(bottom: 8),
+                child: Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                  children: [
+                    Text(
+                      a['name'] ?? 'Add-on',
+                      style: GoogleFonts.outfit(fontSize: 13, color: Colors.grey.shade500),
+                    ),
+                    Text(
+                      'RM ${(double.tryParse(a['price']?.toString() ?? '0') ?? 0.0).toStringAsFixed(2)}',
+                      style: GoogleFonts.outfit(fontSize: 13, color: Colors.grey.shade600),
+                    ),
+                  ],
+                ),
+              );
+            }),
+          ],
+          const SizedBox(height: 12),
+          const Divider(height: 1, color: Color(0xFFF1F5F9)),
+          const SizedBox(height: 12),
+          Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            children: [
+              Text(
+                'Charge Fee (15%)',
+                style: GoogleFonts.outfit(fontSize: 13, color: Colors.grey.shade500),
+              ),
+              Text(
+                'RM ${chargeFee.toStringAsFixed(2)}',
+                style: GoogleFonts.outfit(fontSize: 13, color: Colors.grey.shade600),
+              ),
+            ],
+          ),
+          const SizedBox(height: 20),
+          const Divider(height: 1, color: Color(0xFFF1F5F9)),
+          const SizedBox(height: 20),
+          Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            children: [
+              Text(
+                'Total Paid',
+                style: GoogleFonts.outfit(fontSize: 16, fontWeight: FontWeight.w600, color: const Color(0xFF1F212C)),
+              ),
+              Text(
+                'RM ${totalPaid.toStringAsFixed(2)}',
+                style: GoogleFonts.outfit(fontSize: 20, fontWeight: FontWeight.bold, color: const Color(0xFFFF6B00)),
+              ),
+            ],
+          ),
+        ],
+      ),
+    );
+  }
+
+  double zval(dynamic val) {
+    if (val is num) return val.toDouble();
+    return double.tryParse(val?.toString() ?? '0') ?? 0.0;
+  }
+
+  Widget _buildServiceStatus(String currentStatus) {
+    // Phase logic
+    bool bookingConfirmed = currentStatus != 'Pending';
+    bool onTheWay = ['On the way', 'Arrived', 'In progress', 'Completed'].contains(currentStatus);
+    bool arrived = ['Arrived', 'In progress', 'Completed'].contains(currentStatus);
+    bool inProgress = ['In progress', 'Completed'].contains(currentStatus);
+    bool completed = currentStatus == 'Completed';
+
+    return Container(
+      width: double.infinity,
+      padding: const EdgeInsets.all(24),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(32),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withValues(alpha: 0.06),
+            blurRadius: 20,
+            offset: const Offset(0, 10),
+          ),
+        ],
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Text(
             'Service Status',
-            style: GoogleFonts.outfit(fontSize: 16, fontWeight: FontWeight.bold, color: const Color(0xFF1F212C)),
+            style: GoogleFonts.outfit(fontSize: 16, fontWeight: FontWeight.w600, color: const Color(0xFF1F212C)),
           ),
           const SizedBox(height: 24),
           _statusTimelineItem(
             'Booking Confirmed', 
-            'Your pro is confirmed for 2:00 PM', 
-            '1:15 PM', 
-            isCompleted: true, 
+            bookingConfirmed ? 'Your pro is confirmed' : 'Waiting for provider...', 
+            currentStatus == 'Confirmed' ? 'Happening now' : '', 
+            isCompleted: bookingConfirmed, 
+            isActive: currentStatus == 'Pending',
             isLast: false,
           ),
           _statusTimelineItem(
             'Professional on the way', 
-            'Ali is driving to your location', 
-            'Happening now', 
-            isActive: true, 
+            'Pro is driving to your location', 
+            currentStatus == 'On the way' ? 'Happening now' : '', 
+            isCompleted: onTheWay && currentStatus != 'On the way',
+            isActive: currentStatus == 'On the way', 
             isLast: false,
           ),
           _statusTimelineItem(
             'Arrived', 
-            'Estimated arrival at 2:05 PM', 
-            '', 
+            'Pro has arrived at your location', 
+            currentStatus == 'Arrived' ? 'Happening now' : '', 
+            isCompleted: arrived && currentStatus != 'Arrived',
+            isActive: currentStatus == 'Arrived',
             isLast: false,
           ),
           _statusTimelineItem(
             'Work in progress', 
             'The magic is happening!', 
-            '', 
+            currentStatus == 'In progress' ? 'Happening now' : '', 
+            isCompleted: inProgress && currentStatus != 'In progress',
+            isActive: currentStatus == 'In progress',
             isLast: false,
           ),
           _statusTimelineItem(
             'Completed', 
-            'Service will be marked done here', 
-            '', 
+            'Service finished', 
+            currentStatus == 'Completed' ? 'Done' : '', 
+            isCompleted: completed,
+            isActive: false, 
             isLast: true,
           ),
         ],
@@ -450,7 +778,7 @@ class _TrackingScreenState extends State<TrackingScreen> {
                     title,
                     style: GoogleFonts.outfit(
                       fontSize: 15, 
-                      fontWeight: FontWeight.bold, 
+                      fontWeight: FontWeight.w600, 
                       color: isActive ? const Color(0xFFFF6B00) : (isCompleted ? const Color(0xFF1F212C) : Colors.grey.shade400)
                     ),
                   ),
@@ -466,7 +794,7 @@ class _TrackingScreenState extends State<TrackingScreen> {
                         time,
                         style: GoogleFonts.outfit(
                           fontSize: 11, 
-                          fontWeight: FontWeight.bold, 
+                          fontWeight: FontWeight.w600, 
                           color: isActive ? Colors.deepOrange.shade800 : Colors.grey.shade400
                         ),
                       ),
@@ -486,51 +814,46 @@ class _TrackingScreenState extends State<TrackingScreen> {
       decoration: const BoxDecoration(
         color: Colors.white,
         borderRadius: BorderRadius.vertical(top: Radius.circular(30)),
-      ),
-      child: Row(
-        children: [
-          Expanded(
-            flex: 2,
-            child: ElevatedButton(
-              onPressed: _showCancelConfirmation,
-              style: ElevatedButton.styleFrom(
-                backgroundColor: Colors.grey.shade100,
-                foregroundColor: Colors.black87,
-                elevation: 0,
-                padding: const EdgeInsets.symmetric(vertical: 18),
-                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
-              ),
-              child: Text('Cancel\nBooking', textAlign: TextAlign.center, style: GoogleFonts.outfit(fontSize: 13, fontWeight: FontWeight.bold, height: 1.1)),
-            ),
-          ),
-          const SizedBox(width: 16),
-          Expanded(
-            flex: 4,
-            child: Container(
-              height: 60,
-              decoration: BoxDecoration(
-                color: const Color(0xFFFF6B00),
-                borderRadius: BorderRadius.circular(16),
-              ),
-              child: ElevatedButton(
-                onPressed: () {
-                  Navigator.push(
-                    context,
-                    MaterialPageRoute(
-                      builder: (context) => HelpCenterScreen(bookingData: widget.bookingData),
-                    ),
-                  );
-                },
-                style: ElevatedButton.styleFrom(
-                  backgroundColor: Colors.transparent,
-                  shadowColor: Colors.transparent,
-                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
-                ),
-                child: Text('Help Center', style: GoogleFonts.outfit(fontSize: 16, fontWeight: FontWeight.bold, color: Colors.white)),
-              ),
-            ),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black12,
+            blurRadius: 10,
+            offset: Offset(0, -5),
           ),
         ],
+      ),
+      child: SizedBox(
+        width: double.infinity,
+        height: 56,
+        child: ElevatedButton(
+          onPressed: () async {
+            // 🔹 UPDATE STATUS IN FIRESTORE TO COMPLETED
+            try {
+              await FirebaseFirestore.instance
+                  .collection('bookings')
+                  .doc(widget.bookingId)
+                  .update({'status': 'Completed'});
+              
+              if (!mounted) return;
+              // 🔹 NAVIGATE TO SUCCESS SPLASH → THEN RATING
+              Navigator.pushReplacement(
+                context,
+                MaterialPageRoute(
+                  builder: (context) => ServiceCompletedScreen(bookingData: widget.bookingData),
+                ),
+              );
+            } catch (e) {
+              debugPrint('Error completing booking: $e');
+            }
+          },
+          style: ElevatedButton.styleFrom(
+            backgroundColor: const Color(0xFFFF6B00),
+            foregroundColor: Colors.white,
+            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+            elevation: 0,
+          ),
+          child: Text('Service Completed', style: GoogleFonts.outfit(fontSize: 16, fontWeight: FontWeight.w600)),
+        ),
       ),
     );
   }

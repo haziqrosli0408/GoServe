@@ -107,7 +107,7 @@ class _MapPickerScreenState extends State<MapPickerScreen> {
           'Pin Your Location',
           style: GoogleFonts.outfit(
             color: const Color(0xFF1E293B),
-            fontWeight: FontWeight.bold,
+            fontWeight: FontWeight.w600,
             fontSize: 18,
           ),
         ),
@@ -201,7 +201,7 @@ class _MapPickerScreenState extends State<MapPickerScreen> {
                         ),
                         child: Text(
                           'Confirm Location',
-                          style: GoogleFonts.outfit(fontWeight: FontWeight.bold),
+                          style: GoogleFonts.outfit(fontWeight: FontWeight.w600),
                         ),
                       ),
                     ),
