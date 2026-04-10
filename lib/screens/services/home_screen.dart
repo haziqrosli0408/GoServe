@@ -5,8 +5,11 @@ import 'package:cloud_firestore/cloud_firestore.dart';
 import 'search_page.dart';
 import 'service_details.dart';
 import 'categories_screen.dart';
+import 'subcategory_providers_screen.dart';
+import 'category_detail_screen.dart';
 import '../profile/profile_screen.dart';
 import '../misc/notifications_screen.dart';
+import '../../utils/categories_data.dart';
 import 'package:animated_text_kit/animated_text_kit.dart';
 import 'dart:async';
 import 'package:geolocator/geolocator.dart';
@@ -34,14 +37,7 @@ class _HomeScreenState extends State<HomeScreen> {
   String _currentLocation = "Detecting...";
   final Set<String> _savedServiceIds = {};
 
-  final categories = const [
-    {'name': 'Plumbing', 'icon': Icons.plumbing_outlined},
-    {'name': 'Painting', 'icon': Icons.format_paint_outlined},
-    {'name': 'Electrical', 'icon': Icons.electrical_services_outlined},
-    {'name': 'Moving', 'icon': Icons.local_shipping_outlined},
-    {'name': 'Cleaning', 'icon': Icons.cleaning_services_outlined},
-    {'name': 'Landscaping', 'icon': Icons.grass_outlined},
-  ];
+  List<Map<String, dynamic>> get _categories => AppCategories.getHomeCategories();
 
   final List<String> popularFilters = ['All', 'Nearby', 'Cleaning', 'Repairing'];
 
@@ -274,7 +270,19 @@ class _HomeScreenState extends State<HomeScreen> {
               ),
             ),
             _buildSectionHeader('Categories', 'See All', () {
-              Navigator.push(context, MaterialPageRoute(builder: (_) => const CategoriesScreen()));
+              showModalBottomSheet(
+                context: context,
+                isScrollControlled: true,
+                backgroundColor: Colors.transparent,
+                builder: (context) => Container(
+                  height: MediaQuery.of(context).size.height * 0.75,
+                  decoration: const BoxDecoration(
+                    color: Colors.white,
+                    borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
+                  ),
+                  child: const CategoriesScreen(),
+                ),
+              );
             }),
             const SizedBox(height: 16),
             _buildCategoriesGrid(),
@@ -601,7 +609,19 @@ class _HomeScreenState extends State<HomeScreen> {
                       // Button
                       GestureDetector(
                         onTap: () {
-                          Navigator.push(context, MaterialPageRoute(builder: (_) => const CategoriesScreen()));
+                          showModalBottomSheet(
+                            context: context,
+                            isScrollControlled: true,
+                            backgroundColor: Colors.transparent,
+                            builder: (context) => Container(
+                              height: MediaQuery.of(context).size.height * 0.75,
+                              decoration: const BoxDecoration(
+                                color: Colors.white,
+                                borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
+                              ),
+                              child: const CategoriesScreen(),
+                            ),
+                          );
                         },
                         child: Container(
                           padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 10),
@@ -668,50 +688,96 @@ class _HomeScreenState extends State<HomeScreen> {
 
   Widget _buildCategoriesGrid() {
     return Padding(
-      padding: const EdgeInsets.symmetric(horizontal: 20),
+      padding: const EdgeInsets.symmetric(horizontal: 18), // Kept screen gap
       child: GridView.builder(
         shrinkWrap: true,
         physics: const NeverScrollableScrollPhysics(),
         padding: EdgeInsets.zero,
         gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
           crossAxisCount: 3,
-          mainAxisSpacing: 16,
-          crossAxisSpacing: 16,
-          mainAxisExtent: 110,
+          mainAxisSpacing: 10, // Reduced from 16
+          crossAxisSpacing: 10, // Reduced from 16
+          mainAxisExtent: 115, // Slightly increased to fill the space
         ),
-        itemCount: categories.length,
+        itemCount: 6, // Show only 6 cards
         itemBuilder: (context, index) {
-          final cat = categories[index];
-          return Container(
-            decoration: BoxDecoration(
-              color: const Color(0xFFFFF7ED),
-              borderRadius: BorderRadius.circular(16),
-              boxShadow: [
-                BoxShadow(
-                  color: const Color(0xFFFF6B00).withValues(alpha: 0.06),
-                  blurRadius: 10,
-                  offset: const Offset(0, 4),
-                ),
-              ],
-            ),
-            child: Column(
-              mainAxisAlignment: MainAxisAlignment.center,
-              children: [
-                Icon(
-                  cat['icon'] as IconData,
-                  color: const Color(0xFFFF6B00),
-                  size: 32,
-                ),
-                const SizedBox(height: 8),
-                Text(
-                  cat['name'] as String,
-                  style: GoogleFonts.outfit(
-                    fontSize: 12,
-                    fontWeight: FontWeight.w600,
-                    color: const Color(0xFF1E293B),
+          final cat = _categories[index];
+          final String name = cat['name']?.toString() ?? 'Category';
+          final bool isAsset = cat['isAsset'] == true;
+          final String assetPath = cat['assetPath']?.toString() ?? '';
+          final IconData icon = cat['icon'] as IconData? ?? Icons.category_outlined;
+          final Color bgColor = cat['color'] is Color ? cat['color'] as Color : const Color(0xFFF1F5F9);
+          final Color iconColor = cat['iconColor'] is Color ? cat['iconColor'] as Color : const Color(0xFF475569);
+
+          return GestureDetector(
+            onTap: () {
+              final subcats = AppCategories.subcategoryMap[name];
+              if (subcats != null && subcats.isNotEmpty) {
+                Navigator.push(
+                  context,
+                  MaterialPageRoute(
+                    builder: (context) => CategoryDetailScreen(
+                      categoryName: name,
+                      categoryIcon: icon,
+                      subcategories: subcats,
+                    ),
                   ),
-                ),
-              ],
+                );
+              } else {
+                Navigator.push(
+                  context,
+                  MaterialPageRoute(
+                    builder: (context) => SubcategoryProvidersScreen(
+                      title: name,
+                      queryName: name,
+                    ),
+                  ),
+                );
+              }
+            },
+            child: Container(
+              width: double.infinity,
+              height: double.infinity,
+              padding: const EdgeInsets.all(12),
+              decoration: BoxDecoration(
+                color: bgColor,
+                borderRadius: BorderRadius.circular(14), // Sharper curve
+              ),
+              child: Column(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  isAsset
+                      ? Image.asset(
+                          assetPath,
+                          width: 52, // Increased from 40
+                          height: 52, // Increased from 40
+                          fit: BoxFit.contain,
+                          errorBuilder: (context, error, stackTrace) => Icon(
+                            icon,
+                            color: iconColor,
+                            size: 44, // Increased from 36
+                          ),
+                        )
+                      : Icon(
+                          icon,
+                          color: iconColor,
+                          size: 44, // Increased from 36
+                        ),
+                  const SizedBox(height: 10),
+                  Text(
+                    name,
+                    textAlign: TextAlign.center,
+                    style: GoogleFonts.outfit(
+                      fontSize: 11,
+                      fontWeight: FontWeight.bold,
+                      color: const Color(0xFF1E293B),
+                      height: 1.1,
+                    ),
+                    maxLines: 2, // Allow 2 lines for 3-column grid
+                    overflow: TextOverflow.ellipsis,
+                  ),
+                ],
+              ),
             ),
           );
         },
@@ -731,7 +797,7 @@ class _HomeScreenState extends State<HomeScreen> {
         _buildSectionHeader('Recommendation', 'See All', () {}),
         const SizedBox(height: 16),
         SizedBox(
-          height: 270,
+          height: 310, // Increased from 270
           child: ListView.builder(
             scrollDirection: Axis.horizontal,
             padding: const EdgeInsets.symmetric(horizontal: 20),
@@ -757,8 +823,8 @@ class _HomeScreenState extends State<HomeScreen> {
         Navigator.push(context, MaterialPageRoute(builder: (context) => ServiceDetailsScreen(provider: s)));
       },
       child: Container(
-        width: 160,
-        margin: const EdgeInsets.only(right: 16),
+        width: 190, // Increased from 160
+        margin: const EdgeInsets.only(right: 18), // Increased from 16
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           mainAxisSize: MainAxisSize.min, 
@@ -768,21 +834,21 @@ class _HomeScreenState extends State<HomeScreen> {
               borderRadius: BorderRadius.circular(16),
               child: servicePhotoUrl.isNotEmpty ? Image.network(
                 servicePhotoUrl,
-                height: 150,
-                width: 160,
+                height: 180, // Increased from 150
+                width: 190, // Increased from 160
                 fit: BoxFit.cover,
-                errorBuilder: (_, __, ___) => Image.network('https://images.unsplash.com/photo-1581578731548-c64695cc6952?q=80&w=800&auto=format&fit=crop', height: 150, width: 160, fit: BoxFit.cover),
+                errorBuilder: (_, __, ___) => Image.network('https://images.unsplash.com/photo-1581578731548-c64695cc6952?q=80&w=800&auto=format&fit=crop', height: 180, width: 190, fit: BoxFit.cover),
               ) : Image.network(
                 'https://images.unsplash.com/photo-1581578731548-c64695cc6952?q=80&w=800&auto=format&fit=crop',
-                height: 150,
-                width: 160,
+                height: 180, // Increased from 150
+                width: 190, // Increased from 160
                 fit: BoxFit.cover,
               ),
             ),
-            const SizedBox(height: 10),
+            const SizedBox(height: 12), // Increased from 10
             // Row 1: Title and Favorite Icon
             SizedBox(
-              height: 42,
+              height: 46, // Increased from 42
               child: Row(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 mainAxisAlignment: MainAxisAlignment.spaceBetween,
@@ -791,7 +857,7 @@ class _HomeScreenState extends State<HomeScreen> {
                     child: Text(
                       title,
                       style: GoogleFonts.outfit(
-                        fontSize: 15,
+                        fontSize: 16, // Increased from 15
                         fontWeight: FontWeight.w600,
                         color: const Color(0xFF1F2937),
                         height: 1.2,
@@ -805,14 +871,14 @@ class _HomeScreenState extends State<HomeScreen> {
                     onTap: () => _toggleSaveService(serviceId),
                     child: Icon(
                       _savedServiceIds.contains(serviceId) ? Icons.bookmark : Icons.bookmark_border,
-                      size: 20,
+                      size: 22, // Increased from 20
                       color: _savedServiceIds.contains(serviceId) ? const Color(0xFFFF6B00) : Colors.grey.shade400,
                     ),
                   ),
                 ],
               ),
             ),
-            const SizedBox(height: 6),
+            const SizedBox(height: 8), // Increased from 6
 
             // Row 2: Price and Rating
             Row(
@@ -830,7 +896,7 @@ class _HomeScreenState extends State<HomeScreen> {
                       TextSpan(
                         text: 'RM$price${s['priceType'] == 'one-time' ? '' : '/hr'}',
                         style: GoogleFonts.outfit(
-                          fontSize: 14,
+                          fontSize: 16, // Increased from 14
                           fontWeight: FontWeight.w600,
                           color: const Color(0xFFFF6B00),
                         ),
@@ -841,41 +907,41 @@ class _HomeScreenState extends State<HomeScreen> {
                 Text(
                   ' · ',
                   style: GoogleFonts.outfit(
-                    fontSize: 12,
+                    fontSize: 14, // Increased from 12
                     color: const Color(0xFF6B7280),
                   ),
                 ),
-                const Icon(Icons.star, color: Color(0xFFFFC107), size: 14),
+                const Icon(Icons.star, color: Color(0xFFFFC107), size: 16), // Increased from 14
                 const SizedBox(width: 4),
                 Text(
                   rating,
                   style: GoogleFonts.outfit(
-                    fontSize: 12,
+                    fontSize: 14, // Increased from 12
                     fontWeight: FontWeight.w500,
                     color: const Color(0xFF1E293B),
                   ),
                 ),
               ],
             ),
-            const SizedBox(height: 8),
+            const SizedBox(height: 10), // Increased from 8
 
             // Row 3: Provider Profile and Name
             Row(
               children: [
                 CircleAvatar(
-                  radius: 9,
+                  radius: 11, // Increased from 9
                   backgroundColor: const Color(0xFFF1F5F9),
                   backgroundImage: providerProfileUrl.isNotEmpty ? NetworkImage(providerProfileUrl) : null,
                   child: providerProfileUrl.isEmpty 
-                    ? Text(providerName.isNotEmpty ? providerName[0].toUpperCase() : 'P', style: GoogleFonts.outfit(color: const Color(0xFF1F212C), fontSize: 8, fontWeight: FontWeight.w600)) 
+                    ? Text(providerName.isNotEmpty ? providerName[0].toUpperCase() : 'P', style: GoogleFonts.outfit(color: const Color(0xFF1F212C), fontSize: 10, fontWeight: FontWeight.w600)) 
                     : null,
                 ),
-                const SizedBox(width: 6),
+                const SizedBox(width: 8), // Increased from 6
                 Expanded(
                   child: Text(
                     providerName,
                     style: GoogleFonts.outfit(
-                      fontSize: 12,
+                      fontSize: 13, // Increased from 12
                       fontWeight: FontWeight.w500,
                       color: const Color(0xFF4B5563),
                     ),
@@ -979,8 +1045,8 @@ class _HomeScreenState extends State<HomeScreen> {
               children: [
                 // Image
                 Container(
-                  width: 120,
-                  height: 120,
+                  width: 140, // Increased from 120
+                  height: 140, // Increased from 120
                   decoration: BoxDecoration(
                     borderRadius: BorderRadius.circular(16),
                     image: servicePhotoUrl.isNotEmpty ? DecorationImage(
@@ -992,11 +1058,11 @@ class _HomeScreenState extends State<HomeScreen> {
                     ),
                   ),
                 ),
-                const SizedBox(width: 16),
+                const SizedBox(width: 18), // Increased from 16
                 // Details
                 Expanded(
                   child: SizedBox(
-                    height: 120, 
+                    height: 140, // Increased from 120
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
@@ -1009,7 +1075,7 @@ class _HomeScreenState extends State<HomeScreen> {
                             child: Text(
                               title,
                               style: GoogleFonts.outfit(
-                                fontSize: 16,
+                                fontSize: 17, // Increased from 16
                                 fontWeight: FontWeight.w600,
                                 color: const Color(0xFF1E293B),
                               ),
@@ -1023,24 +1089,24 @@ class _HomeScreenState extends State<HomeScreen> {
                               padding: const EdgeInsets.only(top: 2),
                               child: Icon(
                                 _savedServiceIds.contains(serviceId) ? Icons.bookmark : Icons.bookmark_border,
-                                size: 20,
+                                size: 22, // Increased from 20
                                 color: _savedServiceIds.contains(serviceId) ? const Color(0xFFFF6B00) : Colors.grey.shade400,
                               ),
                             ),
                           ),
                         ],
                       ),
-                      const SizedBox(height: 2),
+                      const SizedBox(height: 4), // Increased from 2
                       
                       // Rating
                       Row(
                         children: [
-                          const Icon(Icons.star, color: Color(0xFFFFC107), size: 14),
+                          const Icon(Icons.star, color: Color(0xFFFFC107), size: 15), // Increased from 14
                           const SizedBox(width: 4),
                           Text(
                             '$rating ($reviews) · \$\$',
                             style: GoogleFonts.outfit(
-                              fontSize: 12,
+                              fontSize: 13, // Increased from 12
                               color: Colors.grey.shade600,
                             ),
                             maxLines: 1,
@@ -1065,7 +1131,7 @@ class _HomeScreenState extends State<HomeScreen> {
                             TextSpan(
                               text: 'RM$price',
                               style: GoogleFonts.outfit(
-                                fontSize: 16,
+                                fontSize: 17, // Increased from 16
                                 fontWeight: FontWeight.w600,
                                 color: const Color(0xFFFF6B00),
                               ),
@@ -1082,26 +1148,26 @@ class _HomeScreenState extends State<HomeScreen> {
                           ],
                         ),
                       ),
-                      const SizedBox(height: 8),
+                      const SizedBox(height: 10), // Increased from 8
 
                       // Provider Profile Row
                       Row(
                         children: [
                           CircleAvatar(
-                            radius: 9,
+                            radius: 11, // Increased from 9
                             backgroundColor: const Color(0xFFF1F5F9),
                             backgroundImage: providerProfileUrl.isNotEmpty ? NetworkImage(providerProfileUrl) : null,
                             child: providerProfileUrl.isEmpty 
-                              ? Text(providerName.isNotEmpty ? providerName[0].toUpperCase() : 'P', style: GoogleFonts.outfit(color: const Color(0xFF1F212C), fontSize: 8, fontWeight: FontWeight.w600)) 
+                              ? Text(providerName.isNotEmpty ? providerName[0].toUpperCase() : 'P', style: GoogleFonts.outfit(color: const Color(0xFF1F212C), fontSize: 10, fontWeight: FontWeight.w600)) 
                               : null,
                           ),
-                          const SizedBox(width: 6),
+                          const SizedBox(width: 8), // Increased from 6
                           Expanded(
                             child: Text(
                               providerName,
                               style: GoogleFonts.outfit(
-                                fontSize: 12,
-                                fontWeight: FontWeight.normal,
+                                fontSize: 13, // Increased from 12
+                                fontWeight: FontWeight.w500, // Increased from normal
                                 color: const Color(0xFF64748B),
                               ),
                               maxLines: 1,

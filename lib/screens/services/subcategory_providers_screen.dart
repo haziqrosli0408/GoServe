@@ -149,8 +149,14 @@ class _SubcategoryProvidersScreenState extends State<SubcategoryProvidersScreen>
                 ? const Center(child: CircularProgressIndicator(color: Color(0xFFFF6B00)))
                 : _providers.isEmpty
                     ? _buildEmptyState()
-                    : ListView.builder(
-                        padding: const EdgeInsets.symmetric(horizontal: 24),
+                    : GridView.builder(
+                        padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 12),
+                        gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
+                          crossAxisCount: 2,
+                          mainAxisSpacing: 24,
+                          crossAxisSpacing: 18,
+                          childAspectRatio: 0.62,
+                        ),
                         itemCount: _providers.length,
                         itemBuilder: (context, index) {
                           return _buildProviderCard(_providers[index]);
@@ -239,126 +245,129 @@ class _SubcategoryProvidersScreenState extends State<SubcategoryProvidersScreen>
         );
       },
       child: Container(
-        padding: const EdgeInsets.symmetric(vertical: 16),
-        decoration: BoxDecoration(
-          border: Border(bottom: BorderSide(color: Colors.grey.shade100)),
-        ),
-        child: Row(
+        color: Colors.white,
+        child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
+          mainAxisSize: MainAxisSize.min,
           children: [
             // Image
-            Container(
-              width: 120,
-              height: 120,
-              decoration: BoxDecoration(
+            Expanded(
+              child: ClipRRect(
                 borderRadius: BorderRadius.circular(16),
-                image: servicePhotoUrl.isNotEmpty ? DecorationImage(
-                  image: NetworkImage(servicePhotoUrl),
+                child: servicePhotoUrl.isNotEmpty ? Image.network(
+                  servicePhotoUrl,
+                  width: double.infinity,
+                  height: double.infinity,
                   fit: BoxFit.cover,
-                ) : const DecorationImage(
-                  image: NetworkImage('https://images.unsplash.com/photo-1581578731548-c64695cc6952?q=80&w=800&auto=format&fit=crop'),
+                  errorBuilder: (_, __, ___) => Image.network('https://images.unsplash.com/photo-1581578731548-c64695cc6952?q=80&w=800&auto=format&fit=crop', width: double.infinity, fit: BoxFit.cover),
+                ) : Image.network(
+                  'https://images.unsplash.com/photo-1581578731548-c64695cc6952?q=80&w=800&auto=format&fit=crop',
+                  width: double.infinity,
                   fit: BoxFit.cover,
                 ),
               ),
             ),
-            const SizedBox(width: 16),
-            // Details
-            Expanded(
-              child: SizedBox(
-                height: 120,
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Row(
-                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                      children: [
-                        Expanded(
-                          child: Text(
-                            title,
-                            style: GoogleFonts.outfit(
-                              fontSize: 16,
-                              fontWeight: FontWeight.w600,
-                              color: const Color(0xFF1E293B),
-                            ),
-                            maxLines: 1,
-                            overflow: TextOverflow.ellipsis,
-                          ),
-                        ),
-                        GestureDetector(
-                          onTap: () => _toggleSaveService(serviceId),
-                          child: Icon(
-                            _savedServiceIds.contains(serviceId) ? Icons.bookmark : Icons.bookmark_border, 
-                            size: 20, 
-                            color: _savedServiceIds.contains(serviceId) ? const Color(0xFFFF6B00) : Colors.black45
-                          ),
-                        ),
-                      ],
+            const SizedBox(height: 10),
+
+            // Row 1: Title and Bookmark Icon
+            Row(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              children: [
+                Expanded(
+                  child: Text(
+                    title,
+                    style: GoogleFonts.outfit(
+                      fontSize: 16,
+                      fontWeight: FontWeight.w600,
+                      color: const Color(0xFF1F2937),
                     ),
-                    const SizedBox(height: 4),
-                    Row(
-                      children: [
-                        const Icon(Icons.star, color: Color(0xFFFFC107), size: 14),
-                        const SizedBox(width: 4),
-                        Text(
-                          '$rating (128) · \$\$',
-                          style: GoogleFonts.outfit(
-                            fontSize: 12,
-                            color: Colors.grey.shade600,
-                          ),
-                        ),
-                      ],
-                    ),
-                    const SizedBox(height: 8),
-                    // Provider Row
-                    Row(
-                      children: [
-                        CircleAvatar(
-                          radius: 9,
-                          backgroundColor: const Color(0xFFF1F5F9),
-                          backgroundImage: profileUrl.isNotEmpty ? NetworkImage(profileUrl) : null,
-                          child: profileUrl.isEmpty 
-                            ? Text(name.isNotEmpty ? name[0].toUpperCase() : 'P', style: GoogleFonts.outfit(color: const Color(0xFF1F212C), fontSize: 8, fontWeight: FontWeight.w600)) 
-                            : null,
-                        ),
-                        const SizedBox(width: 6),
-                        Expanded(
-                          child: Text(
-                            name,
-                            style: GoogleFonts.outfit(
-                              fontSize: 14,
-                              fontWeight: FontWeight.w600,
-                              color: const Color(0xFF1E293B),
-                            ),
-                          ),
-                        ),
-                      ],
-                    ),
-                    const Spacer(),
-                    RichText(
-                      text: TextSpan(
-                        children: [
-                          TextSpan(
-                            text: 'From ',
-                            style: GoogleFonts.outfit(fontSize: 12, color: Colors.grey.shade500),
-                          ),
-                          TextSpan(
-                            text: 'RM$price',
-                            style: GoogleFonts.outfit(
-                              fontSize: 16,
-                              fontWeight: FontWeight.w600,
-                              color: const Color(0xFFFF6B00),
-                            ),
-                          ),
-                          TextSpan(
-                            text: '/hr',
-                            style: GoogleFonts.outfit(fontSize: 11, color: Colors.grey.shade400),
-                          ),
-                        ],
-                      ),
-                    ),
-                  ],
+                    maxLines: 2,
+                    overflow: TextOverflow.ellipsis,
+                  ),
                 ),
-              ),
+                GestureDetector(
+                  onTap: () => _toggleSaveService(serviceId),
+                  child: Icon(
+                    _savedServiceIds.contains(serviceId) ? Icons.bookmark : Icons.bookmark_border,
+                    size: 22,
+                    color: _savedServiceIds.contains(serviceId) ? const Color(0xFFFF6B00) : Colors.grey.shade400,
+                  ),
+                ),
+              ],
+            ),
+            const SizedBox(height: 8),
+
+            // Row 2: Price and Rating
+            Row(
+              children: [
+                RichText(
+                  text: TextSpan(
+                    children: [
+                      TextSpan(
+                        text: 'From ',
+                        style: GoogleFonts.outfit(
+                          fontSize: 11,
+                          color: Colors.grey.shade600,
+                        ),
+                      ),
+                      TextSpan(
+                        text: 'RM$price/hr',
+                        style: GoogleFonts.outfit(
+                          fontSize: 16,
+                          fontWeight: FontWeight.w600,
+                          color: const Color(0xFFFF6B00),
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+                Text(
+                  ' · ',
+                  style: GoogleFonts.outfit(
+                    fontSize: 14,
+                    color: const Color(0xFF6B7280),
+                  ),
+                ),
+                const Icon(Icons.star, color: Color(0xFFFFC107), size: 16),
+                const SizedBox(width: 4),
+                Text(
+                  rating,
+                  style: GoogleFonts.outfit(
+                    fontSize: 14,
+                    fontWeight: FontWeight.w500,
+                    color: const Color(0xFF1E293B),
+                  ),
+                ),
+              ],
+            ),
+            const SizedBox(height: 10),
+
+            // Row 3: Provider Profile and Name
+            Row(
+              children: [
+                CircleAvatar(
+                  radius: 11,
+                  backgroundColor: const Color(0xFFF1F5F9),
+                  backgroundImage: profileUrl.isNotEmpty ? NetworkImage(profileUrl) : null,
+                  child: profileUrl.isEmpty 
+                    ? Text(name.isNotEmpty ? name[0].toUpperCase() : 'P', style: GoogleFonts.outfit(color: const Color(0xFF1F212C), fontSize: 10, fontWeight: FontWeight.w600)) 
+                    : null,
+                ),
+                const SizedBox(width: 8),
+                Expanded(
+                  child: Text(
+                    name,
+                    style: GoogleFonts.outfit(
+                      fontSize: 13,
+                      fontWeight: FontWeight.w500,
+                      color: const Color(0xFF4B5563),
+                    ),
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                  ),
+                ),
+              ],
             ),
           ],
         ),

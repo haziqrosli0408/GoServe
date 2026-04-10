@@ -850,9 +850,9 @@ class _SearchPageState extends State<SearchPage> {
       padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 12),
       gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
         crossAxisCount: 2,
-        mainAxisSpacing: 20,
-        crossAxisSpacing: 16,
-        childAspectRatio: 0.7, 
+        mainAxisSpacing: 24,
+        crossAxisSpacing: 18,
+        childAspectRatio: 0.62, // Decreased (made taller) from 0.7
       ),
       itemCount: results.length,
       itemBuilder: (context, index) {
@@ -909,7 +909,7 @@ class _SearchPageState extends State<SearchPage> {
                   child: Text(
                     title,
                     style: GoogleFonts.outfit(
-                      fontSize: 15,
+                      fontSize: 16, // Increased from 15
                       fontWeight: FontWeight.w600,
                       color: const Color(0xFF1F2937),
                     ),
@@ -921,13 +921,13 @@ class _SearchPageState extends State<SearchPage> {
                   onTap: () => _toggleSaveService(serviceId),
                   child: Icon(
                     _savedServiceIds.contains(serviceId) ? Icons.bookmark : Icons.bookmark_border,
-                    size: 20,
+                    size: 22, // Increased from 20
                     color: _savedServiceIds.contains(serviceId) ? const Color(0xFFFF6B00) : Colors.grey.shade400,
                   ),
                 ),
               ],
             ),
-            const SizedBox(height: 6),
+            const SizedBox(height: 8), // Increased from 6
 
             // Row 2: Price and Rating
             Row(
@@ -945,7 +945,7 @@ class _SearchPageState extends State<SearchPage> {
                       TextSpan(
                         text: 'RM$price/hr',
                         style: GoogleFonts.outfit(
-                          fontSize: 14,
+                          fontSize: 16, // Increased from 14
                           fontWeight: FontWeight.w600,
                           color: const Color(0xFFFF6B00),
                         ),
@@ -956,41 +956,41 @@ class _SearchPageState extends State<SearchPage> {
                 Text(
                   ' · ',
                   style: GoogleFonts.outfit(
-                    fontSize: 12,
+                    fontSize: 14, // Increased from 12
                     color: const Color(0xFF6B7280),
                   ),
                 ),
-                const Icon(Icons.star, color: Color(0xFFFFC107), size: 14),
+                const Icon(Icons.star, color: Color(0xFFFFC107), size: 16), // Increased from 14
                 const SizedBox(width: 4),
                 Text(
                   rating,
                   style: GoogleFonts.outfit(
-                    fontSize: 12,
+                    fontSize: 14, // Increased from 12
                     fontWeight: FontWeight.w500,
                     color: const Color(0xFF1E293B),
                   ),
                 ),
               ],
             ),
-            const SizedBox(height: 8),
+            const SizedBox(height: 10), // Increased from 8
 
             // Row 3: Provider Profile and Name
             Row(
               children: [
                 CircleAvatar(
-                  radius: 9,
+                  radius: 11, // Increased from 9
                   backgroundColor: const Color(0xFFF1F5F9),
                   backgroundImage: providerProfileUrl.isNotEmpty ? NetworkImage(providerProfileUrl) : null,
                   child: providerProfileUrl.isEmpty 
-                    ? Text(providerName.isNotEmpty ? providerName[0].toUpperCase() : 'P', style: GoogleFonts.outfit(color: const Color(0xFF1F212C), fontSize: 8, fontWeight: FontWeight.w600)) 
+                    ? Text(providerName.isNotEmpty ? providerName[0].toUpperCase() : 'P', style: GoogleFonts.outfit(color: const Color(0xFF1F212C), fontSize: 10, fontWeight: FontWeight.w600)) 
                     : null,
                 ),
-                const SizedBox(width: 6),
+                const SizedBox(width: 8), // Increased from 6
                 Expanded(
                   child: Text(
                     providerName,
                     style: GoogleFonts.outfit(
-                      fontSize: 12,
+                      fontSize: 13, // Increased from 12
                       fontWeight: FontWeight.w500,
                       color: const Color(0xFF4B5563),
                     ),
