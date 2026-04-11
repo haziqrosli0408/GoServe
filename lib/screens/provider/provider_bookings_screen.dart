@@ -2,9 +2,10 @@ import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
-import '../../services/location_service.dart';
 import 'package:url_launcher/url_launcher.dart';
 import '../chat/single_chat_screen.dart';
+import 'active_service_screen.dart';
+import 'service_start_animation_screen.dart';
 
 class ProviderBookingsScreen extends StatefulWidget {
   const ProviderBookingsScreen({super.key});
@@ -16,7 +17,6 @@ class ProviderBookingsScreen extends StatefulWidget {
 class _ProviderBookingsScreenState extends State<ProviderBookingsScreen> {
   String selectedFilter = 'Requests';
   final filters = ['Requests', 'Upcoming', 'Completed', 'Cancelled'];
-  final LocationService _locationService = LocationService();
   final String currentProviderId = FirebaseAuth.instance.currentUser?.uid ?? '';
 
   @override
@@ -180,11 +180,13 @@ class _ProviderBookingsScreenState extends State<ProviderBookingsScreen> {
       builder: (context, snapshot) {
         String customerName = 'Unknown Customer';
         String? profileUrl;
+        String? customerPhone;
         
         if (snapshot.hasData && snapshot.data!.exists) {
           final userData = snapshot.data!.data() as Map<String, dynamic>;
           customerName = userData['name'] ?? 'Customer';
           profileUrl = userData['profileUrl'];
+          customerPhone = userData['phone'];
         }
 
         return Container(
@@ -287,7 +289,7 @@ class _ProviderBookingsScreenState extends State<ProviderBookingsScreen> {
                 ],
               ),
               const SizedBox(height: 16),
-              _buildActionButton(bookingId, status, data, customerName),
+              _buildActionButton(bookingId, status, data, customerName, profileUrl, customerPhone),
             ],
           ),
         );
@@ -295,14 +297,14 @@ class _ProviderBookingsScreenState extends State<ProviderBookingsScreen> {
     );
   }
 
-  Widget _buildActionButton(String bookingId, String status, Map<String, dynamic> data, String customerName) {
+  Widget _buildActionButton(String bookingId, String status, Map<String, dynamic> data, String customerName, String? profileUrl, String? customerPhone) {
     if (status == 'Pending') {
       return Row(
         children: [
           Expanded(
-            child: _actionBtn('Details', const Color(0xFFF1F5F9), const Color(0xFF1E293B), () {
-              _showBookingDetails(data, customerName);
-            }),
+            child: _actionBtn('Details', Colors.white, const Color(0xFF4F46E5), () {
+              _showBookingDetails(data, customerName, profileUrl, customerPhone);
+            }, isOutlined: true),
           ),
           const SizedBox(width: 12),
           Expanded(
@@ -312,45 +314,31 @@ class _ProviderBookingsScreenState extends State<ProviderBookingsScreen> {
           ),
         ],
       );
-    } else if (status == 'Confirmed') {
+    } else if (['Confirmed', 'On the way', 'Arrived', 'In progress'].contains(status)) {
       return Row(
         children: [
           Expanded(
-            child: _actionBtn('On the way', const Color(0xFF4F46E5), Colors.white, () {
-              _updateBookingStatus(bookingId, 'On the way');
-              _locationService.startTracking(bookingId);
-            }),
-          ),
-        ],
-      );
-    } else if (status == 'On the way') {
-      return Row(
-        children: [
-          Expanded(
-            child: _actionBtn('Arrived', const Color(0xFF10B981), Colors.white, () {
-              _updateBookingStatus(bookingId, 'Arrived');
-              _locationService.stopTracking();
-            }),
-          ),
-        ],
-      );
-    } else if (status == 'Arrived') {
-      return Row(
-        children: [
-          Expanded(
-            child: _actionBtn('Start Work', const Color(0xFFF59E0B), Colors.white, () {
-              _updateBookingStatus(bookingId, 'In progress');
-            }),
-          ),
-        ],
-      );
-    } else if (status == 'In progress') {
-      return Row(
-        children: [
-          Expanded(
-            child: _actionBtn('Complete Job', const Color(0xFF4F46E5), Colors.white, () {
-              _updateBookingStatus(bookingId, 'Completed');
-            }),
+            child: _actionBtn(
+              status == 'Confirmed' ? 'Start' : 'Continue', 
+              const Color(0xFF4F46E5), 
+              Colors.white, 
+              () {
+                Navigator.push(
+                  context,
+                  MaterialPageRoute(
+                    builder: (context) => (status == 'Confirmed')
+                        ? ServiceStartAnimationScreen(
+                            bookingId: bookingId,
+                            bookingData: data,
+                          )
+                        : ActiveServiceScreen(
+                            bookingId: bookingId,
+                            bookingData: data,
+                          ),
+                  ),
+                );
+              }
+            ),
           ),
         ],
       );
@@ -367,7 +355,7 @@ class _ProviderBookingsScreenState extends State<ProviderBookingsScreen> {
       ),
     );
   }
-  void _showBookingDetails(Map<String, dynamic> data, String customerName) {
+  void _showBookingDetails(Map<String, dynamic> data, String customerName, String? profileUrl, String? customerPhone) {
     showModalBottomSheet(
       context: context,
       isScrollControlled: true,
@@ -379,6 +367,7 @@ class _ProviderBookingsScreenState extends State<ProviderBookingsScreen> {
           borderRadius: BorderRadius.vertical(top: Radius.circular(32)),
         ),
         child: Column(
+          mainAxisSize: MainAxisSize.min,
           children: [
             // Handle
             const SizedBox(height: 12),
@@ -390,7 +379,7 @@ class _ProviderBookingsScreenState extends State<ProviderBookingsScreen> {
                 borderRadius: BorderRadius.circular(2),
               ),
             ),
-            const SizedBox(height: 24),
+            const SizedBox(height: 16),
             
             Expanded(
               child: SingleChildScrollView(
@@ -415,79 +404,115 @@ class _ProviderBookingsScreenState extends State<ProviderBookingsScreen> {
                       ),
                     ),
                     
-                    const SizedBox(height: 32),
+                    const SizedBox(height: 16),
                     
                     // Customer Section
                     _buildDetailSection('CUSTOMER', [
-                      _detailRow(Icons.person_outline, 'Name', customerName),
-                      _detailRow(Icons.phone_outlined, 'Phone', data['customerPhone'] ?? 'Not provided'),
-                    ], 
-                    trailing: IconButton(
-                      onPressed: () {
-                        Navigator.push(
-                          context,
-                          MaterialPageRoute(
-                            builder: (context) => SingleChatScreen(
-                              provider: {
-                                'providerId': data['customerId'],
-                                'providerName': customerName,
-                                'providerProfileUrl': data['customerProfileUrl'], // Fallback handled in chat screen
-                                'serviceName': data['serviceName'],
-                                'serviceId': data['serviceId'],
-                              },
-                              themeColor: const Color(0xFF4F46E5),
+                      Row(
+                        children: [
+                          CircleAvatar(
+                            radius: 22,
+                            backgroundColor: Colors.grey[100],
+                            backgroundImage: (profileUrl != null && profileUrl.isNotEmpty)
+                                ? NetworkImage(profileUrl)
+                                : null,
+                            child: (profileUrl == null || profileUrl.isEmpty)
+                                ? const Icon(Icons.person, color: Color(0xFF4F46E5))
+                                : null,
+                          ),
+                          const SizedBox(width: 12),
+                          Expanded(
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                Text(
+                                  customerName,
+                                  style: GoogleFonts.outfit(
+                                    fontSize: 16,
+                                    fontWeight: FontWeight.w600,
+                                    color: const Color(0xFF1E293B),
+                                  ),
+                                ),
+                                Text(
+                                  customerPhone ?? 'Phone not provided',
+                                  style: GoogleFonts.outfit(
+                                    fontSize: 13,
+                                    color: Colors.grey[500],
+                                  ),
+                                ),
+                              ],
                             ),
                           ),
-                        );
-                      },
-                      icon: const Icon(Icons.chat_bubble_outline_rounded, color: Color(0xFF4F46E5), size: 20),
-                      style: IconButton.styleFrom(
-                        backgroundColor: const Color(0xFF4F46E5).withValues(alpha: 0.1),
-                        padding: const EdgeInsets.all(8),
+                          // Phone Action
+                          IconButton(
+                            onPressed: () async {
+                              if (customerPhone != null && customerPhone.isNotEmpty) {
+                                // Clean the phone number (remove spaces, dashes, etc.)
+                                final cleanPhone = customerPhone.replaceAll(RegExp(r'[^\d+]'), '');
+                                final Uri telUri = Uri(scheme: 'tel', path: cleanPhone);
+                                
+                                try {
+                                  await launchUrl(telUri);
+                                } catch (e) {
+                                  debugPrint("Could not launch $telUri: $e");
+                                }
+                              }
+                            },
+                            icon: const Icon(Icons.phone_outlined, color: Color(0xFF4F46E5), size: 20),
+                            style: IconButton.styleFrom(
+                              backgroundColor: const Color(0xFF4F46E5).withValues(alpha: 0.1),
+                              padding: const EdgeInsets.all(8),
+                            ),
+                          ),
+                          const SizedBox(width: 8),
+                          // Message Action
+                          IconButton(
+                            onPressed: () {
+                              Navigator.push(
+                                context,
+                                MaterialPageRoute(
+                                  builder: (context) => SingleChatScreen(
+                                    provider: {
+                                      'providerId': data['customerId'],
+                                      'providerName': customerName,
+                                      'providerProfileUrl': data['customerProfileUrl'],
+                                      'serviceName': data['serviceName'],
+                                      'serviceId': data['serviceId'],
+                                    },
+                                    themeColor: const Color(0xFF4F46E5),
+                                  ),
+                                ),
+                              );
+                            },
+                            icon: const Icon(Icons.chat_bubble_outline_rounded, color: Color(0xFF4F46E5), size: 20),
+                            style: IconButton.styleFrom(
+                              backgroundColor: const Color(0xFF4F46E5).withValues(alpha: 0.1),
+                              padding: const EdgeInsets.all(8),
+                            ),
+                          ),
+                        ],
                       ),
-                    )),
+                    ]),
                     
-                    const SizedBox(height: 24),
+                    const SizedBox(height: 16),
                     
                     // Service Info
                     _buildDetailSection('SERVICE INFO', [
                       _detailRow(Icons.cleaning_services_outlined, 'Service', data['serviceName'] ?? 'Service'),
+                      if (data['selectedAddOns'] != null && (data['selectedAddOns'] as List).isNotEmpty)
+                        _detailRow(Icons.add_box_outlined, 'Add-ons', (data['selectedAddOns'] as List).map((a) => a['name']).join(', '), isExpandable: true),
                       _detailRow(Icons.calendar_today_outlined, 'Date', data['date'] ?? 'No date'),
                       _detailRow(Icons.access_time_outlined, 'Time', data['time'] ?? 'No time'),
                     ]),
                     
-                    const SizedBox(height: 24),
+                    const SizedBox(height: 16),
                     
                     // Location
                     _buildDetailSection('LOCATION', [
                       _detailRow(Icons.location_on_outlined, 'Address', data['address'] ?? 'No address provided', isExpandable: true),
-                      const SizedBox(height: 12),
-                      SizedBox(
-                        width: double.infinity,
-                        child: OutlinedButton.icon(
-                          onPressed: () async {
-                            final lat = data['latitude'];
-                            final lng = data['longitude'];
-                            if (lat != null && lng != null) {
-                              final uri = Uri.parse("google.navigation:q=$lat,$lng");
-                              if (await canLaunchUrl(uri)) {
-                                await launchUrl(uri);
-                              }
-                            }
-                          },
-                          icon: const Icon(Icons.map_outlined, size: 18),
-                          label: Text('Open in Maps', style: GoogleFonts.outfit(fontWeight: FontWeight.w600)),
-                          style: OutlinedButton.styleFrom(
-                            foregroundColor: const Color(0xFF4F46E5),
-                            side: BorderSide(color: const Color(0xFF4F46E5).withValues(alpha: 0.3)),
-                            padding: const EdgeInsets.symmetric(vertical: 12),
-                            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-                          ),
-                        ),
-                      ),
                     ]),
                     
-                    const SizedBox(height: 24),
+                    const SizedBox(height: 16),
                     
                     // Payment Breakdown
                     _buildDetailSection('PAYMENT SUMMARY', [
@@ -496,6 +521,22 @@ class _ProviderBookingsScreenState extends State<ProviderBookingsScreen> {
                         ... (data['selectedAddOns'] as List).map((addon) => 
                           _priceRow(addon['name'] ?? 'Add-on', addon['price'] ?? 0, isAddon: true)
                         ),
+                      const Divider(height: 24,),
+                      Row(
+                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                        children: [
+                          Text('Order Total', style: GoogleFonts.outfit(fontSize: 14, color: const Color(0xFF64748B))),
+                          Text('RM ${((data['totalPrice'] ?? 0) as num).toDouble().toStringAsFixed(2)}', style: GoogleFonts.outfit(fontSize: 14, fontWeight: FontWeight.w600, color: const Color(0xFF1E293B))),
+                        ],
+                      ),
+                      const SizedBox(height: 12),
+                      Row(
+                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                        children: [
+                          Text('Platform Fee (15%)', style: GoogleFonts.outfit(fontSize: 14, color: Colors.redAccent)),
+                          Text('- RM ${((data['totalPrice'] ?? 0) * 0.15).toStringAsFixed(2)}', style: GoogleFonts.outfit(fontSize: 14, fontWeight: FontWeight.w600, color: Colors.redAccent)),
+                        ],
+                      ),
                       const Divider(height: 32),
                       Row(
                         mainAxisAlignment: MainAxisAlignment.spaceBetween,
@@ -503,12 +544,12 @@ class _ProviderBookingsScreenState extends State<ProviderBookingsScreen> {
                           Column(
                             crossAxisAlignment: CrossAxisAlignment.start,
                             children: [
-                              Text('Total Earnings', style: GoogleFonts.outfit(fontSize: 18, fontWeight: FontWeight.w600)),
-                              Text('After 15% platform fee', style: GoogleFonts.outfit(fontSize: 11, color: Colors.grey[400])),
+                              Text('Your Earnings', style: GoogleFonts.outfit(fontSize: 18, fontWeight: FontWeight.w600)),
+                              Text('Final net amount', style: GoogleFonts.outfit(fontSize: 11, color: Colors.grey[400])),
                             ],
                           ),
                           Text(
-                            'RM ${((data['totalPrice'] ?? 0) / 1.15).toStringAsFixed(2)}',
+                            'RM ${((data['totalPrice'] ?? 0) * 0.85).toStringAsFixed(2)}',
                             style: GoogleFonts.outfit(
                               fontSize: 22,
                               fontWeight: FontWeight.bold,
@@ -521,25 +562,6 @@ class _ProviderBookingsScreenState extends State<ProviderBookingsScreen> {
                     
                     const SizedBox(height: 40),
                   ],
-                ),
-              ),
-            ),
-            
-            // Bottom Action
-            Padding(
-              padding: const EdgeInsets.all(24),
-              child: SizedBox(
-                width: double.infinity,
-                child: ElevatedButton(
-                  onPressed: () => Navigator.pop(context),
-                  style: ElevatedButton.styleFrom(
-                    backgroundColor: const Color(0xFF1E293B),
-                    foregroundColor: Colors.white,
-                    padding: const EdgeInsets.symmetric(vertical: 16),
-                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
-                    elevation: 0,
-                  ),
-                  child: Text('Close', style: GoogleFonts.outfit(fontSize: 16, fontWeight: FontWeight.w600)),
                 ),
               ),
             ),
@@ -668,7 +690,7 @@ class _ProviderBookingsScreenState extends State<ProviderBookingsScreen> {
         decoration: BoxDecoration(
           color: bg,
           borderRadius: BorderRadius.circular(12),
-          border: isOutlined ? Border.all(color: Colors.grey.shade300) : null,
+          border: isOutlined ? Border.all(color: text.withValues(alpha: 0.5), width: 1.5) : null,
           boxShadow: [
             BoxShadow(
               color: bg.withValues(alpha: 0.2),

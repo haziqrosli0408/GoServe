@@ -13,6 +13,7 @@ class BookingPage extends StatefulWidget {
   final String price;
   final String? providerId;
   final List<dynamic>? addOns;
+  final String serviceId;
 
   const BookingPage({
     super.key,
@@ -23,6 +24,7 @@ class BookingPage extends StatefulWidget {
     required this.price,
     this.providerId,
     this.addOns,
+    required this.serviceId,
   });
 
   @override
@@ -770,6 +772,7 @@ class _BookingPageState extends State<BookingPage> {
                           selectedAddOns: selectedAddOnIndices.map((idx) => addOns[idx]).toList(),
                           address: 'Unit $unitNo, $streetName, $postcode $city',
                           totalPrice: finalTotal,
+                          serviceId: widget.serviceId,
                         ),
                       ),
                     );

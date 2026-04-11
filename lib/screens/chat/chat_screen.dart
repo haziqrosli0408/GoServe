@@ -272,7 +272,7 @@ class _ChatScreenState extends State<ChatScreen> {
                         
                         final Map<String, dynamic>? otherUserData = chatData['users']?[otherUserId] as Map<String, dynamic>?;
                         final String otherName = otherUserData?['name'] ?? 'User';
-                        final String otherPhoto = otherUserData?['photo'] ?? '';
+                        final String otherPhoto = otherUserData?['profileUrl'] ?? otherUserData?['photo'] ?? '';
                         
                         // Robust extraction of service name
                         String serviceName = chatData['serviceTitle'] ?? 
@@ -307,16 +307,33 @@ class _ChatScreenState extends State<ChatScreen> {
                         
                         final int unreadCount = (chatData['unreadCount']?[currentUser.uid] ?? 0) as int;
 
-                        return _buildChatItem(
-                          context,
-                          chatId: chatId,
-                          name: otherName,
-                          photo: otherPhoto,
-                          service: serviceName,
-                          lastMessage: lastMessage,
-                          time: timeStr,
-                          unreadCount: unreadCount,
-                          otherUserId: otherUserId,
+                        return FutureBuilder<DocumentSnapshot>(
+                          future: FirebaseFirestore.instance.collection('users').doc(otherUserId).get().then((doc) {
+                            if (doc.exists) return doc;
+                            return FirebaseFirestore.instance.collection('providers').doc(otherUserId).get();
+                          }),
+                          builder: (context, userSnapshot) {
+                            String displayName = otherName;
+                            String displayPhoto = otherPhoto;
+
+                            if (userSnapshot.hasData && userSnapshot.data!.exists) {
+                              final userData = userSnapshot.data!.data() as Map<String, dynamic>;
+                              displayName = userData['name'] ?? otherName;
+                              displayPhoto = userData['profileUrl'] ?? userData['photo'] ?? otherPhoto;
+                            }
+
+                            return _buildChatItem(
+                              context,
+                              chatId: chatId,
+                              name: displayName,
+                              photo: displayPhoto,
+                              service: serviceName,
+                              lastMessage: lastMessage,
+                              time: timeStr,
+                              unreadCount: unreadCount,
+                              otherUserId: otherUserId,
+                            );
+                          }
                         );
                       },
                     ),

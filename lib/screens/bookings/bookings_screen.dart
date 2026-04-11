@@ -1,7 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'tracking_screen.dart';
-import 'booking_screen.dart';
 import 'rate_service_screen.dart';
 import 'reschedule_sheet.dart';
 import 'package:firebase_auth/firebase_auth.dart';

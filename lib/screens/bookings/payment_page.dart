@@ -17,6 +17,7 @@ class PaymentPage extends StatefulWidget {
   final List<Map<String, dynamic>> selectedAddOns;
   final String address;
   final double totalPrice;
+  final String serviceId;
 
   const PaymentPage({
     super.key,
@@ -31,6 +32,7 @@ class PaymentPage extends StatefulWidget {
     required this.selectedAddOns,
     required this.address,
     required this.totalPrice,
+    required this.serviceId,
   });
 
   @override
@@ -503,6 +505,7 @@ class _PaymentPageState extends State<PaymentPage> {
         'providerId': widget.providerId,
         'providerName': widget.providerName,
         'serviceName': widget.serviceName,
+        'serviceId': widget.serviceId,
         'category': widget.category,
         'serviceImage': widget.serviceImage,
         'date': DateFormat('yyyy-MM-dd').format(widget.selectedDate),

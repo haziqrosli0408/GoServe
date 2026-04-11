@@ -26,12 +26,15 @@ class _SingleChatScreenState extends State<SingleChatScreen> {
   late final String chatId;
   String? currentUserName;
   String? currentUserPhoto;
+  String? otherUserName;
+  String? otherUserPhoto;
 
   @override
   void initState() {
     super.initState();
     _generateChatId();
     _fetchCurrentUserProfile();
+    _fetchOtherParticipantProfile();
     _resetUnreadCount();
   }
 
@@ -65,6 +68,28 @@ class _SingleChatScreenState extends State<SingleChatScreen> {
     }
   }
 
+  Future<void> _fetchOtherParticipantProfile() async {
+    final String otherId = widget.provider['id'] ?? widget.provider['providerId'] ?? '';
+    if (otherId.isEmpty) return;
+
+    // Try fetching from users collection first
+    var doc = await FirebaseFirestore.instance.collection('users').doc(otherId).get();
+    
+    // If not found, try providers collection
+    if (!doc.exists) {
+      doc = await FirebaseFirestore.instance.collection('providers').doc(otherId).get();
+    }
+    
+    if (doc.exists && mounted) {
+      setState(() {
+        otherUserName = doc.data()?['name'];
+        otherUserPhoto = doc.data()?['profileUrl'];
+      });
+      // Sync into chat metadata
+      _syncMetadata();
+    }
+  }
+
   Future<void> _syncMetadata() async {
     if (currentUser == null) return;
     final String providerId = widget.provider['id'] ?? widget.provider['providerId'] ?? '';
@@ -78,11 +103,11 @@ class _SingleChatScreenState extends State<SingleChatScreen> {
       'users': {
         currentUser!.uid: {
           'name': currentUserName ?? currentUser!.displayName ?? 'User',
-          'photo': currentUserPhoto ?? currentUser!.photoURL ?? '',
+          'profileUrl': currentUserPhoto ?? currentUser!.photoURL ?? '',
         },
         providerId: {
           'name': providerName,
-          'photo': widget.provider['profileUrl'] ?? widget.provider['providerProfileUrl'] ?? '',
+          'profileUrl': widget.provider['profileUrl'] ?? widget.provider['providerProfileUrl'] ?? '',
           'serviceName': widget.provider['title'] ?? widget.provider['category'] ?? widget.provider['serviceName'] ?? '',
         }
       }
@@ -139,11 +164,11 @@ class _SingleChatScreenState extends State<SingleChatScreen> {
       'users': {
         currentUser!.uid: {
           'name': currentUserName ?? currentUser!.displayName ?? 'User',
-          'photo': currentUserPhoto ?? currentUser!.photoURL ?? '',
+          'profileUrl': currentUserPhoto ?? currentUser!.photoURL ?? '',
         },
         providerId: {
           'name': providerName,
-          'photo': widget.provider['providerProfileUrl'] ?? widget.provider['profileUrl'] ?? '',
+          'profileUrl': widget.provider['providerProfileUrl'] ?? widget.provider['profileUrl'] ?? '',
           'serviceName': widget.provider['title'] ?? widget.provider['category'] ?? widget.provider['serviceName'] ?? (widget.provider['services'] is List && (widget.provider['services'] as List).isNotEmpty ? widget.provider['services'][0] : ''),
         }
       },
@@ -169,8 +194,8 @@ class _SingleChatScreenState extends State<SingleChatScreen> {
 
   @override
   Widget build(BuildContext context) {
-    final String providerName = widget.provider['providerName'] ?? widget.provider['name'] ?? 'Provider';
-    final String providerPhoto = widget.provider['providerProfileUrl'] ?? widget.provider['profileUrl'] ?? '';
+    final String providerName = otherUserName ?? widget.provider['providerName'] ?? widget.provider['name'] ?? 'Provider';
+    final String providerPhoto = otherUserPhoto ?? widget.provider['providerProfileUrl'] ?? widget.provider['profileUrl'] ?? '';
 
     return Scaffold(
       backgroundColor: Colors.white,

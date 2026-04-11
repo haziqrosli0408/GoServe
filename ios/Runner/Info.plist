@@ -43,6 +43,12 @@
 	<string>This app needs your location to find nearby service providers even when the app is in the background.</string>
 	<key>NSLocationWhenInUseUsageDescription</key>
 	<string>This app needs your location to find nearby service providers.</string>
+	<key>NSCameraUsageDescription</key>
+	<string>This app needs camera access to take photos of completed services as proof.</string>
+	<key>NSPhotoLibraryUsageDescription</key>
+	<string>This app needs access to your photo library to select photos of completed services as proof.</string>
+	<key>NSMicrophoneUsageDescription</key>
+	<string>This app needs access to your microphone when capturing service videos or photos.</string>
 	<key>UIApplicationSupportsIndirectInputEvents</key>
 	<true/>
 	<key>UIBackgroundModes</key>

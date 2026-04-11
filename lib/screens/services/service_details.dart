@@ -657,6 +657,7 @@ class _ServiceDetailsScreenState extends State<ServiceDetailsScreen> {
                 onPressed: () {
                   Navigator.push(context, MaterialPageRoute(builder: (context) => BookingPage(
                     serviceName: serviceTitle,
+                    serviceId: widget.provider['id'] ?? widget.provider['serviceId'] ?? '',
                     providerName: providerName,
                     providerId: widget.provider['providerId'] ?? widget.provider['id'] ?? widget.provider['uid'] ?? '',
                     serviceImage: serviceImageUrl,

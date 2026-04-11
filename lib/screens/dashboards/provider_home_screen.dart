@@ -480,10 +480,13 @@ class _ProviderHomeScreenState extends State<ProviderHomeScreen> {
                     builder: (context, userSnapshot) {
                       String customerName = 'Customer';
                       String? profileUrl;
+                      String? customerPhone;
+                      
                       if (userSnapshot.hasData && userSnapshot.data!.exists) {
                         final userData = userSnapshot.data!.data() as Map<String, dynamic>;
                         customerName = userData['name'] ?? 'Customer';
                         profileUrl = userData['profileUrl'];
+                        customerPhone = userData['phone'];
                       }
 
                       return Container(
@@ -590,14 +593,19 @@ class _ProviderHomeScreenState extends State<ProviderHomeScreen> {
                               children: [
                                 Expanded(
                                   child: ElevatedButton(
-                                    onPressed: () => _showBookingDetails(data, customerName),
+                                    onPressed: () => _showBookingDetails(data, customerName, profileUrl, customerPhone),
                                     style: ElevatedButton.styleFrom(
-                                      backgroundColor: const Color(0xFFF1F5F9),
-                                      foregroundColor: const Color(0xFF1E293B),
+                                      backgroundColor: Colors.white,
+                                      foregroundColor: const Color(0xFF4F46E5),
+                                      side: const BorderSide(color: Color(0xFF4F46E5), width: 1.5),
                                       elevation: 0,
                                       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                                      padding: const EdgeInsets.symmetric(vertical: 12),
                                     ),
-                                    child: const Text('Details'),
+                                    child: Text(
+                                      'Details',
+                                      style: GoogleFonts.outfit(fontWeight: FontWeight.w600, fontSize: 13),
+                                    ),
                                   ),
                                 ),
                                 const SizedBox(width: 10),
@@ -635,7 +643,7 @@ class _ProviderHomeScreenState extends State<ProviderHomeScreen> {
     });
   }
 
-  void _showBookingDetails(Map<String, dynamic> data, String customerName) {
+  void _showBookingDetails(Map<String, dynamic> data, String customerName, String? profileUrl, String? customerPhone) {
     showModalBottomSheet(
       context: context,
       isScrollControlled: true,
@@ -683,48 +691,109 @@ class _ProviderHomeScreenState extends State<ProviderHomeScreen> {
                       ),
                     ),
                     
-                    const SizedBox(height: 32),
+                    const SizedBox(height: 16),
                     
                     // Customer Section
                     _buildDetailSection('CUSTOMER', [
-                      _detailRow(Icons.person_outline, 'Name', customerName),
-                      _detailRow(Icons.phone_outlined, 'Phone', data['customerPhone'] ?? 'Not provided'),
-                    ], 
-                    trailing: IconButton(
-                      onPressed: () {
-                        Navigator.push(
-                          context,
-                          MaterialPageRoute(
-                            builder: (context) => SingleChatScreen(
-                              provider: {
-                                'providerId': data['customerId'],
-                                'providerName': customerName,
-                                'providerProfileUrl': data['customerProfileUrl'],
-                                'serviceName': data['serviceName'],
-                                'serviceId': data['serviceId'],
-                              },
-                              themeColor: const Color(0xFF4F46E5),
+                      Row(
+                        children: [
+                          CircleAvatar(
+                            radius: 22,
+                            backgroundColor: Colors.grey[100],
+                            backgroundImage: (profileUrl != null && profileUrl.isNotEmpty)
+                                ? NetworkImage(profileUrl)
+                                : null,
+                            child: (profileUrl == null || profileUrl.isEmpty)
+                                ? const Icon(Icons.person, color: Color(0xFF4F46E5))
+                                : null,
+                          ),
+                          const SizedBox(width: 12),
+                          Expanded(
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                Text(
+                                  customerName,
+                                  style: GoogleFonts.outfit(
+                                    fontSize: 16,
+                                    fontWeight: FontWeight.w600,
+                                    color: const Color(0xFF1E293B),
+                                  ),
+                                ),
+                                Text(
+                                  customerPhone ?? 'Phone not provided',
+                                  style: GoogleFonts.outfit(
+                                    fontSize: 13,
+                                    color: Colors.grey[500],
+                                  ),
+                                ),
+                              ],
                             ),
                           ),
-                        );
-                      },
-                      icon: const Icon(Icons.chat_bubble_outline_rounded, color: Color(0xFF4F46E5), size: 18),
-                      style: IconButton.styleFrom(
-                        backgroundColor: const Color(0xFF4F46E5).withValues(alpha: 0.1),
-                        padding: const EdgeInsets.all(6),
+                          // Phone Action
+                          IconButton(
+                            onPressed: () async {
+                              if (customerPhone != null && customerPhone.isNotEmpty) {
+                                // Clean the phone number (remove spaces, dashes, etc.)
+                                final cleanPhone = customerPhone.replaceAll(RegExp(r'[^\d+]'), '');
+                                final Uri telUri = Uri(scheme: 'tel', path: cleanPhone);
+                                
+                                try {
+                                  await launchUrl(telUri);
+                                } catch (e) {
+                                  // Fallback or error logging
+                                  debugPrint("Could not launch $telUri: $e");
+                                }
+                              }
+                            },
+                            icon: const Icon(Icons.phone_outlined, color: Color(0xFF4F46E5), size: 20),
+                            style: IconButton.styleFrom(
+                              backgroundColor: const Color(0xFF4F46E5).withValues(alpha: 0.1),
+                              padding: const EdgeInsets.all(8),
+                            ),
+                          ),
+                          const SizedBox(width: 8),
+                          // Message Action
+                          IconButton(
+                            onPressed: () {
+                              Navigator.push(
+                                context,
+                                MaterialPageRoute(
+                                  builder: (context) => SingleChatScreen(
+                                    provider: {
+                                      'providerId': data['customerId'],
+                                      'providerName': customerName,
+                                      'providerProfileUrl': data['customerProfileUrl'],
+                                      'serviceName': data['serviceName'],
+                                      'serviceId': data['serviceId'],
+                                    },
+                                    themeColor: const Color(0xFF4F46E5),
+                                  ),
+                                ),
+                              );
+                            },
+                            icon: const Icon(Icons.chat_bubble_outline_rounded, color: Color(0xFF4F46E5), size: 20),
+                            style: IconButton.styleFrom(
+                              backgroundColor: const Color(0xFF4F46E5).withValues(alpha: 0.1),
+                              padding: const EdgeInsets.all(8),
+                            ),
+                          ),
+                        ],
                       ),
-                    )),
+                    ]),
                     
-                    const SizedBox(height: 24),
+                    const SizedBox(height: 16),
                     
                     // Service Info
                     _buildDetailSection('SERVICE INFO', [
                       _detailRow(Icons.cleaning_services_outlined, 'Service', data['serviceName'] ?? 'Service'),
+                      if (data['selectedAddOns'] != null && (data['selectedAddOns'] as List).isNotEmpty)
+                        _detailRow(Icons.add_box_outlined, 'Add-ons', (data['selectedAddOns'] as List).map((a) => a['name']).join(', '), isExpandable: true),
                       _detailRow(Icons.calendar_today_outlined, 'Date', data['date'] ?? 'No date'),
                       _detailRow(Icons.access_time_outlined, 'Time', data['time'] ?? 'No time'),
                     ]),
                     
-                    const SizedBox(height: 24),
+                    const SizedBox(height: 16),
                     
                     // Location
                     _buildDetailSection('LOCATION', [
@@ -755,7 +824,7 @@ class _ProviderHomeScreenState extends State<ProviderHomeScreen> {
                       ),
                     ]),
                     
-                    const SizedBox(height: 24),
+                    const SizedBox(height: 16),
                     
                     // Payment Breakdown
                     _buildDetailSection('PAYMENT SUMMARY', [
@@ -789,25 +858,6 @@ class _ProviderHomeScreenState extends State<ProviderHomeScreen> {
                     
                     const SizedBox(height: 40),
                   ],
-                ),
-              ),
-            ),
-            
-            // Bottom Action
-            Padding(
-              padding: const EdgeInsets.all(24),
-              child: SizedBox(
-                width: double.infinity,
-                child: ElevatedButton(
-                  onPressed: () => Navigator.pop(context),
-                  style: ElevatedButton.styleFrom(
-                    backgroundColor: const Color(0xFF1E293B),
-                    foregroundColor: Colors.white,
-                    padding: const EdgeInsets.symmetric(vertical: 16),
-                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
-                    elevation: 0,
-                  ),
-                  child: Text('Close', style: GoogleFonts.outfit(fontSize: 16, fontWeight: FontWeight.w600)),
                 ),
               ),
             ),

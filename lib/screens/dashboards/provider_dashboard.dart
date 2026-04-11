@@ -56,8 +56,8 @@ class _ProviderDashboardState extends State<ProviderDashboard>
       decoration: BoxDecoration(
         color: Colors.white,
         borderRadius: const BorderRadius.only(
-          topLeft: Radius.circular(35),
-          topRight: Radius.circular(35),
+          topLeft: Radius.circular(25),
+          topRight: Radius.circular(25),
         ),
         boxShadow: [
           BoxShadow(
@@ -69,7 +69,7 @@ class _ProviderDashboardState extends State<ProviderDashboard>
       ),
       child: SafeArea(
         child: Container(
-          height: 70,
+          height: 65,
           padding: const EdgeInsets.symmetric(horizontal: 10),
           child: Row(
             mainAxisAlignment: MainAxisAlignment.spaceAround,

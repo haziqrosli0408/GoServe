@@ -93,8 +93,8 @@ class _CustomerHomeState extends State<CustomerHome>
       decoration: BoxDecoration(
         color: Colors.white,
         borderRadius: const BorderRadius.only(
-          topLeft: Radius.circular(35),
-          topRight: Radius.circular(35),
+          topLeft: Radius.circular(25),
+          topRight: Radius.circular(25),
         ),
         boxShadow: [
           BoxShadow(
@@ -106,7 +106,7 @@ class _CustomerHomeState extends State<CustomerHome>
       ),
       child: SafeArea(
         child: Container(
-          height: 70, // Explicit height for the row content
+          height: 65, // Explicit height for the row content
           padding: const EdgeInsets.symmetric(horizontal: 10),
           child: Row(
             mainAxisAlignment: MainAxisAlignment.spaceAround,
