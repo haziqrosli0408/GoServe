@@ -2,10 +2,11 @@ import 'package:flutter/material.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'tracking_screen.dart';
 import 'rate_service_screen.dart';
-import 'reschedule_sheet.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:google_fonts/google_fonts.dart';
 import '../services/service_details.dart';
+import 'package:url_launcher/url_launcher.dart';
+import '../chat/single_chat_screen.dart';
 
 class BookingsScreen extends StatefulWidget {
   const BookingsScreen({super.key});
@@ -178,7 +179,7 @@ class _BookingsScreenState extends State<BookingsScreen> {
           return tB.compareTo(tA);
         });
         
-        final upcoming = allBookings.where((d) => ['Pending', 'Confirmed', 'On the way', 'Arrived', 'In progress'].contains(d['status'])).toList();
+        final upcoming = allBookings.where((d) => !['Completed', 'Cancelled'].contains(d['status'])).toList();
         final completed = allBookings.where((d) => d['status'] == 'Completed').toList();
         final cancelled = allBookings.where((d) {
           if (d['status'] != 'Cancelled') return false;
@@ -255,163 +256,189 @@ class _BookingsScreenState extends State<BookingsScreen> {
   Widget _buildUpcomingCard(Map<String, dynamic> data, String id) {
     String serviceName = data['serviceName'] ?? 'Service';
     String providerName = data['providerName'] ?? 'Elite Pro';
-    String category = (data['category'] as String?)?.toUpperCase() ?? 'SERVICE';
-    
+    String? orderId = data['orderId'];
     String date = data['date'] ?? 'No date';
     String time = data['time'] ?? 'No time';
     String? imageUrl = data['serviceImage'];
+    String status = data['status'] ?? 'Pending';
+
+    // Status Mapping
+    bool activeWork = ['In progress', 'On the way', 'Arrived', 'Awaiting Confirmation'].contains(status);
+    bool isAwaiting = status == 'Awaiting Confirmation';
+    String displayStatus = status == 'Pending' ? 'Pending' : (isAwaiting ? 'Pending Approval' : (activeWork ? 'In Progress' : 'Confirmed'));
+    Color statusColor = status == 'Pending' ? Colors.orange : (isAwaiting ? const Color(0xFF4F46E5) : (activeWork ? Colors.amber : Colors.green));
+
+    double progressValue = 0.0;
+    if (status == 'On the way') progressValue = 0.25;
+    else if (status == 'Arrived') progressValue = 0.5;
+    else if (status == 'In progress') progressValue = 0.8;
+
+    bool isInProgress = activeWork;
 
     return Container(
-      margin: const EdgeInsets.only(bottom: 20),
+      margin: const EdgeInsets.only(bottom: 16),
       decoration: BoxDecoration(
         color: Colors.white,
         borderRadius: BorderRadius.circular(16),
-        boxShadow: [
-          BoxShadow(
-            color: Colors.black.withValues(alpha: 0.04),
-            blurRadius: 15,
-            offset: const Offset(0, 8),
-          ),
-        ],
+        border: Border.all(color: Colors.black.withValues(alpha: 0.1), width: 1),
       ),
       child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Padding(
-            padding: const EdgeInsets.all(16),
-            child: ClipRRect(
-              borderRadius: BorderRadius.circular(12),
-              child: imageUrl != null && imageUrl.isNotEmpty
-                  ? Image.network(
-                      imageUrl,
-                      height: 140,
-                      width: double.infinity,
-                      fit: BoxFit.cover,
-                      errorBuilder: (context, error, stackTrace) => _buildPlaceholderImage(),
-                    )
-                  : _buildPlaceholderImage(),
-            ),
-          ),
-          Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 24),
-            child: Column(
+            padding: const EdgeInsets.fromLTRB(12, 12, 12, 10),
+            child: Row(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Row(
-                  children: [
-                    const Icon(Icons.handyman_outlined, size: 14, color: Color(0xFFFF6B00)),
-                    const SizedBox(width: 6),
-                    Text(
-                      category,
-                      style: GoogleFonts.outfit(
-                        fontSize: 10,
-                        fontWeight: FontWeight.w600,
-                        color: const Color(0xFF64748B),
-                        letterSpacing: 1.0,
-                      ),
-                    ),
-                  ],
+                // 🔹 Service Image (Compact)
+                ClipRRect(
+                  borderRadius: BorderRadius.circular(10),
+                  child: imageUrl != null && imageUrl.isNotEmpty
+                      ? Image.network(
+                          imageUrl,
+                          height: 60,
+                          width: 60,
+                          fit: BoxFit.cover,
+                          errorBuilder: (context, error, stackTrace) => _buildPlaceholderImage(60, 60),
+                        )
+                      : _buildPlaceholderImage(60, 60),
                 ),
-                const SizedBox(height: 8),
-                Text(
-                  serviceName,
-                  style: GoogleFonts.outfit(
-                    fontSize: 18,
-                    fontWeight: FontWeight.w600,
-                    color: const Color(0xFF1F212C),
-                    height: 1.2,
+                const SizedBox(width: 12),
+                // 🔹 Title and ID
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        serviceName,
+                        style: GoogleFonts.outfit(
+                          fontSize: 15,
+                          fontWeight: FontWeight.w700,
+                          color: const Color(0xFF1F212C),
+                        ),
+                        maxLines: 2,
+                        overflow: TextOverflow.ellipsis,
+                      ),
+                      const SizedBox(height: 4),
+                      Text(
+                        'Order ID: ${orderId ?? 'GS-00000'}',
+                        style: GoogleFonts.outfit(
+                          fontSize: 11,
+                          color: Colors.grey.shade500,
+                          fontWeight: FontWeight.w500,
+                        ),
+                      ),
+                      const SizedBox(height: 4),
+                      // Provider
+                      Row(
+                        children: [
+                          Icon(Icons.person_outline_rounded, size: 10, color: Colors.grey.shade400),
+                          const SizedBox(width: 4),
+                          Text(
+                            "$providerName • $date • $time",
+                            style: GoogleFonts.outfit(
+                              fontSize: 11,
+                              color: Colors.grey.shade600,
+                            ),
+                          ),
+                        ],
+                      ),
+                    ],
                   ),
                 ),
-                const SizedBox(height: 4),
+                // 🔹 Status
+                Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                  decoration: BoxDecoration(
+                    color: statusColor.withValues(alpha: 0.1),
+                    borderRadius: BorderRadius.circular(20),
+                  ),
+                  child: Text(
+                    displayStatus,
+                    style: GoogleFonts.outfit(
+                      color: statusColor,
+                      fontSize: 9,
+                      fontWeight: FontWeight.w700,
+                    ),
+                  ),
+                ),
+              ],
+            ),
+          ),
+          
+          const Divider(height: 1, color: Color(0xFFF1F5F9)),
+
+          Padding(
+            padding: const EdgeInsets.all(12),
+            child: Column(
+              children: [
                 Row(
+                  mainAxisAlignment: MainAxisAlignment.start,
                   children: [
-                    Text(
-                      'by ',
-                      style: GoogleFonts.outfit(
-                        fontSize: 12,
-                        color: Colors.grey.shade500,
-                        fontWeight: FontWeight.w400,
+                    if (isInProgress)
+                      Text(
+                        status == 'In progress' ? 'In Progress' : status,
+                        style: GoogleFonts.outfit(
+                          fontSize: 14,
+                          fontWeight: FontWeight.w700,
+                          color: const Color(0xFFFF6B00),
+                        ),
                       ),
-                    ),
-                    Text(
-                      providerName,
-                      style: GoogleFonts.outfit(
-                        fontSize: 12,
-                        color: Colors.grey.shade700,
-                        fontWeight: FontWeight.w600,
-                      ),
-                    ),
                   ],
                 ),
-                const SizedBox(height: 16),
+                
+                if (isInProgress) ...[
+                  const SizedBox(height: 10),
+                  ClipRRect(
+                    borderRadius: BorderRadius.circular(5),
+                    child: TweenAnimationBuilder<double>(
+                      duration: const Duration(milliseconds: 1200),
+                      curve: Curves.easeInOutCubic,
+                      tween: Tween<double>(begin: 0, end: progressValue),
+                      builder: (context, value, child) {
+                        return LinearProgressIndicator(
+                          value: value,
+                          minHeight: 6,
+                          backgroundColor: const Color(0xFFFF6B00).withValues(alpha: 0.1),
+                          color: const Color(0xFFFF6B00),
+                        );
+                      },
+                    ),
+                  ),
+                ],
+                
+                const SizedBox(height: 12),
+
+                // Buttons (Shorter)
                 Row(
                   children: [
-                    Icon(Icons.calendar_today_outlined, size: 14, color: Colors.grey.shade500),
-                    const SizedBox(width: 6),
-                    Text(
-                      date,
-                      style: GoogleFonts.outfit(
-                        fontSize: 12,
-                        fontWeight: FontWeight.w500,
-                        color: const Color(0xFF475569),
-                      ),
-                    ),
-                    const SizedBox(width: 16),
-                    Icon(Icons.access_time_filled, size: 14, color: Colors.grey.shade500),
-                    const SizedBox(width: 6),
-                    Text(
-                      time,
-                      style: GoogleFonts.outfit(
-                        fontSize: 12,
-                        fontWeight: FontWeight.w500,
-                        color: const Color(0xFF475569),
-                      ),
-                    ),
-                  ],
-                ),
-                const SizedBox(height: 20),
-                Row(
-                  children: [
-                    Expanded(
-                      child: GestureDetector(
-                        onTap: () {
-                          showModalBottomSheet(
-                            context: context,
-                            isScrollControlled: true,
-                            backgroundColor: Colors.transparent,
-                            builder: (context) => RescheduleSheet(
-                              bookingId: id,
-                              currentDate: date,
-                              currentTime: time,
-                            ),
-                          );
-                        },
-                        child: Container(
-                          height: 48,
-                          decoration: BoxDecoration(
-                            color: Colors.grey.shade100,
-                            borderRadius: BorderRadius.circular(12),
+                    if (!isInProgress)
+                      Expanded(
+                        child: OutlinedButton(
+                            onPressed: () {
+                              _showBookingDetails(data, id);
+                            },
+                          style: OutlinedButton.styleFrom(
+                            side: BorderSide(color: Colors.grey.shade200),
+                            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+                            padding: const EdgeInsets.symmetric(vertical: 10),
+                            minimumSize: const Size(0, 40),
                           ),
-                          child: Center(
-                            child: Text(
-                              'Reschedule',
-                              style: GoogleFonts.outfit(
-                                color: const Color(0xFF1F212C),
-                                fontWeight: FontWeight.w600,
-                                fontSize: 16,
-                              ),
+                          child: Text(
+                            "View Details",
+                            style: GoogleFonts.outfit(
+                              fontSize: 13,
+                              color: const Color(0xFF1F212C),
+                              fontWeight: FontWeight.w600,
                             ),
                           ),
                         ),
                       ),
-                    ),
-                    const SizedBox(width: 12),
-                    Expanded(
-                      child: _buildTrackButton(data, id),
-                    ),
+                    if (isInProgress)
+                      Expanded(
+                        child: _buildTrackButton(data, id),
+                      ),
                   ],
                 ),
-                const SizedBox(height: 24),
               ],
             ),
           ),
@@ -453,7 +480,7 @@ class _BookingsScreenState extends State<BookingsScreen> {
         ),
         child: Center(
           child: Text(
-            'Track',
+            'Tracking',
             style: GoogleFonts.outfit(
               color: Colors.white,
               fontWeight: FontWeight.w600,
@@ -684,6 +711,345 @@ class _BookingsScreenState extends State<BookingsScreen> {
             ),
           ),
         ],
+      ),
+    );
+  }
+
+  void _showBookingDetails(Map<String, dynamic> data, String bookingId) async {
+    final String serviceName = data['serviceName'] ?? 'Service';
+    final String providerName = data['providerName'] ?? 'Elite Pro';
+    final String orderId = data['orderId'] ?? 'GS-00000';
+    final String date = data['date'] ?? 'No date';
+    final String time = data['time'] ?? 'No time';
+    final String address = data['address'] ?? 'No address provided';
+    final String? serviceImage = data['serviceImage'];
+    final String providerId = data['providerId'] ?? '';
+    
+    // Fetch latest provider profile info
+    String? providerProfileUrl;
+    String? providerPhone;
+    
+    if (providerId.isNotEmpty) {
+      // 1. Try 'users' collection
+      var providerDoc = await FirebaseFirestore.instance.collection('users').doc(providerId).get();
+      
+      // 2. Try 'providers' collection if not in users
+      if (!providerDoc.exists) {
+        providerDoc = await FirebaseFirestore.instance.collection('providers').doc(providerId).get();
+      }
+
+      if (providerDoc.exists) {
+        final pData = providerDoc.data() as Map<String, dynamic>;
+        providerProfileUrl = pData['profileUrl'];
+        providerPhone = pData['phone'];
+      }
+    }
+
+    showModalBottomSheet(
+      context: context,
+      isScrollControlled: true,
+      backgroundColor: Colors.transparent,
+      builder: (context) => Container(
+        height: MediaQuery.of(context).size.height * 0.85,
+        decoration: const BoxDecoration(
+          color: Colors.white,
+          borderRadius: BorderRadius.vertical(top: Radius.circular(32)),
+        ),
+        child: Column(
+          children: [
+            const SizedBox(height: 12),
+            Container(
+              width: 40,
+              height: 4,
+              decoration: BoxDecoration(
+                color: Colors.grey[200],
+                borderRadius: BorderRadius.circular(2),
+              ),
+            ),
+            const SizedBox(height: 16),
+            Expanded(
+              child: SingleChildScrollView(
+                padding: const EdgeInsets.symmetric(horizontal: 24),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      'Booking Details',
+                      style: GoogleFonts.outfit(
+                        fontSize: 20,
+                        fontWeight: FontWeight.w600,
+                        color: const Color(0xFF1E293B),
+                      ),
+                    ),
+                    const SizedBox(height: 8),
+                    Text(
+                      'Information about your upcoming service',
+                      style: GoogleFonts.outfit(
+                        fontSize: 14,
+                        color: Colors.grey[500],
+                      ),
+                    ),
+                    const SizedBox(height: 24),
+                    
+                    // Service and Provider Header
+                    Row(
+                      children: [
+                        ClipRRect(
+                          borderRadius: BorderRadius.circular(16),
+                          child: serviceImage != null && serviceImage.isNotEmpty
+                              ? Image.network(serviceImage, width: 80, height: 80, fit: BoxFit.cover)
+                              : _buildPlaceholderImage(80, 80),
+                        ),
+                        const SizedBox(width: 16),
+                        Expanded(
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Text(
+                                serviceName,
+                                style: GoogleFonts.outfit(
+                                  fontSize: 18,
+                                  fontWeight: FontWeight.w700,
+                                  color: const Color(0xFF1E293B),
+                                ),
+                              ),
+                              Text(
+                                'Order ID: $orderId',
+                                style: GoogleFonts.outfit(
+                                  fontSize: 13,
+                                  color: const Color(0xFFFF6B00),
+                                  fontWeight: FontWeight.w600,
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+                      ],
+                    ),
+                    
+                    const SizedBox(height: 32),
+
+                    // Provider Info
+                    _buildDetailSection('SERVICE PROVIDER', [
+                      Row(
+                        children: [
+                          CircleAvatar(
+                            radius: 20,
+                            backgroundColor: const Color(0xFFFF6B00).withValues(alpha: 0.1),
+                            backgroundImage: (providerProfileUrl != null && providerProfileUrl.isNotEmpty)
+                                ? NetworkImage(providerProfileUrl)
+                                : null,
+                            child: (providerProfileUrl == null || providerProfileUrl.isEmpty)
+                                ? Text(
+                                    providerName.isNotEmpty ? providerName[0].toUpperCase() : 'P',
+                                    style: GoogleFonts.outfit(
+                                      color: const Color(0xFFFF6B00),
+                                      fontWeight: FontWeight.w700,
+                                      fontSize: 16,
+                                    ),
+                                  )
+                                : null,
+                          ),
+                          const SizedBox(width: 12),
+                          Expanded(
+                            child: Text(
+                              providerName,
+                              style: GoogleFonts.outfit(
+                                fontSize: 16,
+                                fontWeight: FontWeight.w600,
+                                color: const Color(0xFF1E293B),
+                              ),
+                            ),
+                          ),
+                          Row(
+                            children: [
+                              _contactAction(Icons.chat_bubble_outline_rounded, () {
+                                Navigator.push(
+                                  context,
+                                  MaterialPageRoute(
+                                    builder: (context) => SingleChatScreen(
+                                      provider: {
+                                        'providerId': providerId,
+                                        'providerName': providerName,
+                                        'providerProfileUrl': providerProfileUrl,
+                                        'serviceName': serviceName,
+                                        'serviceId': data['serviceId'],
+                                      },
+                                      themeColor: const Color(0xFFFF6B00),
+                                    ),
+                                  ),
+                                );
+                              }),
+                              const SizedBox(width: 8),
+                              _contactAction(Icons.phone_outlined, () async {
+                                if (providerPhone != null && providerPhone.isNotEmpty) {
+                                  final Uri telUri = Uri(scheme: 'tel', path: providerPhone);
+                                  if (await canLaunchUrl(telUri)) {
+                                    await launchUrl(telUri);
+                                  }
+                                }
+                              }),
+                            ],
+                          ),
+                        ],
+                      ),
+                    ]),
+
+                    const SizedBox(height: 24),
+
+                    // Booking Info
+                    _buildDetailSection('BOOKING INFO', [
+                      _detailRow(Icons.calendar_today_outlined, 'Date', date),
+                      _detailRow(Icons.access_time_outlined, 'Time', time),
+                      _detailRow(Icons.location_on_outlined, 'Address', address, isExpandable: true),
+                    ]),
+
+                    const SizedBox(height: 24),
+
+                    // Payment Summary
+                    _buildDetailSection('PAYMENT SUMMARY', [
+                      _priceRow('Base Price', data['basePrice'] ?? 0),
+                      if (data['selectedAddOns'] != null && (data['selectedAddOns'] as List).isNotEmpty)
+                        ... (data['selectedAddOns'] as List).map((addon) => 
+                          _priceRow(addon['name'] ?? 'Add-on', addon['price'] ?? 0, isAddon: true)
+                        ),
+                      _priceRow('Platform Fee (15%)', data['chargeFee'] ?? 0),
+                      const SizedBox(height: 12),
+                      const Divider(height: 1),
+                      const SizedBox(height: 12),
+                      Row(
+                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                        children: [
+                          Text(
+                            'Total Paid',
+                            style: GoogleFonts.outfit(
+                              fontSize: 18,
+                              fontWeight: FontWeight.w700,
+                              color: const Color(0xFF1E293B),
+                            ),
+                          ),
+                          Text(
+                            'RM ${(data['totalPrice'] ?? 0).toStringAsFixed(2)}',
+                            style: GoogleFonts.outfit(
+                              fontSize: 18,
+                              fontWeight: FontWeight.w700,
+                              color: const Color(0xFFFF6B00),
+                            ),
+                          ),
+                        ],
+                      ),
+                    ]),
+                    
+                    const SizedBox(height: 48),
+                  ],
+                ),
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildDetailSection(String title, List<Widget> children) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Text(
+          title,
+          style: GoogleFonts.outfit(
+            fontSize: 11,
+            fontWeight: FontWeight.w700,
+            color: Colors.grey[400],
+            letterSpacing: 1.2,
+          ),
+        ),
+        const SizedBox(height: 12),
+        Container(
+          padding: const EdgeInsets.all(16),
+          decoration: BoxDecoration(
+            color: const Color(0xFFF8FAFC),
+            borderRadius: BorderRadius.circular(16),
+            border: Border.all(color: const Color(0xFFF1F5F9)),
+          ),
+          child: Column(
+            children: children,
+          ),
+        ),
+      ],
+    );
+  }
+
+  Widget _detailRow(IconData icon, String label, String value, {bool isExpandable = false}) {
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 12),
+      child: Row(
+        crossAxisAlignment: isExpandable ? CrossAxisAlignment.start : CrossAxisAlignment.center,
+        children: [
+          Icon(icon, size: 18, color: const Color(0xFF64748B)),
+          const SizedBox(width: 12),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(label, style: GoogleFonts.outfit(fontSize: 11, color: Colors.grey[500])),
+                const SizedBox(height: 2),
+                Text(
+                  value,
+                  style: GoogleFonts.outfit(
+                    fontSize: 14,
+                    fontWeight: FontWeight.w500,
+                    color: const Color(0xFF1E293B),
+                  ),
+                  maxLines: isExpandable ? 3 : 1,
+                  overflow: TextOverflow.ellipsis,
+                ),
+              ],
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _priceRow(String label, dynamic price, {bool isAddon = false}) {
+    final double value = (price is num) ? price.toDouble() : (double.tryParse(price.toString()) ?? 0.0);
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 8),
+      child: Row(
+        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+        children: [
+          Text(
+            isAddon ? " + $label" : label,
+            style: GoogleFonts.outfit(
+              fontSize: 14, 
+              color: isAddon ? Colors.grey[500] : const Color(0xFF1E293B),
+              fontWeight: isAddon ? FontWeight.w400 : FontWeight.w500
+            ),
+          ),
+          Text(
+            'RM ${value.toStringAsFixed(2)}',
+            style: GoogleFonts.outfit(
+              fontSize: 14, 
+              color: const Color(0xFF1E293B),
+              fontWeight: FontWeight.w600
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _contactAction(IconData icon, VoidCallback onTap) {
+    return GestureDetector(
+      onTap: onTap,
+      child: Container(
+        padding: const EdgeInsets.all(8),
+        decoration: BoxDecoration(
+          color: const Color(0xFFFF6B00).withValues(alpha: 0.1),
+          shape: BoxShape.circle,
+        ),
+        child: Icon(icon, color: const Color(0xFFFF6B00), size: 18),
       ),
     );
   }

@@ -35,6 +35,7 @@ class _UploadProofScreenState extends State<UploadProofScreen> {
         setState(() => _image = File(pickedFile.path));
       }
     } catch (e) {
+      if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(content: Text('Error picking image: $e')),
       );
@@ -61,6 +62,7 @@ class _UploadProofScreenState extends State<UploadProofScreen> {
           .collection('bookings')
           .doc(widget.bookingId)
           .update({
+        'status': 'Awaiting Confirmation',
         'proofImageUrl': downloadUrl,
         'completedAt': FieldValue.serverTimestamp(),
       });

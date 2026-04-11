@@ -150,6 +150,7 @@ class _SingleChatScreenState extends State<SingleChatScreen> {
       'senderId': currentUser!.uid,
       'receiverId': providerId,
       'text': text,
+      'isRead': false, // 🆕 Initial state: Unread
       'timestamp': FieldValue.serverTimestamp(),
     });
 
@@ -376,6 +377,23 @@ class _MessageListState extends State<MessageList> {
     });
   }
 
+  void _markMessagesAsRead(List<QueryDocumentSnapshot> docs) {
+    if (widget.currentUser == null) return;
+    
+    final unreadDocs = docs.where((doc) {
+      final data = doc.data() as Map<String, dynamic>;
+      return data['receiverId'] == widget.currentUser!.uid && data['isRead'] == false;
+    }).toList();
+
+    if (unreadDocs.isNotEmpty) {
+      final batch = FirebaseFirestore.instance.batch();
+      for (var doc in unreadDocs) {
+        batch.update(doc.reference, {'isRead': true});
+      }
+      batch.commit();
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     if (_messageStream == null) {
@@ -390,6 +408,10 @@ class _MessageListState extends State<MessageList> {
         }
 
         final allMessages = snapshot.data?.docs ?? [];
+        
+        // 🆕 Mark messages as read when they appear
+        _markMessagesAsRead(allMessages);
+
         final filteredDocs = allMessages.where((doc) {
           final ts = (doc.data() as Map)['timestamp'] as Timestamp?;
           if (widget.clearedAt == null) return true;
@@ -455,9 +477,22 @@ class _MessageListState extends State<MessageList> {
                   if (time.isNotEmpty)
                     Padding(
                       padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 2),
-                      child: Text(
-                        time,
-                        style: GoogleFonts.outfit(fontSize: 10, color: Colors.grey.shade500),
+                      child: Row(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          Text(
+                            time,
+                            style: GoogleFonts.outfit(fontSize: 10, color: Colors.grey.shade500),
+                          ),
+                          if (isMe) ...[
+                            const SizedBox(width: 4),
+                            Icon(
+                              data['isRead'] == true ? Icons.done_all_rounded : Icons.done_rounded,
+                              size: 14,
+                              color: data['isRead'] == true ? Colors.blue : Colors.grey,
+                            ),
+                          ],
+                        ],
                       ),
                     ),
                 ],

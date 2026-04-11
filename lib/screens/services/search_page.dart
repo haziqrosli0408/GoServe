@@ -7,7 +7,6 @@ import 'package:geolocator/geolocator.dart';
 import 'package:geocoding/geocoding.dart';
 import 'package:gooservee/screens/misc/map_picker_screen.dart';
 import 'package:gooservee/screens/services/location_range_screen.dart';
-import '../bookings/booking_screen.dart';
 import 'service_details.dart';
 
 class SearchPage extends StatefulWidget {
@@ -65,6 +64,10 @@ class _SearchPageState extends State<SearchPage> {
 
   Future<void> _detectCurrentLocation() async {
     try {
+      LocationSettings locationSettings = const LocationSettings(
+        accuracy: LocationAccuracy.high,
+      );
+      
       LocationPermission permission = await Geolocator.checkPermission();
       if (permission == LocationPermission.denied) {
         permission = await Geolocator.requestPermission();
@@ -74,7 +77,7 @@ class _SearchPageState extends State<SearchPage> {
       if (permission == LocationPermission.deniedForever) return;
 
       Position position = await Geolocator.getCurrentPosition(
-        desiredAccuracy: LocationAccuracy.high
+        locationSettings: locationSettings,
       );
 
       setState(() {
@@ -1006,32 +1009,4 @@ class _SearchPageState extends State<SearchPage> {
     );
   }
 
-  Widget _buildSortChip(String label) {
-    bool isSelected = _selectedSort == label;
-    return GestureDetector(
-      onTap: () {
-        setState(() {
-          _selectedSort = label;
-        });
-      },
-      child: Container(
-        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-        decoration: BoxDecoration(
-          color: isSelected ? const Color(0xFF1E293B) : Colors.white,
-          borderRadius: BorderRadius.circular(20),
-          border: Border.all(
-            color: isSelected ? const Color(0xFF1E293B) : Colors.grey.shade300,
-          ),
-        ),
-        child: Text(
-          label,
-          style: GoogleFonts.outfit(
-            fontSize: 13,
-            fontWeight: isSelected ? FontWeight.w600 : FontWeight.w500,
-            color: isSelected ? Colors.white : const Color(0xFF64748B),
-          ),
-        ),
-      ),
-    );
-  }
 }

@@ -16,6 +16,8 @@ class PaymentPage extends StatefulWidget {
   final double basePrice;
   final List<Map<String, dynamic>> selectedAddOns;
   final String address;
+  final double? latitude;
+  final double? longitude;
   final double totalPrice;
   final String serviceId;
 
@@ -31,6 +33,8 @@ class PaymentPage extends StatefulWidget {
     required this.basePrice,
     required this.selectedAddOns,
     required this.address,
+    this.latitude,
+    this.longitude,
     required this.totalPrice,
     required this.serviceId,
   });
@@ -499,8 +503,13 @@ class _PaymentPageState extends State<PaymentPage> {
     
     showDialog(context: context, barrierDismissible: false, builder: (context) => const Center(child: CircularProgressIndicator()));
     
+    // Generate Random Order ID
+    final randomId = (10000 + (DateTime.now().millisecondsSinceEpoch % 90000)).toString();
+    final orderId = "GS-$randomId";
+
     try {
       await FirebaseFirestore.instance.collection('bookings').add({
+        'orderId': orderId, // 🆔 NEW RANDOM ORDER ID
         'customerId': user.uid,
         'providerId': widget.providerId,
         'providerName': widget.providerName,
@@ -511,6 +520,8 @@ class _PaymentPageState extends State<PaymentPage> {
         'date': DateFormat('yyyy-MM-dd').format(widget.selectedDate),
         'time': widget.selectedTime,
         'address': widget.address,
+        'latitude': widget.latitude,
+        'longitude': widget.longitude,
         'basePrice': widget.basePrice,
         'chargeFee': widget.totalPrice - widget.basePrice - widget.selectedAddOns.fold(0.0, (total, item) => total + ((item['price'] is String ? double.tryParse(item['price']) : (item['price'] as num).toDouble()) ?? 0.0)),
         'totalPrice': widget.totalPrice,
@@ -531,6 +542,7 @@ class _PaymentPageState extends State<PaymentPage> {
               date: widget.selectedDate,
               time: widget.selectedTime,
               totalPrice: widget.totalPrice,
+              orderId: orderId,
             ),
           ),
         );

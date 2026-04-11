@@ -61,14 +61,16 @@ class _ActiveServiceScreenState extends State<ActiveServiceScreen> {
         await _locationService.stopTracking();
       }
 
-      await FirebaseFirestore.instance
-          .collection('bookings')
-          .doc(widget.bookingId)
-          .update({'status': newStatus});
+      if (newStatus != 'Completed') {
+        await FirebaseFirestore.instance
+            .collection('bookings')
+            .doc(widget.bookingId)
+            .update({'status': newStatus});
+      }
       
       if (newStatus == 'Completed') {
         if (mounted) {
-          Navigator.pushReplacement(
+          Navigator.push(
             context,
             MaterialPageRoute(
               builder: (context) => UploadProofScreen(
@@ -112,11 +114,11 @@ class _ActiveServiceScreenState extends State<ActiveServiceScreen> {
                       child: Column(
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
-                          _buildCustomerCard(),
-                          const SizedBox(height: 24),
                           _buildStatusBar(status),
                           const SizedBox(height: 24),
                           _buildServiceInfo(data),
+                          const SizedBox(height: 24),
+                          _buildCustomerCard(),
                           const SizedBox(height: 24),
                           _buildPaymentSummary(data),
                         ],
@@ -135,7 +137,7 @@ class _ActiveServiceScreenState extends State<ActiveServiceScreen> {
 
   Widget _buildHeader(Map<String, dynamic> data) {
     return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 16),
+      padding: const EdgeInsets.fromLTRB(24, 8, 24, 12),
       decoration: BoxDecoration(
         color: Colors.white,
         border: Border(bottom: BorderSide(color: Colors.grey.shade100)),
@@ -160,7 +162,7 @@ class _ActiveServiceScreenState extends State<ActiveServiceScreen> {
               const SizedBox(width: 48), // Placeholder to center the handle
             ],
           ),
-          const SizedBox(height: 16),
+          const SizedBox(height: 4),
           Text(
             'Active Service',
             style: GoogleFonts.outfit(
@@ -170,7 +172,7 @@ class _ActiveServiceScreenState extends State<ActiveServiceScreen> {
             ),
           ),
           Text(
-            data['serviceName'] ?? 'Service',
+            data['orderId'] ?? 'GS-00000',
             style: GoogleFonts.outfit(
               fontSize: 14,
               color: Colors.grey[500],
@@ -399,7 +401,7 @@ class _ActiveServiceScreenState extends State<ActiveServiceScreen> {
                   children: [
                     Text('Add-ons', style: GoogleFonts.outfit(fontSize: 12, color: Colors.grey[500])),
                     const SizedBox(height: 4),
-                    ...(addOns as List).map((addon) {
+                    ...addOns.map((addon) {
                       final name = addon['name'] ?? 'Extra Service';
                       return Padding(
                         padding: const EdgeInsets.only(bottom: 2),
@@ -424,12 +426,66 @@ class _ActiveServiceScreenState extends State<ActiveServiceScreen> {
         const SizedBox(height: 16),
         _infoItem(Icons.access_time_outlined, 'Time', data['time'] ?? 'No time'),
         const SizedBox(height: 16),
-        _infoItem(Icons.location_on_outlined, 'Address', data['address'] ?? 'No address'),
+        _infoItem(
+          Icons.location_on_outlined, 
+          'Address', 
+          data['address'] ?? 'No address',
+          trailing: IconButton(
+            onPressed: () {
+              // Get candidate data sources
+              final Map<String, dynamic> combinedData = {
+                ...widget.bookingData,
+                ...data,
+              };
+              
+              debugPrint("📍 Checking for coordinates in: ${combinedData.keys.toList()}");
+
+              // Try a wide range of common coordinate field names
+              double? lat;
+              double? lng;
+
+              // Potential Latitude keys
+              for (var key in ['latitude', 'lat', 'targetLat', 'destLat', 'customerLat']) {
+                if (combinedData[key] != null) {
+                  final val = combinedData[key];
+                  lat = (val is num) ? val.toDouble() : double.tryParse(val.toString());
+                  if (lat != null && lat != 0) break;
+                }
+              }
+
+              // Potential Longitude keys
+              for (var key in ['longitude', 'lng', 'targetLng', 'destLng', 'customerLng']) {
+                if (combinedData[key] != null) {
+                  final val = combinedData[key];
+                  lng = (val is num) ? val.toDouble() : double.tryParse(val.toString());
+                  if (lng != null && lng != 0) break;
+                }
+              }
+              
+              if (lat != null && lng != null && lat != 0 && lng != 0) {
+                debugPrint("🚀 Opening maps for: $lat, $lng");
+                _openMaps(lat, lng);
+              } else {
+                ScaffoldMessenger.of(context).showSnackBar(
+                  SnackBar(
+                    content: Text('Coordinates not found in: ${combinedData.keys.where((k) => k.contains('lat') || k.contains('lng')).join(', ')}'),
+                    behavior: SnackBarBehavior.floating,
+                  ),
+                );
+              }
+            },
+            icon: const Icon(Icons.near_me_rounded, color: Color(0xFF4F46E5), size: 20),
+            style: IconButton.styleFrom(
+              backgroundColor: const Color(0xFF4F46E5).withValues(alpha: 0.1),
+              padding: const EdgeInsets.all(8),
+            ),
+          ),
+        ),
       ],
     );
   }
 
-  Widget _infoItem(IconData icon, String label, String value) {
+  Widget _infoItem(IconData icon, String label, String value, {Widget? trailing}) {
     return Row(
       children: [
         Icon(icon, size: 20, color: Colors.grey[400]),
@@ -443,8 +499,20 @@ class _ActiveServiceScreenState extends State<ActiveServiceScreen> {
             ],
           ),
         ),
+        if (trailing != null) trailing,
       ],
     );
+  }
+
+  Future<void> _openMaps(double lat, double lng) async {
+    final googleMapsUrl = 'https://www.google.com/maps/search/?api=1&query=$lat,$lng';
+    final appleMapsUrl = 'https://maps.apple.com/?q=$lat,$lng';
+
+    if (await canLaunchUrl(Uri.parse(googleMapsUrl))) {
+      await launchUrl(Uri.parse(googleMapsUrl), mode: LaunchMode.externalApplication);
+    } else if (await canLaunchUrl(Uri.parse(appleMapsUrl))) {
+      await launchUrl(Uri.parse(appleMapsUrl), mode: LaunchMode.externalApplication);
+    }
   }
 
   Widget _buildPaymentSummary(Map<String, dynamic> data) {

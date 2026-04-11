@@ -10,6 +10,8 @@ import '../provider/provider_activity_screen.dart';
 import '../provider/service_selector.dart';
 import 'package:url_launcher/url_launcher.dart';
 import '../chat/single_chat_screen.dart';
+import 'package:table_calendar/table_calendar.dart';
+import 'package:intl/intl.dart';
 
 class ProviderHomeScreen extends StatefulWidget {
   const ProviderHomeScreen({super.key});
@@ -28,11 +30,66 @@ class _ProviderHomeScreenState extends State<ProviderHomeScreen> {
   int totalBookings = 0;
   double averageRating = 0.0;
 
+  // Calendar State
+  CalendarFormat _calendarFormat = CalendarFormat.month;
+  DateTime _focusedDay = DateTime.now();
+  DateTime? _selectedDay;
+  Map<DateTime, List<dynamic>> _events = {};
+
   @override
   void initState() {
     super.initState();
+    _selectedDay = _focusedDay;
     _fetchProviderData();
     _fetchProviderStats();
+    _fetchCalendarEvents();
+  }
+
+  Future<void> _fetchCalendarEvents() async {
+    if (user == null) return;
+    
+    // Listen to confirmed bookings for the calendar
+    FirebaseFirestore.instance
+        .collection('bookings')
+        .where('providerId', isEqualTo: user!.uid)
+        .where('status', whereIn: ['Confirmed', 'On the way', 'Arrived', 'In progress', 'Work in progress'])
+        .snapshots()
+        .listen((snapshot) {
+      if (mounted) {
+        final Map<DateTime, List<dynamic>> newEvents = {};
+        for (var doc in snapshot.docs) {
+          final data = doc.data();
+          final dateStr = data['date'];
+          if (dateStr != null) {
+            DateTime? parsedDate;
+            
+            // Try different date formats
+            final formats = [
+              "d MMM yyyy",
+              "yyyy-MM-dd",
+              "dd/MM/yyyy",
+              "MM/dd/yyyy",
+            ];
+
+            for (var format in formats) {
+              try {
+                parsedDate = DateFormat(format).parse(dateStr.toString().trim());
+                break; // Stop if we successfully parse
+              } catch (_) {}
+            }
+
+            if (parsedDate != null) {
+              final dayKey = DateTime(parsedDate.year, parsedDate.month, parsedDate.day);
+              if (newEvents[dayKey] == null) newEvents[dayKey] = [];
+              newEvents[dayKey]!.add(data);
+            } else {
+              debugPrint("Could not parse date: $dateStr");
+            }
+          }
+        }
+        setState(() => _events = newEvents);
+      }
+    });
   }
 
   Future<void> _fetchProviderData() async {
@@ -124,26 +181,35 @@ class _ProviderHomeScreenState extends State<ProviderHomeScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: Colors.white,
+      backgroundColor: Colors.grey[50],
       body: providerData == null
           ? const Center(child: CircularProgressIndicator())
-          : SingleChildScrollView(
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  _buildHeader(),
-                  const SizedBox(height: 20),
-                  _buildStatsRow(),
-                  const SizedBox(height: 24),
-                  _buildAvailabilityCard(),
-                  const SizedBox(height: 24),
-                  _buildNewRequestsSection(),
-                  const SizedBox(height: 24),
-
-                  _buildQuickActions(),
-                  const SizedBox(height: 32),
-                ],
-              ),
+          : CustomScrollView(
+              slivers: [
+                SliverToBoxAdapter(child: _buildHeader()),
+                SliverToBoxAdapter(
+                  child: Padding(
+                    padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 10),
+                    child: _buildAvailabilityCard(),
+                  ),
+                ),
+                SliverToBoxAdapter(
+                  child: Padding(
+                    padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 10),
+                    child: _buildStatsRow(),
+                  ),
+                ),
+                SliverToBoxAdapter(
+                  child: Padding(
+                    padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 20),
+                    child: _buildCalendarSection(),
+                  ),
+                ),
+                SliverToBoxAdapter(
+                  child: _buildNewRequestsSection(),
+                ),
+                const SliverToBoxAdapter(child: SizedBox(height: 40)),
+              ],
             ),
     );
   }
@@ -152,14 +218,8 @@ class _ProviderHomeScreenState extends State<ProviderHomeScreen> {
     return Container(
       width: double.infinity,
       decoration: BoxDecoration(
-        gradient: LinearGradient(
-          begin: Alignment.topCenter,
-          end: Alignment.bottomCenter,
-          colors: [
-            const Color(0xFF4F46E5).withValues(alpha: 0.15),
-            Colors.white,
-          ],
-        ),
+        color: Colors.white,
+        border: Border(bottom: BorderSide(color: Colors.grey.shade100)),
       ),
       child: Padding(
         padding: const EdgeInsets.fromLTRB(24, 60, 24, 20),
@@ -172,18 +232,18 @@ class _ProviderHomeScreenState extends State<ProviderHomeScreen> {
                   Text(
                     _getGreeting(),
                     style: GoogleFonts.outfit(
-                      color: Colors.black54,
-                      fontSize: 16,
-                      fontWeight: FontWeight.w400,
+                      color: const Color(0xFF64748B),
+                      fontSize: 14,
+                      fontWeight: FontWeight.w500,
                     ),
                   ),
-                  const SizedBox(height: 4),
+                  const SizedBox(height: 2),
                   Text(
                     providerData?['name'] ?? 'Provider',
                     style: GoogleFonts.outfit(
                       color: const Color(0xFF1E293B),
-                      fontSize: 24,
-                      fontWeight: FontWeight.w600,
+                      fontSize: 26,
+                      fontWeight: FontWeight.w700,
                     ),
                   ),
                 ],
@@ -199,18 +259,11 @@ class _ProviderHomeScreenState extends State<ProviderHomeScreen> {
               child: Container(
                 decoration: BoxDecoration(
                   shape: BoxShape.circle,
-                  border: Border.all(color: Colors.white, width: 2),
-                  boxShadow: [
-                    BoxShadow(
-                      color: Colors.black.withValues(alpha: 0.1),
-                      blurRadius: 8,
-                      offset: const Offset(0, 2),
-                    ),
-                  ],
+                  border: Border.all(color: const Color(0xFF4F46E5).withValues(alpha: 0.2), width: 2),
                 ),
                 child: CircleAvatar(
-                  radius: 25,
-                  backgroundColor: Colors.white,
+                  radius: 26,
+                  backgroundColor: const Color(0xFFF1F5F9),
                   backgroundImage: (providerData?['profileUrl'] != null && providerData!['profileUrl'].toString().isNotEmpty)
                       ? NetworkImage(providerData!['profileUrl'])
                       : null,
@@ -234,36 +287,32 @@ class _ProviderHomeScreenState extends State<ProviderHomeScreen> {
   }
 
   Widget _buildStatsRow() {
-    return Padding(
-      padding: const EdgeInsets.symmetric(horizontal: 24),
-      child: Row(
-        mainAxisAlignment: MainAxisAlignment.spaceBetween,
-        children: [
-          _statItem(
-              'RM ${totalEarnings >= 1000 ? "${(totalEarnings / 1000).toStringAsFixed(1)}k" : totalEarnings.toStringAsFixed(0)}',
-              'Earnings',
-              Icons.insights,
-              Colors.blue),
-          _statItem(totalBookings.toString(), 'Bookings', Icons.calendar_today,
-              const Color(0xFF4F46E5)),
-          _statItem(averageRating == 0 ? '0.0' : averageRating.toStringAsFixed(1),
-              'Rating', Icons.star, Colors.amber),
-        ],
-      ),
+    return Row(
+      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+      children: [
+        _statItem(
+            'RM ${totalEarnings >= 1000 ? "${(totalEarnings / 1000).toStringAsFixed(1)}k" : totalEarnings.toStringAsFixed(0)}',
+            'Earnings',
+            Icons.insights,
+            Colors.blue),
+        _statItem(totalBookings.toString(), 'Bookings', Icons.calendar_today,
+            const Color(0xFF4F46E5)),
+        _statItem(averageRating == 0 ? '0.0' : averageRating.toStringAsFixed(1),
+            'Rating', Icons.star, Colors.amber),
+      ],
     );
   }
 
   Widget _statItem(String value, String label, IconData icon, Color color) {
     return Container(
       width: (MediaQuery.of(context).size.width - 64) / 3,
-      padding: const EdgeInsets.symmetric(vertical: 16),
+      padding: const EdgeInsets.symmetric(vertical: 12),
       decoration: BoxDecoration(
         color: Colors.white,
-        borderRadius: BorderRadius.circular(8),
-        border: Border.all(color: Colors.grey.shade100, width: 1.5),
+        borderRadius: BorderRadius.circular(16),
         boxShadow: [
           BoxShadow(
-            color: Colors.black.withValues(alpha: 0.02),
+            color: Colors.black.withValues(alpha: 0.03),
             blurRadius: 10,
             offset: const Offset(0, 4),
           ),
@@ -271,21 +320,28 @@ class _ProviderHomeScreenState extends State<ProviderHomeScreen> {
       ),
       child: Column(
         children: [
-          Icon(icon, color: color, size: 20),
-          const SizedBox(height: 8),
+          Container(
+            padding: const EdgeInsets.all(6),
+            decoration: BoxDecoration(
+              color: color.withValues(alpha: 0.1),
+              shape: BoxShape.circle,
+            ),
+            child: Icon(icon, color: color, size: 16),
+          ),
+          const SizedBox(height: 6),
           Text(
             value,
             style: GoogleFonts.outfit(
-              fontWeight: FontWeight.w600,
-              fontSize: 16,
+              fontWeight: FontWeight.w700,
+              fontSize: 15,
               color: const Color(0xFF1E293B),
             ),
           ),
           Text(
             label,
             style: GoogleFonts.outfit(
-              fontSize: 11,
-              color: Colors.grey,
+              fontSize: 10,
+              color: const Color(0xFF64748B),
               fontWeight: FontWeight.w500,
             ),
           ),
@@ -295,126 +351,174 @@ class _ProviderHomeScreenState extends State<ProviderHomeScreen> {
   }
 
   Widget _buildAvailabilityCard() {
-    return Padding(
-      padding: const EdgeInsets.symmetric(horizontal: 24),
-      child: Container(
-        padding: const EdgeInsets.all(20),
-        decoration: BoxDecoration(
-          color: isOnline ? const Color(0xFFE6FFFA) : const Color(0xFFFFF5F5),
-          borderRadius: BorderRadius.circular(20),
-          border: Border.all(color: isOnline ? Colors.teal.shade50 : Colors.red.shade50),
-        ),
-        child: Row(
-          children: [
-            Container(
-              padding: const EdgeInsets.all(12),
-              decoration: BoxDecoration(
-                color: isOnline ? Colors.teal : Colors.red,
-                shape: BoxShape.circle,
-              ),
-              child: Icon(isOnline ? Icons.power_settings_new : Icons.power_off, color: Colors.white, size: 24),
+    return Container(
+      padding: const EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        color: isOnline ? const Color(0xFFF0FDF4) : const Color(0xFFFEF2F2),
+        borderRadius: BorderRadius.circular(20),
+        border: Border.all(color: isOnline ? const Color(0xFFDCFCE7) : const Color(0xFFFEE2E2)),
+      ),
+      child: Row(
+        children: [
+          Container(
+            padding: const EdgeInsets.all(10),
+            decoration: BoxDecoration(
+              color: isOnline ? const Color(0xFF22C55E) : const Color(0xFFEF4444),
+              shape: BoxShape.circle,
             ),
-            const SizedBox(width: 16),
-            Expanded(
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(
-                    isOnline ? 'You are Online' : 'You are Offline',
-                    style: GoogleFonts.outfit(
-                      fontWeight: FontWeight.w600,
-                      fontSize: 16,
-                      color: isOnline ? Colors.teal.shade900 : Colors.red.shade900,
-                    ),
+            child: Icon(isOnline ? Icons.power_settings_new : Icons.power_off, color: Colors.white, size: 20),
+          ),
+          const SizedBox(width: 12),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  isOnline ? 'You are Online' : 'You are Offline',
+                  style: GoogleFonts.outfit(
+                    fontWeight: FontWeight.w600,
+                    fontSize: 15,
+                    color: isOnline ? const Color(0xFF166534) : const Color(0xFF991B1B),
                   ),
-                  Text(
-                    isOnline ? 'Customers can see and book you' : 'Switch online to receive bookings',
-                    style: GoogleFonts.outfit(
-                      fontSize: 15,
-                      color: isOnline ? Colors.teal.shade700 : Colors.red.shade700,
-                    ),
+                ),
+                Text(
+                  isOnline ? 'Customers can book you' : 'Switch online to receive bookings',
+                  style: GoogleFonts.outfit(
+                    fontSize: 13,
+                    color: isOnline ? const Color(0xFF166534).withValues(alpha: 0.7) : const Color(0xFF991B1B).withValues(alpha: 0.7),
                   ),
-                ],
-              ),
+                ),
+              ],
             ),
-            Switch(
+          ),
+          Transform.scale(
+            scale: 0.8,
+            child: Switch(
               value: isOnline,
-              activeColor: Colors.teal,
+              activeColor: const Color(0xFF22C55E),
               onChanged: _toggleOnline,
             ),
-          ],
-        ),
-      ),
-    );
-  }
-
-
-
-  Widget _buildQuickActions() {
-    return Padding(
-      padding: const EdgeInsets.symmetric(horizontal: 24),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          _buildSectionHeader('Quick Actions', '', () {}),
-          const SizedBox(height: 16),
-          Row(
-            children: [
-              _actionCard('Add Service', Icons.add_circle_outline, Colors.indigo, () {
-                 ServiceSelector.show(context);
-              }),
-              const SizedBox(width: 12),
-              _actionCard('My Reviews', Icons.star_outline, Colors.amber, () {
-                Navigator.push(context, MaterialPageRoute(builder: (context) => const ProviderReviewsPage()));
-              }),
-            ],
-          ),
-          const SizedBox(height: 12),
-          Row(
-            children: [
-              _actionCard('My Services', Icons.storefront_outlined, Colors.indigo, () {
-                Navigator.push(context, MaterialPageRoute(builder: (context) => const MyServicesScreen()));
-              }),
-              const SizedBox(width: 12),
-              _actionCard('Activity', Icons.local_activity_rounded, Colors.teal, () {
-                Navigator.push(context, MaterialPageRoute(builder: (context) => const ProviderActivityScreen()));
-              }),
-            ],
           ),
         ],
       ),
     );
   }
 
-  Widget _actionCard(String title, IconData icon, Color color, VoidCallback onTap) {
-    return Expanded(
-      child: GestureDetector(
-        onTap: onTap,
-        child: Container(
-          padding: const EdgeInsets.all(16),
-          decoration: BoxDecoration(
-            color: color.withValues(alpha: 0.05),
-            borderRadius: BorderRadius.circular(8),
-            border: Border.all(color: color.withValues(alpha: 0.1)),
+  Widget _buildCalendarSection() {
+    return Container(
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(24),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withValues(alpha: 0.03),
+            blurRadius: 20,
+            offset: const Offset(0, 10),
           ),
-          child: Column(
-            children: [
-              Icon(icon, color: color, size: 28),
-              const SizedBox(height: 8),
-              Text(
-                title,
-                style: GoogleFonts.outfit(
-                  fontWeight: FontWeight.w600,
-                  fontSize: 13,
-                  color: const Color(0xFF1E293B),
-                ),
+        ],
+      ),
+      child: Column(
+        children: [
+          TableCalendar(
+            firstDay: DateTime.utc(2025, 1, 1),
+            lastDay: DateTime.utc(2030, 12, 31),
+            focusedDay: _focusedDay,
+            calendarFormat: CalendarFormat.month,
+            availableCalendarFormats: const {
+              CalendarFormat.month: 'Month',
+            },
+            selectedDayPredicate: (day) => isSameDay(_selectedDay, day),
+            onDaySelected: (selectedDay, focusedDay) {
+              setState(() {
+                _selectedDay = selectedDay;
+                _focusedDay = focusedDay;
+              });
+            },
+            eventLoader: (day) {
+              final dayKey = DateTime(day.year, day.month, day.day);
+              return _events[dayKey] ?? [];
+            },
+            calendarStyle: CalendarStyle(
+              todayDecoration: BoxDecoration(
+                color: const Color(0xFF4F46E5).withValues(alpha: 0.1),
+                shape: BoxShape.circle,
               ),
-            ],
+              todayTextStyle: const TextStyle(color: Color(0xFF4F46E5), fontWeight: FontWeight.bold),
+              selectedDecoration: const BoxDecoration(
+                color: Color(0xFF4F46E5),
+                shape: BoxShape.circle,
+              ),
+              markerDecoration: const BoxDecoration(
+                color: Color(0xFFFF6B00),
+                shape: BoxShape.circle,
+              ),
+              markersMaxCount: 1,
+            ),
+            headerStyle: HeaderStyle(
+              formatButtonVisible: false,
+              titleCentered: true,
+              titleTextStyle: GoogleFonts.outfit(fontWeight: FontWeight.w600, fontSize: 16),
+            ),
           ),
-        ),
+          if (_selectedDay != null && _events[DateTime(_selectedDay!.year, _selectedDay!.month, _selectedDay!.day)] != null)
+            Padding(
+              padding: const EdgeInsets.all(16.0),
+              child: Column(
+                children: (_events[DateTime(_selectedDay!.year, _selectedDay!.month, _selectedDay!.day)] ?? [])
+                    .map((event) => Container(
+                          margin: const EdgeInsets.only(bottom: 8),
+                          padding: const EdgeInsets.all(12),
+                          decoration: BoxDecoration(
+                            color: const Color(0xFFF8FAFC),
+                            borderRadius: BorderRadius.circular(12),
+                          ),
+                          child: Row(
+                            children: [
+                              Container(
+                                width: 4,
+                                height: 30,
+                                decoration: BoxDecoration(
+                                  color: const Color(0xFFFF6B00),
+                                  borderRadius: BorderRadius.circular(2),
+                                ),
+                              ),
+                              const SizedBox(width: 12),
+                              Expanded(
+                                child: Column(
+                                  crossAxisAlignment: CrossAxisAlignment.start,
+                                  children: [
+                                    Text(
+                                      event['serviceName'] ?? 'Booking',
+                                      style: GoogleFonts.outfit(fontWeight: FontWeight.bold, fontSize: 13),
+                                    ),
+                                    Text(
+                                      event['time'] ?? '',
+                                      style: GoogleFonts.outfit(color: Colors.grey, fontSize: 11),
+                                    ),
+                                  ],
+                                ),
+                              ),
+                              Text(
+                                event['status'] ?? '',
+                                style: GoogleFonts.outfit(
+                                  color: const Color(0xFF4F46E5),
+                                  fontSize: 11,
+                                  fontWeight: FontWeight.w600,
+                                ),
+                              ),
+                            ],
+                          ),
+                        ))
+                    .toList(),
+              ),
+            ),
+        ],
       ),
     );
   }
+
+
+
 
   Widget _buildSectionHeader(String title, String action, VoidCallback onTap) {
     return Padding(
@@ -455,185 +559,204 @@ class _ProviderHomeScreenState extends State<ProviderHomeScreen> {
           .where('status', isEqualTo: 'Pending')
           .snapshots(),
       builder: (context, snapshot) {
-        if (!snapshot.hasData || snapshot.data!.docs.isEmpty) {
-          return const SizedBox.shrink();
-        }
-
+        final docs = snapshot.data?.docs ?? [];
+        
         return Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            _buildSectionHeader('New Service Requests', '${snapshot.data!.docs.length}', () {}),
+            _buildSectionHeader('New Service Requests', docs.isNotEmpty ? '${docs.length}' : '', () {}),
             const SizedBox(height: 16),
-            SizedBox(
-              height: 205,
-              child: ListView.builder(
-                scrollDirection: Axis.horizontal,
+            if (docs.isEmpty)
+              Padding(
                 padding: const EdgeInsets.symmetric(horizontal: 24),
-                itemCount: snapshot.data!.docs.length,
+                child: Container(
+                  width: double.infinity,
+                  padding: const EdgeInsets.all(32),
+                  decoration: BoxDecoration(
+                    color: Colors.white,
+                    borderRadius: BorderRadius.circular(24),
+                    border: Border.all(color: const Color(0xFFF1F5F9)),
+                  ),
+                  child: Column(
+                    children: [
+                      Icon(Icons.inbox_outlined, color: Colors.grey[300], size: 48),
+                      const SizedBox(height: 16),
+                      Text(
+                        'No new requests yet',
+                        style: GoogleFonts.outfit(
+                          color: const Color(0xFF64748B),
+                          fontSize: 15,
+                          fontWeight: FontWeight.w500,
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              )
+            else
+              ListView.builder(
+                shrinkWrap: true,
+                physics: const NeverScrollableScrollPhysics(),
+                padding: const EdgeInsets.symmetric(horizontal: 24),
+                itemCount: docs.length,
                 itemBuilder: (context, index) {
-                  final doc = snapshot.data!.docs[index];
+                  final doc = docs[index];
                   final data = doc.data() as Map<String, dynamic>;
-                  final String customerId = data['customerId'] ?? '';
+                final String customerId = data['customerId'] ?? '';
 
-                  return FutureBuilder<DocumentSnapshot>(
-                    future: FirebaseFirestore.instance.collection('users').doc(customerId).get(),
-                    builder: (context, userSnapshot) {
-                      String customerName = 'Customer';
-                      String? profileUrl;
-                      String? customerPhone;
-                      
-                      if (userSnapshot.hasData && userSnapshot.data!.exists) {
-                        final userData = userSnapshot.data!.data() as Map<String, dynamic>;
-                        customerName = userData['name'] ?? 'Customer';
-                        profileUrl = userData['profileUrl'];
-                        customerPhone = userData['phone'];
-                      }
+                return FutureBuilder<DocumentSnapshot>(
+                  future: FirebaseFirestore.instance.collection('users').doc(customerId).get(),
+                  builder: (context, userSnapshot) {
+                    String customerName = 'Customer';
+                    String? profileUrl;
+                    String? customerPhone;
+                    
+                    if (userSnapshot.hasData && userSnapshot.data!.exists) {
+                      final userData = userSnapshot.data!.data() as Map<String, dynamic>;
+                      customerName = userData['name'] ?? 'Customer';
+                      profileUrl = userData['profileUrl'];
+                      customerPhone = userData['phone'];
+                    }
 
-                      return Container(
-                        width: 280,
-                        margin: const EdgeInsets.only(right: 16),
-                        padding: const EdgeInsets.all(16),
-                        decoration: BoxDecoration(
-                          color: Colors.white,
-                          borderRadius: BorderRadius.circular(24),
-                          border: Border.all(color: Colors.grey.shade100, width: 1.5),
-                          boxShadow: [
-                            BoxShadow(
-                              color: Colors.black.withValues(alpha: 0.05),
-                              blurRadius: 15,
-                              offset: const Offset(0, 8),
-                            ),
-                          ],
-                        ),
-                        child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            Row(
-                              children: [
-                                CircleAvatar(
-                                  radius: 20,
-                                  backgroundColor: Colors.grey[100],
-                                  backgroundImage: profileUrl != null ? NetworkImage(profileUrl) : null,
-                                  child: profileUrl == null ? const Icon(Icons.person, color: Colors.grey, size: 20) : null,
-                                ),
-                                const SizedBox(width: 12),
-                                Expanded(
-                                  child: SizedBox(
-                                    height: 48, // Fixed height for text section to align all cards
-                                    child: Column(
-                                      crossAxisAlignment: CrossAxisAlignment.start,
-                                      mainAxisAlignment: MainAxisAlignment.center,
-                                      children: [
-                                        Text(
-                                          customerName,
-                                          style: GoogleFonts.outfit(color: const Color(0xFF1E293B), fontWeight: FontWeight.w600, fontSize: 16),
-                                          maxLines: 1,
-                                          overflow: TextOverflow.ellipsis,
-                                        ),
-                                        Text(
-                                          data['serviceName'] ?? 'Service',
-                                          style: GoogleFonts.outfit(color: Colors.grey, fontSize: 13),
-                                          maxLines: 1,
-                                          overflow: TextOverflow.ellipsis,
-                                        ),
-                                      ],
-                                    ),
-                                  ),
-                                ),
-                                const SizedBox(width: 8),
-                                ClipRRect(
-                                  borderRadius: BorderRadius.circular(12),
-                                  child: data['serviceImage'] != null
-                                      ? Image.network(
-                                          data['serviceImage'],
-                                          width: 45,
-                                          height: 45,
-                                          fit: BoxFit.cover,
-                                        )
-                                      : Container(
-                                          width: 45,
-                                          height: 45,
-                                          color: Colors.grey[100],
-                                          child: const Icon(Icons.cleaning_services, size: 20, color: Colors.grey),
-                                        ),
-                                ),
-                              ],
-                            ),
-                            const Spacer(),
-                            Container(
-                              padding: const EdgeInsets.symmetric(horizontal: 2),
-                              child: Row(
-                                mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                                children: [
-                                  Row(
-                                    children: [
-                                      Icon(Icons.calendar_today_outlined, size: 14, color: Colors.grey),
-                                      const SizedBox(width: 6),
-                                      Text(
-                                        data['date'] ?? 'No date',
-                                        style: GoogleFonts.outfit(color: Colors.black54, fontSize: 12, fontWeight: FontWeight.w500),
-                                      ),
-                                    ],
-                                  ),
-                                  Row(
-                                    children: [
-                                      Icon(Icons.access_time_outlined, size: 14, color: Colors.grey),
-                                      const SizedBox(width: 6),
-                                      Text(
-                                        data['time'] ?? 'No time',
-                                        style: GoogleFonts.outfit(color: Colors.black54, fontSize: 12, fontWeight: FontWeight.w500),
-                                      ),
-                                    ],
-                                  ),
-                                ],
+                    return Container(
+                      width: double.infinity,
+                      margin: const EdgeInsets.only(bottom: 16),
+                      padding: const EdgeInsets.all(16),
+                      decoration: BoxDecoration(
+                        color: Colors.white,
+                        borderRadius: BorderRadius.circular(24),
+                        boxShadow: [
+                          BoxShadow(
+                            color: Colors.black.withValues(alpha: 0.04),
+                            blurRadius: 15,
+                            offset: const Offset(0, 8),
+                          ),
+                        ],
+                      ),
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Row(
+                            children: [
+                              CircleAvatar(
+                                radius: 24,
+                                backgroundColor: const Color(0xFFF1F5F9),
+                                backgroundImage: profileUrl != null ? NetworkImage(profileUrl) : null,
+                                child: profileUrl == null ? const Icon(Icons.person, color: Color(0xFF94A3B8), size: 24) : null,
                               ),
-                            ),
-                            const SizedBox(height: 14),
-                            Row(
-                              children: [
-                                Expanded(
-                                  child: ElevatedButton(
-                                    onPressed: () => _showBookingDetails(data, customerName, profileUrl, customerPhone),
-                                    style: ElevatedButton.styleFrom(
-                                      backgroundColor: Colors.white,
-                                      foregroundColor: const Color(0xFF4F46E5),
-                                      side: const BorderSide(color: Color(0xFF4F46E5), width: 1.5),
-                                      elevation: 0,
-                                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-                                      padding: const EdgeInsets.symmetric(vertical: 12),
+                              const SizedBox(width: 12),
+                              Expanded(
+                                child: Column(
+                                  crossAxisAlignment: CrossAxisAlignment.start,
+                                  children: [
+                                    Text(
+                                      customerName,
+                                      style: GoogleFonts.outfit(color: const Color(0xFF1E293B), fontWeight: FontWeight.w700, fontSize: 17),
                                     ),
-                                    child: Text(
-                                      'Details',
-                                      style: GoogleFonts.outfit(fontWeight: FontWeight.w600, fontSize: 13),
+                                    Text(
+                                      data['serviceName'] ?? 'Service',
+                                      style: GoogleFonts.outfit(color: const Color(0xFF64748B), fontSize: 13, fontWeight: FontWeight.w500),
                                     ),
-                                  ),
+                                    const SizedBox(height: 2),
+                                    Text(
+                                      'Order ID: ${data['orderId'] ?? 'GS-00000'}',
+                                      style: GoogleFonts.outfit(color: Colors.grey[400], fontSize: 11),
+                                    ),
+                                  ],
                                 ),
-                                const SizedBox(width: 10),
-                                Expanded(
-                                  child: ElevatedButton(
-                                    onPressed: () => _updateBookingStatus(doc.id, 'Confirmed'),
-                                    style: ElevatedButton.styleFrom(
-                                      backgroundColor: const Color(0xFF4F46E5),
-                                      foregroundColor: Colors.white,
-                                      elevation: 0,
-                                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                              ),
+                              Builder(
+                                builder: (context) {
+                                  final double basePrice = (data['basePrice'] is num) ? (data['basePrice'] as num).toDouble() : (double.tryParse(data['basePrice'].toString()) ?? 0.0);
+                                  final List addOns = data['selectedAddOns'] ?? [];
+                                  double addOnsTotal = 0;
+                                  for (var addon in addOns) {
+                                    final price = addon['price'];
+                                    addOnsTotal += (price is num) ? price.toDouble() : (double.tryParse(price.toString()) ?? 0.0);
+                                  }
+                                  
+                                  return Text(
+                                    'RM ${(basePrice + addOnsTotal).toStringAsFixed(2)}',
+                                    style: GoogleFonts.outfit(
+                                      color: const Color(0xFF4F46E5),
+                                      fontWeight: FontWeight.w700,
+                                      fontSize: 16,
                                     ),
-                                    child: const Text('Accept'),
+                                  );
+                                },
+                              ),
+                            ],
+                          ),
+                          const Divider(height: 32, thickness: 1, color: Color(0xFFF1F5F9)),
+                          Row(
+                            children: [
+                              _infoBadge(Icons.calendar_today_outlined, data['date'] ?? 'No date'),
+                              const SizedBox(width: 12),
+                              _infoBadge(Icons.access_time_outlined, data['time'] ?? 'No time'),
+                            ],
+                          ),
+                          const SizedBox(height: 20),
+                          Row(
+                            children: [
+                              Expanded(
+                                child: ElevatedButton(
+                                  onPressed: () => _showBookingDetails(data, customerName, profileUrl, customerPhone),
+                                  style: ElevatedButton.styleFrom(
+                                    backgroundColor: const Color(0xFFF8FAFC),
+                                    foregroundColor: const Color(0xFF4F46E5),
+                                    elevation: 0,
+                                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                                    padding: const EdgeInsets.symmetric(vertical: 14),
                                   ),
+                                  child: Text('Details', style: GoogleFonts.outfit(fontWeight: FontWeight.w600)),
                                 ),
-                              ],
-                            ),
-                          ],
-                        ),
-                      );
-                    },
-                  );
-                },
-              ),
+                              ),
+                              const SizedBox(width: 12),
+                              Expanded(
+                                child: ElevatedButton(
+                                  onPressed: () => _updateBookingStatus(doc.id, 'Confirmed'),
+                                  style: ElevatedButton.styleFrom(
+                                    backgroundColor: const Color(0xFF4F46E5),
+                                    foregroundColor: Colors.white,
+                                    elevation: 0,
+                                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                                    padding: const EdgeInsets.symmetric(vertical: 14),
+                                  ),
+                                  child: Text('Accept', style: GoogleFonts.outfit(fontWeight: FontWeight.w600)),
+                                ),
+                              ),
+                            ],
+                          ),
+                        ],
+                      ),
+                    );
+                  },
+                );
+              },
             ),
           ],
         );
       },
+    );
+  }
+
+  Widget _infoBadge(IconData icon, String text) {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+      decoration: BoxDecoration(
+        color: const Color(0xFFF1F5F9),
+        borderRadius: BorderRadius.circular(8),
+      ),
+      child: Row(
+        children: [
+          Icon(icon, size: 14, color: const Color(0xFF64748B)),
+          const SizedBox(width: 6),
+          Text(
+            text,
+            style: GoogleFonts.outfit(color: const Color(0xFF475569), fontSize: 11, fontWeight: FontWeight.w600),
+          ),
+        ],
+      ),
     );
   }
 
@@ -786,7 +909,8 @@ class _ProviderHomeScreenState extends State<ProviderHomeScreen> {
                     
                     // Service Info
                     _buildDetailSection('SERVICE INFO', [
-                      _detailRow(Icons.cleaning_services_outlined, 'Service', data['serviceName'] ?? 'Service'),
+                      _detailRow(Icons.tag, 'Order ID', data['orderId'] ?? 'GS-00000'),
+                      _detailRow(Icons.cleaning_services_outlined, 'Service', data['serviceName'] ?? 'Service', isExpandable: true),
                       if (data['selectedAddOns'] != null && (data['selectedAddOns'] as List).isNotEmpty)
                         _detailRow(Icons.add_box_outlined, 'Add-ons', (data['selectedAddOns'] as List).map((a) => a['name']).join(', '), isExpandable: true),
                       _detailRow(Icons.calendar_today_outlined, 'Date', data['date'] ?? 'No date'),
@@ -798,30 +922,6 @@ class _ProviderHomeScreenState extends State<ProviderHomeScreen> {
                     // Location
                     _buildDetailSection('LOCATION', [
                       _detailRow(Icons.location_on_outlined, 'Address', data['address'] ?? 'No address provided', isExpandable: true),
-                      const SizedBox(height: 12),
-                      SizedBox(
-                        width: double.infinity,
-                        child: OutlinedButton.icon(
-                          onPressed: () async {
-                            final lat = data['latitude'];
-                            final lng = data['longitude'];
-                            if (lat != null && lng != null) {
-                              final uri = Uri.parse("google.navigation:q=$lat,$lng");
-                              if (await canLaunchUrl(uri)) {
-                                await launchUrl(uri);
-                              }
-                            }
-                          },
-                          icon: const Icon(Icons.map_outlined, size: 18),
-                          label: Text('Open in Maps', style: GoogleFonts.outfit(fontWeight: FontWeight.w600)),
-                          style: OutlinedButton.styleFrom(
-                            foregroundColor: const Color(0xFF4F46E5),
-                            side: BorderSide(color: const Color(0xFF4F46E5).withValues(alpha: 0.3)),
-                            padding: const EdgeInsets.symmetric(vertical: 12),
-                            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-                          ),
-                        ),
-                      ),
                     ]),
                     
                     const SizedBox(height: 16),
@@ -840,17 +940,31 @@ class _ProviderHomeScreenState extends State<ProviderHomeScreen> {
                           Column(
                             crossAxisAlignment: CrossAxisAlignment.start,
                             children: [
-                              Text('Total Earnings', style: GoogleFonts.outfit(fontSize: 18, fontWeight: FontWeight.w600)),
-                              Text('After 15% platform fee', style: GoogleFonts.outfit(fontSize: 11, color: Colors.grey[400])),
+                              Text('Your Earnings', style: GoogleFonts.outfit(fontSize: 18, fontWeight: FontWeight.w600)),
+                              Text('(Base + Add-ons)', style: GoogleFonts.outfit(fontSize: 11, color: Colors.grey[400])),
                             ],
                           ),
-                          Text(
-                            'RM ${((data['totalPrice'] ?? 0) / 1.15).toStringAsFixed(2)}',
-                            style: GoogleFonts.outfit(
-                              fontSize: 22,
-                              fontWeight: FontWeight.bold,
-                              color: const Color(0xFF4F46E5),
-                            ),
+                          Builder(
+                            builder: (context) {
+                              final double basePrice = (data['basePrice'] is num) ? (data['basePrice'] as num).toDouble() : (double.tryParse(data['basePrice'].toString()) ?? 0.0);
+                              final List addOns = data['selectedAddOns'] ?? [];
+                              double addOnsTotal = 0;
+                              for (var addon in addOns) {
+                                final price = addon['price'];
+                                addOnsTotal += (price is num) ? price.toDouble() : (double.tryParse(price.toString()) ?? 0.0);
+                              }
+                              
+                              final totalEarnings = basePrice + addOnsTotal;
+                              
+                              return Text(
+                                'RM ${totalEarnings.toStringAsFixed(2)}',
+                                style: GoogleFonts.outfit(
+                                  fontSize: 22,
+                                  fontWeight: FontWeight.bold,
+                                  color: const Color(0xFF4F46E5),
+                                ),
+                              );
+                            },
                           ),
                         ],
                       ),
@@ -910,21 +1024,20 @@ class _ProviderHomeScreenState extends State<ProviderHomeScreen> {
         children: [
           Icon(icon, size: 18, color: const Color(0xFF64748B)),
           const SizedBox(width: 12),
-          Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Text(label, style: GoogleFonts.outfit(fontSize: 12, color: Colors.grey[500])),
-              const SizedBox(height: 2),
-              SizedBox(
-                width: 170, // Slightly narrower for horizontal cards
-                child: Text(
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(label, style: GoogleFonts.outfit(fontSize: 12, color: Colors.grey[500])),
+                const SizedBox(height: 2),
+                Text(
                   value, 
                   style: GoogleFonts.outfit(fontSize: 14, fontWeight: FontWeight.w500, color: const Color(0xFF1E293B)),
-                  maxLines: isExpandable ? 3 : 1,
+                  maxLines: isExpandable ? 5 : 1,
                   overflow: TextOverflow.ellipsis,
                 ),
-              ),
-            ],
+              ],
+            ),
           ),
         ],
       ),

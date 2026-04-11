@@ -157,10 +157,20 @@ class _TrackingScreenState extends State<TrackingScreen> {
           String currentStatus = 'Confirmed';
 
           if (snapshot.hasData && snapshot.data!.exists) {
-            data = snapshot.data!.data() as Map<String, dynamic>;
-            currentStatus = data['status'] ?? 'Confirmed';
-            final GeoPoint? providerLoc = data['providerLocation'];
-            
+            final data = snapshot.data!.data() as Map<String, dynamic>;
+            final currentStatus = data['status'] ?? 'Pending';
+
+            // 🔹 AUTO-NAVIGATE ONLY IF FINALIZED BY CUSTOMER or if it really is Completed
+            if (currentStatus == 'Completed') {
+              WidgetsBinding.instance.addPostFrameCallback((_) {
+                 Navigator.pushReplacement(
+                  context,
+                  MaterialPageRoute(
+                    builder: (context) => ServiceCompletedScreen(bookingData: data),
+                  ),
+                );
+              });
+            }
             // Get customer destination coordinates
             double destLat = (widget.bookingData['latitude'] is double) 
                 ? widget.bookingData['latitude'] 
@@ -170,16 +180,31 @@ class _TrackingScreenState extends State<TrackingScreen> {
                 : double.tryParse(widget.bookingData['longitude'].toString()) ?? 0.0;
             LatLng destLatLng = (destLat != 0 && destLng != 0) ? LatLng(destLat, destLng) : _defaultCenter;
 
-            if (providerLoc != null) {
-              providerLatLng = LatLng(providerLoc.latitude, providerLoc.longitude);
-              
+            // Robust location extraction for provider
+            final dynamic provLocRaw = data['providerLocation'];
+            if (provLocRaw is GeoPoint) {
+              providerLatLng = LatLng(provLocRaw.latitude, provLocRaw.longitude);
+            } else if (data['providerLatitude'] != null && data['providerLongitude'] != null) {
+              providerLatLng = LatLng(
+                (data['providerLatitude'] as num).toDouble(),
+                (data['providerLongitude'] as num).toDouble(),
+              );
+            } else if (data['latitude'] != null && data['longitude'] != null && currentStatus != 'Pending') {
+              // Fallback for manual testing if using root lat/lng (only if not Pending)
+              providerLatLng = LatLng(
+                (data['latitude'] as num).toDouble(),
+                (data['longitude'] as num).toDouble(),
+              );
+            }
+
+            if (data['providerLocation'] != null || data['latitude'] != null) {
               if (destLat != 0 && destLng != 0) {
                 // Simplified distance calculation (Haversine-like)
                 const double R = 6371; // Earth's radius in km
-                double dLat = (destLat - providerLoc.latitude) * (math.pi / 180);
-                double dLon = (destLng - providerLoc.longitude) * (math.pi / 180);
+                double dLat = (destLat - providerLatLng.latitude) * (math.pi / 180);
+                double dLon = (destLng - providerLatLng.longitude) * (math.pi / 180);
                 double a = math.sin(dLat / 2) * math.sin(dLat / 2) +
-                    math.cos(providerLoc.latitude * (math.pi / 180)) * 
+                    math.cos(providerLatLng.latitude * (math.pi / 180)) * 
                     math.cos(destLat * (math.pi / 180)) * 
                     math.sin(dLon / 2) * math.sin(dLon / 2);
                 double c = 2 * math.atan2(math.sqrt(a), math.sqrt(1 - a));
@@ -207,19 +232,21 @@ class _TrackingScreenState extends State<TrackingScreen> {
               );
             }
 
-            // 2. Provider Marker
-            _markers.add(
-              Marker(
-                markerId: const MarkerId('provider'),
-                position: providerLatLng,
-                icon: BitmapDescriptor.defaultMarkerWithHue(BitmapDescriptor.hueAzure),
-                infoWindow: InfoWindow(title: widget.bookingData['providerName'] ?? 'Provider'),
-                rotation: data['providerHeading']?.toDouble() ?? 0.0,
-              ),
-            );
+            // 2. Provider Marker (Only if status is appropriate)
+            if (['On the way', 'Arrived', 'In progress'].contains(currentStatus)) {
+              _markers.add(
+                Marker(
+                  markerId: const MarkerId('provider'),
+                  position: providerLatLng,
+                  icon: BitmapDescriptor.defaultMarkerWithHue(BitmapDescriptor.hueCyan), // Using Cyan for the 'vehicle'
+                  infoWindow: InfoWindow(title: widget.bookingData['providerName'] ?? 'Provider'),
+                  rotation: data['providerHeading']?.toDouble() ?? 0.0,
+                ),
+              );
+            }
 
             // 3. Polyline (Path)
-            if (providerLoc != null && destLat != 0) {
+            if (currentStatus == 'On the way' && provLocRaw != null && destLat != 0) {
               _polylines.add(
                 Polyline(
                   polylineId: const PolylineId('route'),
@@ -231,30 +258,29 @@ class _TrackingScreenState extends State<TrackingScreen> {
               );
             }
 
-            // 🔹 Dynamic Camera Logic: Show both provider and destination
+            // 🔹 Dynamic Camera Logic:
             if (_mapController != null) {
-              LatLngBounds bounds;
-              if (providerLoc != null && destLat != 0) {
-                bounds = LatLngBounds(
+              if (currentStatus == 'On the way') {
+                // Focus on both provider and destination when moving
+                LatLngBounds bounds = LatLngBounds(
                   southwest: LatLng(
-                    math.min(providerLoc.latitude, destLat),
-                    math.min(providerLoc.longitude, destLng),
+                    math.min(providerLatLng.latitude, destLat),
+                    math.min(providerLatLng.longitude, destLng),
                   ),
                   northeast: LatLng(
-                    math.max(providerLoc.latitude, destLat),
-                    math.max(providerLoc.longitude, destLng),
+                    math.max(providerLatLng.latitude, destLat),
+                    math.max(providerLatLng.longitude, destLng),
                   ),
                 );
-                
-                // Animate to fit both markers with some padding
                 _mapController!.animateCamera(CameraUpdate.newLatLngBounds(bounds, 100));
-              } else if (destLat != 0) {
-                _mapController!.animateCamera(CameraUpdate.newLatLng(destLatLng));
+              } else {
+                // Default: Focus only on the customer destination
+                _mapController!.animateCamera(CameraUpdate.newLatLngZoom(destLatLng, 16));
               }
             }
             
             // If the provider location exists but no controller yet, update providerLatLng for initial camera
-            if (providerLoc == null && destLat != 0) {
+            if (provLocRaw == null && destLat != 0) {
               providerLatLng = destLatLng;
             }
           }
@@ -356,25 +382,6 @@ class _TrackingScreenState extends State<TrackingScreen> {
                             child: const Icon(Icons.help_outline_rounded, color: Color(0xFFFF6B00), size: 24),
                           ),
                         ),
-                        const SizedBox(width: 12),
-                        GestureDetector(
-                          onTap: _showCancelConfirmation,
-                          child: Container(
-                            padding: const EdgeInsets.all(12),
-                            decoration: BoxDecoration(
-                              color: Colors.white,
-                              shape: BoxShape.circle,
-                              boxShadow: [
-                                BoxShadow(
-                                  color: Colors.black.withValues(alpha: 0.1),
-                                  blurRadius: 10,
-                                  offset: const Offset(0, 4),
-                                ),
-                              ],
-                            ),
-                            child: const Icon(Icons.cancel_outlined, color: Colors.redAccent, size: 24),
-                          ),
-                        ),
                       ],
                     ),
                   ],
@@ -400,7 +407,7 @@ class _TrackingScreenState extends State<TrackingScreen> {
                 bottom: 0,
                 left: 0,
                 right: 0,
-                child: _buildBottomActions(),
+                child: _buildBottomActions(currentStatus),
               ),
             ],
           );
@@ -563,7 +570,7 @@ class _TrackingScreenState extends State<TrackingScreen> {
               }
               return GestureDetector(
                 onTap: () => _makeCall(phone ?? data?['providerPhone'] ?? widget.bookingData['providerPhone'] ?? '011-23456789'),
-                child: _actionIcon(Icons.phone_rounded, color: const Color(0xFF4ADE80)),
+                child: _actionIcon(Icons.phone_rounded),
               );
             }
           ),
@@ -594,11 +601,11 @@ class _TrackingScreenState extends State<TrackingScreen> {
     return Container(
       width: 48,
       height: 48,
-      decoration: const BoxDecoration(
-        color: Color(0xFFF1F5F9),
+      decoration: BoxDecoration(
+        color: const Color(0xFFFF6B00).withValues(alpha: 0.1),
         shape: BoxShape.circle,
       ),
-      child: Icon(icon, color: color ?? const Color(0xFF1E212C), size: 20),
+      child: Icon(icon, color: color ?? const Color(0xFFFF6B00), size: 20),
     );
   }
 
@@ -645,6 +652,40 @@ class _TrackingScreenState extends State<TrackingScreen> {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
+          if (data['status'] == 'Awaiting Confirmation' && data['proofImageUrl'] != null) ...[
+            Text(
+              'Work Proof',
+              style: GoogleFonts.outfit(
+                fontSize: 16,
+                fontWeight: FontWeight.w600,
+                color: const Color(0xFF1F212C),
+              ),
+            ),
+            const SizedBox(height: 12),
+            ClipRRect(
+              borderRadius: BorderRadius.circular(16),
+              child: Image.network(
+                data['proofImageUrl'],
+                width: double.infinity,
+                height: 200,
+                fit: BoxFit.cover,
+                loadingBuilder: (context, child, loadingProgress) {
+                  if (loadingProgress == null) return child;
+                  return Container(
+                    height: 200,
+                    decoration: BoxDecoration(
+                      color: Colors.grey[100],
+                      borderRadius: BorderRadius.circular(16),
+                    ),
+                    child: const Center(child: CircularProgressIndicator(color: Color(0xFFFF6B00))),
+                  );
+                },
+              ),
+            ),
+            const SizedBox(height: 24),
+            const Divider(height: 1, color: Color(0xFFF1F5F9)),
+            const SizedBox(height: 24),
+          ],
           Text(
             'Order Detail',
             style: GoogleFonts.outfit(fontSize: 16, fontWeight: FontWeight.w600, color: const Color(0xFF1F212C)),
@@ -871,7 +912,7 @@ class _TrackingScreenState extends State<TrackingScreen> {
     );
   }
 
-  Widget _buildBottomActions() {
+  Widget _buildBottomActions(String currentStatus) {
     return Container(
       padding: const EdgeInsets.fromLTRB(24, 20, 24, 30),
       decoration: const BoxDecoration(
@@ -915,7 +956,10 @@ class _TrackingScreenState extends State<TrackingScreen> {
             shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
             elevation: 0,
           ),
-          child: Text('Service Completed', style: GoogleFonts.outfit(fontSize: 16, fontWeight: FontWeight.w600)),
+          child: Text(
+            currentStatus == 'Awaiting Confirmation' ? 'Approve & Complete' : 'Service Completed', 
+            style: GoogleFonts.outfit(fontSize: 16, fontWeight: FontWeight.w600)
+          ),
         ),
       ),
     );

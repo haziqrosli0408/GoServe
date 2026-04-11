@@ -9,6 +9,7 @@ class BookingSuccessScreen extends StatefulWidget {
   final DateTime date;
   final String time;
   final double totalPrice;
+  final String orderId;
 
   const BookingSuccessScreen({
     super.key,
@@ -17,6 +18,7 @@ class BookingSuccessScreen extends StatefulWidget {
     required this.date,
     required this.time,
     required this.totalPrice,
+    required this.orderId,
   });
 
   @override
@@ -172,6 +174,8 @@ class _BookingSuccessScreenState extends State<BookingSuccessScreen> with Single
                       ),
                       child: Column(
                         children: [
+                          _buildDetailRow('Order ID', widget.orderId),
+                          const Divider(height: 32),
                           _buildDetailRow('Service', widget.serviceName),
                           const Divider(height: 32),
                           _buildDetailRow('Provider', widget.providerName),

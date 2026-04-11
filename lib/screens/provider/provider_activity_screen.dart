@@ -61,13 +61,6 @@ class ProviderActivityScreen extends StatelessWidget {
         'isNew': true,
       },
       {
-        'type': 'service_request',
-        'title': 'New Service Request',
-        'description': 'Hanim requested for Office Cleaning on Dec 30',
-        'time': '1 hour ago',
-        'isNew': true,
-      },
-      {
         'type': 'review',
         'title': 'New 5-Star Review!',
         'description': 'John Smith left a review: "Excellent work, very professional!"',
@@ -110,11 +103,6 @@ class ProviderActivityScreen extends StatelessWidget {
         icon = Icons.account_balance_wallet_rounded;
         iconBg = const Color(0xFFDCFCE7);
         iconColor = const Color(0xFF166534);
-        break;
-      case 'service_request':
-        icon = Icons.receipt_long_rounded;
-        iconBg = const Color(0xFFE0E7FF);
-        iconColor = const Color(0xFF3730A3);
         break;
       case 'review':
         icon = Icons.star_rounded;

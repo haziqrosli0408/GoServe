@@ -64,6 +64,8 @@ class _BookingPageState extends State<BookingPage> {
   }
 
   String address = '';
+  double? latitude;
+  double? longitude;
   String phone = '';
   String notes = '';
   String paymentMethod = 'card';
@@ -401,9 +403,32 @@ class _BookingPageState extends State<BookingPage> {
       
       if (placemarks.isNotEmpty) {
         Placemark place = placemarks[0];
+        
+        // Debug exactly what we're getting back
+        debugPrint("📍 Placemark details: ${place.toJson()}");
+
         setState(() {
+          latitude = position.latitude;
+          longitude = position.longitude;
+          
           unitNoController.text = place.subThoroughfare ?? '';
-          streetNameController.text = place.thoroughfare ?? place.name ?? '';
+          
+          // Try to find the most specific street information available
+          String street = place.street ?? '';
+          String thoroughfare = place.thoroughfare ?? '';
+          String subLocality = place.subLocality ?? '';
+          
+          if (thoroughfare.isNotEmpty) {
+            streetNameController.text = thoroughfare;
+          } else if (street.isNotEmpty && !street.contains('+')) {
+            // Some results return '+ Plus Codes', we want to avoid those
+            streetNameController.text = street;
+          } else if (subLocality.isNotEmpty) {
+            streetNameController.text = subLocality;
+          } else {
+            streetNameController.text = place.name ?? '';
+          }
+
           postcodeController.text = place.postalCode ?? '';
           cityController.text = place.locality ?? place.subAdministrativeArea ?? '';
         });
@@ -654,6 +679,17 @@ class _BookingPageState extends State<BookingPage> {
     double platformFee = (base + addOnsSum) * platformRate;
     double finalTotal = base + addOnsSum + platformFee;
 
+    // Manual Geocoding Fallback if they didn't use GPS button
+    if (latitude == null || longitude == null) {
+      final fullAddress = '$streetName, $postcode $city';
+      locationFromAddress(fullAddress).then((locs) {
+        if (locs.isNotEmpty) {
+          latitude = locs.first.latitude;
+          longitude = locs.first.longitude;
+        }
+      }).catchError((e) => debugPrint("Geocoding failed: $e"));
+    }
+
     showModalBottomSheet(
       context: context,
       isScrollControlled: true,
@@ -771,6 +807,8 @@ class _BookingPageState extends State<BookingPage> {
                           basePrice: basePriceValue,
                           selectedAddOns: selectedAddOnIndices.map((idx) => addOns[idx]).toList(),
                           address: 'Unit $unitNo, $streetName, $postcode $city',
+                          latitude: latitude,
+                          longitude: longitude,
                           totalPrice: finalTotal,
                           serviceId: widget.serviceId,
                         ),

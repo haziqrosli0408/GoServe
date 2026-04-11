@@ -7,7 +7,6 @@ import 'service_details.dart';
 import 'categories_screen.dart';
 import 'subcategory_providers_screen.dart';
 import 'category_detail_screen.dart';
-import '../profile/profile_screen.dart';
 import '../misc/notifications_screen.dart';
 import '../../utils/categories_data.dart';
 import 'package:animated_text_kit/animated_text_kit.dart';

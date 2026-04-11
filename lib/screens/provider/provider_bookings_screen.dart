@@ -7,6 +7,8 @@ import '../chat/single_chat_screen.dart';
 import 'active_service_screen.dart';
 import 'service_start_animation_screen.dart';
 
+import 'package:intl/intl.dart';
+
 class ProviderBookingsScreen extends StatefulWidget {
   const ProviderBookingsScreen({super.key});
 
@@ -15,14 +17,14 @@ class ProviderBookingsScreen extends StatefulWidget {
 }
 
 class _ProviderBookingsScreenState extends State<ProviderBookingsScreen> {
-  String selectedFilter = 'Requests';
-  final filters = ['Requests', 'Upcoming', 'Completed', 'Cancelled'];
+  String selectedFilter = 'Active';
+  final filters = ['Active', 'Past'];
   final String currentProviderId = FirebaseAuth.instance.currentUser?.uid ?? '';
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: const Color(0xFF4F46E5),
+      backgroundColor: Colors.white,
       body: Column(
         children: [
           _buildHeader(),
@@ -30,7 +32,6 @@ class _ProviderBookingsScreenState extends State<ProviderBookingsScreen> {
             child: Container(
               decoration: const BoxDecoration(
                 color: Colors.white,
-                borderRadius: BorderRadius.vertical(top: Radius.circular(32)),
               ),
               child: Column(
                 children: [
@@ -51,75 +52,75 @@ class _ProviderBookingsScreenState extends State<ProviderBookingsScreen> {
   Widget _buildHeader() {
     return Container(
       width: double.infinity,
-      padding: const EdgeInsets.fromLTRB(24, 60, 24, 28),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Text(
-            'Activity',
-            style: GoogleFonts.outfit(
-              fontSize: 24,
-              fontWeight: FontWeight.w600,
-              color: Colors.white,
-            ),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        border: Border(bottom: BorderSide(color: Colors.grey.shade100)),
+      ),
+      padding: const EdgeInsets.fromLTRB(24, 70, 24, 20),
+      child: Center(
+        child: Text(
+          'Activity',
+          style: GoogleFonts.outfit(
+            fontSize: 20,
+            fontWeight: FontWeight.w600,
+            color: const Color(0xFF1E293B),
           ),
-          const SizedBox(height: 4),
-          Text(
-            'Track and manage your service requests',
-            style: GoogleFonts.outfit(
-              fontSize: 14,
-              color: Colors.white.withValues(alpha: 0.7),
-              fontWeight: FontWeight.w400,
-            ),
-          ),
-        ],
+        ),
       ),
     );
   }
 
   Widget _buildFilters() {
     return Container(
-      height: 52,
-      padding: const EdgeInsets.symmetric(vertical: 8),
-      child: ListView.builder(
-        scrollDirection: Axis.horizontal,
-        padding: const EdgeInsets.symmetric(horizontal: 16),
-        itemCount: filters.length,
-        itemBuilder: (context, index) {
-          final filter = filters[index];
-          final isSelected = selectedFilter == filter;
-          return Padding(
-            padding: const EdgeInsets.only(right: 8),
-            child: GestureDetector(
-              onTap: () => setState(() => selectedFilter = filter),
-              child: AnimatedContainer(
-                duration: const Duration(milliseconds: 200),
-                padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 6),
-                decoration: BoxDecoration(
-                  color: isSelected ? const Color(0xFF4F46E5) : const Color(0xFFF1F5F9),
-                  borderRadius: BorderRadius.circular(30),
-                  boxShadow: isSelected ? [
-                    BoxShadow(
-                      color: const Color(0xFF4F46E5).withValues(alpha: 0.3),
-                      blurRadius: 10,
-                      offset: const Offset(0, 4),
-                    )
-                  ] : [],
-                ),
-                child: Center(
-                  child: Text(
-                    filter,
-                    style: GoogleFonts.outfit(
-                      color: isSelected ? Colors.white : const Color(0xFF64748B),
-                      fontWeight: FontWeight.w600,
-                      fontSize: 12,
+      height: 50,
+      decoration: BoxDecoration(
+        color: Colors.white,
+        border: Border(bottom: BorderSide(color: Colors.grey.shade100, width: 1)),
+      ),
+      child: Stack(
+        children: [
+          Row(
+            children: filters.map((filter) {
+              final isSelected = selectedFilter == filter;
+              return Expanded(
+                child: GestureDetector(
+                  onTap: () => setState(() => selectedFilter = filter),
+                  child: Container(
+                    color: Colors.transparent,
+                    child: Center(
+                      child: Text(
+                        filter,
+                        style: GoogleFonts.outfit(
+                          color: isSelected ? const Color(0xFF4F46E5) : const Color(0xFF94A3B8),
+                          fontWeight: isSelected ? FontWeight.w700 : FontWeight.w500,
+                          fontSize: 15,
+                        ),
+                      ),
                     ),
                   ),
                 ),
+              );
+            }).toList(),
+          ),
+          // Animated Underline Indicator
+          AnimatedPositioned(
+            duration: const Duration(milliseconds: 300),
+            curve: Curves.easeInOut,
+            bottom: 0,
+            left: selectedFilter == 'Active' ? 0 : MediaQuery.of(context).size.width / 2,
+            child: Container(
+              height: 3,
+              width: MediaQuery.of(context).size.width / 2,
+              decoration: const BoxDecoration(
+                color: Color(0xFF4F46E5),
+                borderRadius: BorderRadius.only(
+                  topLeft: Radius.circular(3),
+                  topRight: Radius.circular(3),
+                ),
               ),
             ),
-          );
-        },
+          ),
+        ],
       ),
     );
   }
@@ -138,15 +139,35 @@ class _ProviderBookingsScreenState extends State<ProviderBookingsScreen> {
         }
 
         final docs = snapshot.data!.docs;
+        final now = DateTime.now();
+        final todayStr = DateFormat('yyyy-MM-dd').format(now);
+        final todayHumanStr = DateFormat('d MMM yyyy').format(now);
+
         final filteredDocs = docs.where((doc) {
           final data = doc.data() as Map<String, dynamic>;
           final status = data['status'];
+          final dateStr = data['date']?.toString() ?? '';
           
-          if (selectedFilter == 'Requests') return status == 'Pending';
-          if (selectedFilter == 'Upcoming') return ['Confirmed', 'On the way', 'Arrived', 'In progress'].contains(status);
-          if (selectedFilter == 'Completed') return status == 'Completed';
-          if (selectedFilter == 'Cancelled') return status == 'Cancelled';
-          return true; // For 'All' - though we don't have 'All' anymore explicitly
+          // Normalize date string for comparison
+          bool isToday = false;
+          try {
+            // Check for yyyy-MM-dd format
+            if (dateStr.contains(todayStr)) isToday = true;
+            // Check for "12 Apr 2026" style format
+            if (dateStr.toLowerCase().contains(todayHumanStr.toLowerCase())) isToday = true;
+          } catch (_) {}
+
+          if (selectedFilter == 'Active') {
+            // Confirmed, On the way, Arrived, In Progress + Completed Today
+            if (['Confirmed', 'On the way', 'Arrived', 'In progress'].contains(status)) return true;
+            if (status == 'Completed' && isToday) return true;
+            return false;
+          } else {
+            // Past: Completed (not today) + Cancelled
+            if (status == 'Cancelled') return true;
+            if (status == 'Completed' && !isToday) return true;
+            return false;
+          }
         }).toList();
 
         if (filteredDocs.isEmpty) {
@@ -235,9 +256,14 @@ class _ProviderBookingsScreenState extends State<ProviderBookingsScreen> {
                                   ),
                                   Text(
                                     data['serviceName'] ?? 'Service',
-                                    style: GoogleFonts.outfit(color: Colors.grey, fontSize: 13),
+                                    style: GoogleFonts.outfit(color: Colors.grey[700], fontSize: 13, fontWeight: FontWeight.w500),
                                     maxLines: 1,
                                     overflow: TextOverflow.ellipsis,
+                                  ),
+                                  const SizedBox(height: 2),
+                                  Text(
+                                    'Order ID: ${data['orderId'] ?? 'GS-00000'}',
+                                    style: GoogleFonts.outfit(color: Colors.grey[400], fontSize: 11),
                                   ),
                                 ],
                               ),
@@ -246,13 +272,25 @@ class _ProviderBookingsScreenState extends State<ProviderBookingsScreen> {
                             Column(
                               crossAxisAlignment: CrossAxisAlignment.end,
                               children: [
-                                Text(
-                                  'RM ${data['totalPrice']?.toStringAsFixed(2) ?? '0.00'}',
-                                  style: GoogleFonts.outfit(
-                                    fontWeight: FontWeight.w600,
-                                    color: const Color(0xFF4F46E5),
-                                    fontSize: 16,
-                                  ),
+                                Builder(
+                                  builder: (context) {
+                                    final double basePrice = (data['basePrice'] is num) ? (data['basePrice'] as num).toDouble() : (double.tryParse(data['basePrice'].toString()) ?? 0.0);
+                                    final List addOns = data['selectedAddOns'] ?? [];
+                                    double addOnsTotal = 0;
+                                    for (var addon in addOns) {
+                                      final price = addon['price'];
+                                      addOnsTotal += (price is num) ? price.toDouble() : (double.tryParse(price.toString()) ?? 0.0);
+                                    }
+                                    
+                                    return Text(
+                                      'RM ${(basePrice + addOnsTotal).toStringAsFixed(2)}',
+                                      style: GoogleFonts.outfit(
+                                        fontWeight: FontWeight.w600,
+                                        color: const Color(0xFF4F46E5),
+                                        fontSize: 16,
+                                      ),
+                                    );
+                                  },
                                 ),
                                 const SizedBox(height: 4),
                                 ClipRRect(
@@ -498,7 +536,8 @@ class _ProviderBookingsScreenState extends State<ProviderBookingsScreen> {
                     
                     // Service Info
                     _buildDetailSection('SERVICE INFO', [
-                      _detailRow(Icons.cleaning_services_outlined, 'Service', data['serviceName'] ?? 'Service'),
+                      _detailRow(Icons.tag, 'Order ID', data['orderId'] ?? 'GS-00000'),
+                      _detailRow(Icons.cleaning_services_outlined, 'Service', data['serviceName'] ?? 'Service', isExpandable: true),
                       if (data['selectedAddOns'] != null && (data['selectedAddOns'] as List).isNotEmpty)
                         _detailRow(Icons.add_box_outlined, 'Add-ons', (data['selectedAddOns'] as List).map((a) => a['name']).join(', '), isExpandable: true),
                       _detailRow(Icons.calendar_today_outlined, 'Date', data['date'] ?? 'No date'),
@@ -522,21 +561,6 @@ class _ProviderBookingsScreenState extends State<ProviderBookingsScreen> {
                           _priceRow(addon['name'] ?? 'Add-on', addon['price'] ?? 0, isAddon: true)
                         ),
                       const Divider(height: 24,),
-                      Row(
-                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                        children: [
-                          Text('Order Total', style: GoogleFonts.outfit(fontSize: 14, color: const Color(0xFF64748B))),
-                          Text('RM ${((data['totalPrice'] ?? 0) as num).toDouble().toStringAsFixed(2)}', style: GoogleFonts.outfit(fontSize: 14, fontWeight: FontWeight.w600, color: const Color(0xFF1E293B))),
-                        ],
-                      ),
-                      const SizedBox(height: 12),
-                      Row(
-                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                        children: [
-                          Text('Platform Fee (15%)', style: GoogleFonts.outfit(fontSize: 14, color: Colors.redAccent)),
-                          Text('- RM ${((data['totalPrice'] ?? 0) * 0.15).toStringAsFixed(2)}', style: GoogleFonts.outfit(fontSize: 14, fontWeight: FontWeight.w600, color: Colors.redAccent)),
-                        ],
-                      ),
                       const Divider(height: 32),
                       Row(
                         mainAxisAlignment: MainAxisAlignment.spaceBetween,
@@ -545,16 +569,30 @@ class _ProviderBookingsScreenState extends State<ProviderBookingsScreen> {
                             crossAxisAlignment: CrossAxisAlignment.start,
                             children: [
                               Text('Your Earnings', style: GoogleFonts.outfit(fontSize: 18, fontWeight: FontWeight.w600)),
-                              Text('Final net amount', style: GoogleFonts.outfit(fontSize: 11, color: Colors.grey[400])),
+                              Text('(Base + Add-ons)', style: GoogleFonts.outfit(fontSize: 11, color: Colors.grey[400])),
                             ],
                           ),
-                          Text(
-                            'RM ${((data['totalPrice'] ?? 0) * 0.85).toStringAsFixed(2)}',
-                            style: GoogleFonts.outfit(
-                              fontSize: 22,
-                              fontWeight: FontWeight.bold,
-                              color: const Color(0xFF4F46E5),
-                            ),
+                          Builder(
+                            builder: (context) {
+                              final double basePrice = (data['basePrice'] is num) ? (data['basePrice'] as num).toDouble() : (double.tryParse(data['basePrice'].toString()) ?? 0.0);
+                              final List addOns = data['selectedAddOns'] ?? [];
+                              double addOnsTotal = 0;
+                              for (var addon in addOns) {
+                                final price = addon['price'];
+                                addOnsTotal += (price is num) ? price.toDouble() : (double.tryParse(price.toString()) ?? 0.0);
+                              }
+                              
+                              final totalEarnings = basePrice + addOnsTotal;
+                              
+                              return Text(
+                                'RM ${totalEarnings.toStringAsFixed(2)}',
+                                style: GoogleFonts.outfit(
+                                  fontSize: 22,
+                                  fontWeight: FontWeight.bold,
+                                  color: const Color(0xFF4F46E5),
+                                ),
+                              );
+                            },
                           ),
                         ],
                       ),
