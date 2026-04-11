@@ -174,43 +174,65 @@ class _SingleChatScreenState extends State<SingleChatScreen> {
 
     return Scaffold(
       backgroundColor: Colors.white,
-      appBar: AppBar(
-        elevation: 0,
-        backgroundColor: Colors.white,
-        surfaceTintColor: Colors.transparent,
-        scrolledUnderElevation: 0,
-        foregroundColor: Colors.black,
-        leading: IconButton(
-          icon: const Icon(Icons.arrow_back_ios_new_rounded, size: 20),
-          onPressed: () => Navigator.pop(context),
-        ),
-        title: Row(
-          children: [
-            CircleAvatar(
-              radius: 18,
-              backgroundColor: const Color(0xFFF1F5F9),
-              backgroundImage: providerPhoto.isNotEmpty ? NetworkImage(providerPhoto) : null,
-              child: providerPhoto.isEmpty 
-                ? Text(providerName.isNotEmpty ? providerName[0].toUpperCase() : 'P', style: GoogleFonts.outfit(color: const Color(0xFF1F212C), fontSize: 12, fontWeight: FontWeight.w600)) 
-                : null,
-            ),
-            const SizedBox(width: 10),
-            Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
-                  providerName,
-                  style: GoogleFonts.outfit(fontSize: 14, fontWeight: FontWeight.w600),
-                ),
-                Text("Online", style: GoogleFonts.outfit(fontSize: 11, color: Colors.green, fontWeight: FontWeight.w600)),
-              ],
-            )
-          ],
-        ),
-      ),
-
       body: Column(
         children: [
+          // 🔹 Simple White Header
+          Container(
+            padding: const EdgeInsets.fromLTRB(16, 60, 16, 12),
+            decoration: BoxDecoration(
+              color: Colors.white,
+              border: Border(bottom: BorderSide(color: Colors.grey.shade100)),
+            ),
+            child: Row(
+              children: [
+                IconButton(
+                  icon: const Icon(Icons.arrow_back_ios_new_rounded, size: 20, color: Color(0xFF1E293B)),
+                  onPressed: () => Navigator.pop(context),
+                ),
+                const SizedBox(width: 4),
+                CircleAvatar(
+                  radius: 18,
+                  backgroundColor: const Color(0xFFF1F5F9),
+                  backgroundImage: providerPhoto.isNotEmpty ? NetworkImage(providerPhoto) : null,
+                  child: providerPhoto.isEmpty 
+                    ? Text(providerName.isNotEmpty ? providerName[0].toUpperCase() : 'P', 
+                        style: GoogleFonts.outfit(color: const Color(0xFF1E293B), fontSize: 13, fontWeight: FontWeight.w600)) 
+                    : null,
+                ),
+                const SizedBox(width: 12),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        providerName,
+                        style: GoogleFonts.outfit(fontSize: 15, fontWeight: FontWeight.w600, color: const Color(0xFF1E293B)),
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                      ),
+                      Row(
+                        children: [
+                          Container(
+                            width: 6,
+                            height: 6,
+                            decoration: const BoxDecoration(color: Colors.green, shape: BoxShape.circle),
+                          ),
+                          const SizedBox(width: 6),
+                          Text("Online", style: GoogleFonts.outfit(fontSize: 11, color: Colors.green, fontWeight: FontWeight.w600)),
+                        ],
+                      ),
+                    ],
+                  ),
+                ),
+                IconButton(
+                  icon: const Icon(Icons.more_vert_rounded, color: Color(0xFF64748B), size: 22),
+                  onPressed: () {},
+                ),
+              ],
+            ),
+          ),
+
+          // 🔹 Chat Body (Simple White)
           Expanded(
             child: StreamBuilder<DocumentSnapshot>(
               stream: FirebaseFirestore.instance.collection('chats').doc(chatId).snapshots(),
@@ -229,17 +251,13 @@ class _SingleChatScreenState extends State<SingleChatScreen> {
               },
             ),
           ),
-          Divider(height: 1, color: Colors.grey.shade100),
 
           // 🔹 Bottom Input Section
           Container(
             padding: const EdgeInsets.fromLTRB(20, 12, 20, 30),
             decoration: BoxDecoration(
               color: Colors.white,
-              borderRadius: const BorderRadius.vertical(top: Radius.circular(30)),
-              boxShadow: [
-                BoxShadow(color: Colors.black.withValues(alpha: 0.05), blurRadius: 10, offset: const Offset(0, -5)),
-              ],
+              border: Border(top: BorderSide(color: Colors.grey.shade100)),
             ),
             child: Row(
               children: [
@@ -262,7 +280,6 @@ class _SingleChatScreenState extends State<SingleChatScreen> {
                   ),
                 ),
                 const SizedBox(width: 12),
-                
                 GestureDetector(
                   onTap: sendMessage,
                   child: Container(

@@ -112,7 +112,7 @@ class _SavedServicesScreenState extends State<SavedServicesScreen> {
                     crossAxisCount: 2,
                     mainAxisSpacing: 24,
                     crossAxisSpacing: 18,
-                    childAspectRatio: 0.62, // Matches search page update
+                    childAspectRatio: 0.68, // Matches search page update
                   ),
                   itemCount: _savedServices.length,
                   itemBuilder: (context, index) {
@@ -199,7 +199,7 @@ class _SavedServicesScreenState extends State<SavedServicesScreen> {
                     ),
               ),
             ),
-            const SizedBox(height: 10),
+            const SizedBox(height: 8),
             Row(
               crossAxisAlignment: CrossAxisAlignment.start,
               mainAxisAlignment: MainAxisAlignment.spaceBetween,
@@ -208,7 +208,7 @@ class _SavedServicesScreenState extends State<SavedServicesScreen> {
                   child: Text(
                     title,
                     style: GoogleFonts.outfit(
-                      fontSize: 16, // Increased from 15
+                      fontSize: 15, 
                       fontWeight: FontWeight.w600,
                       color: const Color(0xFF1F2937),
                     ),
@@ -220,13 +220,13 @@ class _SavedServicesScreenState extends State<SavedServicesScreen> {
                   onTap: () => _toggleUnsave(serviceId),
                   child: const Icon(                   
                     Icons.bookmark, 
-                    size: 22, // Increased from 20
+                    size: 20, 
                     color: Color(0xFFFF6B00),
                   ),
                 ),
               ],
             ),
-            const SizedBox(height: 8), // Increased from 6
+            const SizedBox(height: 6), 
             Row(
               children: [
                 RichText(
@@ -242,7 +242,7 @@ class _SavedServicesScreenState extends State<SavedServicesScreen> {
                       TextSpan(
                         text: 'RM$price/hr',
                         style: GoogleFonts.outfit(
-                          fontSize: 16, // Increased from 14
+                          fontSize: 15, 
                           fontWeight: FontWeight.w600,
                           color: const Color(0xFFFF6B00),
                         ),
@@ -257,35 +257,35 @@ class _SavedServicesScreenState extends State<SavedServicesScreen> {
                     color: const Color(0xFF6B7280),
                   ),
                 ),
-                const Icon(Icons.star, color: Color(0xFFFFC107), size: 16), // Increased from 14
+                const Icon(Icons.star, color: Color(0xFFFFC107), size: 14), 
                 const SizedBox(width: 4),
                 Text(
                   rating,
                   style: GoogleFonts.outfit(
-                    fontSize: 14, // Increased from 12
+                    fontSize: 12, 
                     fontWeight: FontWeight.w500,
                     color: const Color(0xFF1E293B),
                   ),
                 ),
               ],
             ),
-            const SizedBox(height: 10), // Increased from 8
+            const SizedBox(height: 8), 
             Row(
               children: [
                 CircleAvatar(
-                  radius: 11, // Increased from 9
+                  radius: 10, 
                   backgroundColor: const Color(0xFFF1F5F9),
                   backgroundImage: providerProfileUrl.isNotEmpty ? NetworkImage(providerProfileUrl) : null,
                   child: providerProfileUrl.isEmpty 
-                    ? Text(name.isNotEmpty ? name[0].toUpperCase() : 'P', style: GoogleFonts.outfit(color: const Color(0xFF1F212C), fontSize: 10, fontWeight: FontWeight.w600)) 
+                    ? Text(name.isNotEmpty ? name[0].toUpperCase() : 'P', style: GoogleFonts.outfit(color: const Color(0xFF1F212C), fontSize: 9, fontWeight: FontWeight.w600)) 
                     : null,
                 ),
-                const SizedBox(width: 8), // Increased from 6
+                const SizedBox(width: 6), 
                 Expanded(
                   child: Text(
                     name,
                     style: GoogleFonts.outfit(
-                      fontSize: 13, // Increased from 12
+                      fontSize: 11, 
                       fontWeight: FontWeight.w500,
                       color: const Color(0xFF4B5563),
                     ),

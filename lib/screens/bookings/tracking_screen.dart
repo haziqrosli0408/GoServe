@@ -159,17 +159,19 @@ class _TrackingScreenState extends State<TrackingScreen> {
             data = snapshot.data!.data() as Map<String, dynamic>;
             currentStatus = data['status'] ?? 'Confirmed';
             final GeoPoint? providerLoc = data['providerLocation'];
+            
+            // Get customer destination coordinates
+            double destLat = (widget.bookingData['latitude'] is double) 
+                ? widget.bookingData['latitude'] 
+                : double.tryParse(widget.bookingData['latitude'].toString()) ?? 0.0;
+            double destLng = (widget.bookingData['longitude'] is double) 
+                ? widget.bookingData['longitude'] 
+                : double.tryParse(widget.bookingData['longitude'].toString()) ?? 0.0;
+            LatLng destLatLng = (destLat != 0 && destLng != 0) ? LatLng(destLat, destLng) : _defaultCenter;
+
             if (providerLoc != null) {
               providerLatLng = LatLng(providerLoc.latitude, providerLoc.longitude);
               
-              // Calculate real distance using customer data
-              double destLat = (widget.bookingData['latitude'] is double) 
-                  ? widget.bookingData['latitude'] 
-                  : double.tryParse(widget.bookingData['latitude'].toString()) ?? 0.0;
-              double destLng = (widget.bookingData['longitude'] is double) 
-                  ? widget.bookingData['longitude'] 
-                  : double.tryParse(widget.bookingData['longitude'].toString()) ?? 0.0;
-
               if (destLat != 0 && destLng != 0) {
                 // Simplified distance calculation (Haversine-like)
                 const double R = 6371; // Earth's radius in km
@@ -191,6 +193,20 @@ class _TrackingScreenState extends State<TrackingScreen> {
             }
 
             _markers.clear();
+            
+            // 1. Destination Marker (Customer's address)
+            if (destLat != 0 && destLng != 0) {
+              _markers.add(
+                Marker(
+                  markerId: const MarkerId('destination'),
+                  position: destLatLng,
+                  icon: BitmapDescriptor.defaultMarkerWithHue(BitmapDescriptor.hueRed),
+                  infoWindow: InfoWindow(title: 'Service Location', snippet: widget.bookingData['address'] ?? ''),
+                ),
+              );
+            }
+
+            // 2. Provider Marker
             _markers.add(
               Marker(
                 markerId: const MarkerId('provider'),
@@ -200,8 +216,14 @@ class _TrackingScreenState extends State<TrackingScreen> {
               ),
             );
 
-            if (_mapController != null && providerLoc != null) {
-              _mapController!.animateCamera(CameraUpdate.newLatLng(providerLatLng));
+            if (_mapController != null) {
+              // Focus on the customer's address as requested
+              _mapController!.animateCamera(CameraUpdate.newLatLng(destLatLng));
+            }
+            
+            // If the provider location exists but no controller yet, update providerLatLng for initial camera
+            if (providerLoc == null && destLat != 0) {
+              providerLatLng = destLatLng;
             }
           }
 
@@ -212,7 +234,15 @@ class _TrackingScreenState extends State<TrackingScreen> {
                   Expanded(
                     flex: 4,
                     child: GoogleMap(
-                      initialCameraPosition: CameraPosition(target: providerLatLng, zoom: 15),
+                      initialCameraPosition: CameraPosition(
+                        target: (widget.bookingData['latitude'] != null) 
+                            ? LatLng(
+                                double.tryParse(widget.bookingData['latitude'].toString()) ?? _defaultCenter.latitude,
+                                double.tryParse(widget.bookingData['longitude'].toString()) ?? _defaultCenter.longitude
+                              ) 
+                            : providerLatLng, 
+                        zoom: 15
+                      ),
                       markers: _markers,
                       onMapCreated: (controller) => _mapController = controller,
                       myLocationButtonEnabled: false,
