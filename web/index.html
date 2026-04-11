@@ -34,10 +34,38 @@
   <link rel="manifest" href="manifest.json">
 
   <!-- 📍 Google Maps for Web -->
-  <script src="https://maps.googleapis.com/maps/api/js?key=AIzaSyAbuq1D2c5ZgL5jGjQSCp3tFWx2S7aBl60></script>
+  <script src="https://maps.googleapis.com/maps/api/js?key=AIzaSyAbuq1D2c5ZgL5jGjQSCp3tFWx2S7aBl60"></script>
+  <style>
+    .loading {
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      margin: 0;
+      position: absolute;
+      top: 50%;
+      left: 50%;
+      -ms-transform: translate(-50%, -50%);
+      transform: translate(-50%, -50%);
+    }
+    .spinner {
+      border: 4px solid #f3f3f3;
+      border-top: 4px solid #FF6B00;
+      border-radius: 50%;
+      width: 40px;
+      height: 40px;
+      animation: spin 1s linear infinite;
+    }
+    @keyframes spin {
+      0% { transform: rotate(0deg); }
+      100% { transform: rotate(360deg); }
+    }
+  </style>
 </head>
-<body>
-  <script src=" flutter_bootstrap.js" async></script>
-  </body>
+<body style="background-color: white;">
+  <div class="loading">
+    <div class="spinner"></div>
+  </div>
+  <script src="flutter_bootstrap.js" async></script>
+</body>
 
 </html>
