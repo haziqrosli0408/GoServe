@@ -4,8 +4,7 @@ import 'package:geolocator/geolocator.dart';
 import 'package:geocoding/geocoding.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:flutter/foundation.dart' show kIsWeb;
-import 'package:http/http.dart' as http;
-import 'dart:convert';
+import 'dart:js' as js;
 
 class MapPickerScreen extends StatefulWidget {
   final LatLng? initialLocation;
@@ -79,28 +78,31 @@ class _MapPickerScreenState extends State<MapPickerScreen> {
 
   Future<void> _getAddress(LatLng location) async {
     if (kIsWeb) {
+      // 🌐 DIRECT BROWSER GEOCoding (CORS-Safe)
       try {
-        const String apiKey = 'AIzaSyAbuq1D2c5ZgL5jGjQSCp3tFWx2S7aBl60';
-        final url = 'https://maps.googleapis.com/maps/api/geocode/json?latlng=${location.latitude},${location.longitude}&key=$apiKey';
-        
-        final response = await http.get(Uri.parse(url));
-        final data = json.decode(response.body);
-        
-        if (response.statusCode == 200) {
-          if (data['status'] == 'OK' && data['results'].isNotEmpty) {
-            setState(() {
-              _address = data['results'][0]['formatted_address'];
-            });
-            return;
-          } else {
-            // This will show us if it's "REQUEST_DENIED" or "OVER_QUERY_LIMIT"
-            setState(() { _address = "Google Error: ${data['status']}"; });
-          }
-        } else {
-          setState(() { _address = "HTTP Error: ${response.statusCode}"; });
-        }
+        final geocoder = js.JsObject(js.context['google']['maps']['Geocoder']);
+        final request = js.JsObject.jsify({
+          'location': {'lat': location.latitude, 'lng': location.longitude}
+        });
+
+        geocoder.callMethod('geocode', [
+          request,
+          js.allowInterop((results, status) {
+            if (status == 'OK' && results != null && results.length > 0) {
+              setState(() {
+                _address = results[0]['formatted_address'];
+              });
+            } else {
+              setState(() {
+                _address = "Google Error: $status";
+              });
+            }
+          })
+        ]);
       } catch (e) {
-        setState(() { _address = "System Error: ${e.toString().split(':').first}"; });
+        setState(() {
+          _address = "Bridge Error: ${e.toString()}";
+        });
       }
       return;
     }
