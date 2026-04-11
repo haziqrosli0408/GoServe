@@ -79,24 +79,28 @@ class _MapPickerScreenState extends State<MapPickerScreen> {
 
   Future<void> _getAddress(LatLng location) async {
     if (kIsWeb) {
-      // 🌐 WEB FALLBACK: geocoding package doesn't support web
       try {
         const String apiKey = 'AIzaSyAbuq1D2c5ZgL5jGjQSCp3tFWx2S7aBl60';
         final url = 'https://maps.googleapis.com/maps/api/geocode/json?latlng=${location.latitude},${location.longitude}&key=$apiKey';
         
         final response = await http.get(Uri.parse(url));
+        final data = json.decode(response.body);
+        
         if (response.statusCode == 200) {
-          final data = json.decode(response.body);
           if (data['status'] == 'OK' && data['results'].isNotEmpty) {
             setState(() {
               _address = data['results'][0]['formatted_address'];
             });
             return;
+          } else {
+            // This will show us if it's "REQUEST_DENIED" or "OVER_QUERY_LIMIT"
+            setState(() { _address = "Google Error: ${data['status']}"; });
           }
+        } else {
+          setState(() { _address = "HTTP Error: ${response.statusCode}"; });
         }
-        setState(() { _address = "Address not found"; });
       } catch (e) {
-        setState(() { _address = "Address error"; });
+        setState(() { _address = "System Error: ${e.toString().split(':').first}"; });
       }
       return;
     }
