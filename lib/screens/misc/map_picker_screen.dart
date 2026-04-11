@@ -3,6 +3,9 @@ import 'package:google_maps_flutter/google_maps_flutter.dart';
 import 'package:geolocator/geolocator.dart';
 import 'package:geocoding/geocoding.dart';
 import 'package:google_fonts/google_fonts.dart';
+import 'package:flutter/foundation.dart' show kIsWeb;
+import 'package:http/http.dart' as http;
+import 'dart:convert';
 
 class MapPickerScreen extends StatefulWidget {
   final LatLng? initialLocation;
@@ -75,6 +78,30 @@ class _MapPickerScreenState extends State<MapPickerScreen> {
   }
 
   Future<void> _getAddress(LatLng location) async {
+    if (kIsWeb) {
+      // 🌐 WEB FALLBACK: geocoding package doesn't support web
+      try {
+        const String apiKey = 'AIzaSyAbuq1D2c5ZgL5jGjQSCp3tFWx2S7aBl60';
+        final url = 'https://maps.googleapis.com/maps/api/geocode/json?latlng=${location.latitude},${location.longitude}&key=$apiKey';
+        
+        final response = await http.get(Uri.parse(url));
+        if (response.statusCode == 200) {
+          final data = json.decode(response.body);
+          if (data['status'] == 'OK' && data['results'].isNotEmpty) {
+            setState(() {
+              _address = data['results'][0]['formatted_address'];
+            });
+            return;
+          }
+        }
+        setState(() { _address = "Address not found"; });
+      } catch (e) {
+        setState(() { _address = "Address error"; });
+      }
+      return;
+    }
+
+    // 📱 MOBILE VERSION
     try {
       List<Placemark> placemarks = await placemarkFromCoordinates(
           location.latitude, location.longitude);
