@@ -22,6 +22,7 @@ class TrackingScreen extends StatefulWidget {
 class _TrackingScreenState extends State<TrackingScreen> {
   GoogleMapController? _mapController;
   final Set<Marker> _markers = {};
+  final Set<Polyline> _polylines = {};
   
   // Default center if no coordinates found
   static const LatLng _defaultCenter = LatLng(3.1390, 101.6869); // Kuala Lumpur
@@ -211,14 +212,45 @@ class _TrackingScreenState extends State<TrackingScreen> {
               Marker(
                 markerId: const MarkerId('provider'),
                 position: providerLatLng,
-                icon: BitmapDescriptor.defaultMarkerWithHue(BitmapDescriptor.hueOrange),
+                icon: BitmapDescriptor.defaultMarkerWithHue(BitmapDescriptor.hueAzure),
                 infoWindow: InfoWindow(title: widget.bookingData['providerName'] ?? 'Provider'),
+                rotation: data['providerHeading']?.toDouble() ?? 0.0,
               ),
             );
 
+            // 3. Polyline (Path)
+            if (providerLoc != null && destLat != 0) {
+              _polylines.add(
+                Polyline(
+                  polylineId: const PolylineId('route'),
+                  points: [providerLatLng, destLatLng],
+                  color: const Color(0xFFFF6B00),
+                  width: 4,
+                  patterns: [PatternItem.dash(20), PatternItem.gap(10)],
+                ),
+              );
+            }
+
+            // 🔹 Dynamic Camera Logic: Show both provider and destination
             if (_mapController != null) {
-              // Focus on the customer's address as requested
-              _mapController!.animateCamera(CameraUpdate.newLatLng(destLatLng));
+              LatLngBounds bounds;
+              if (providerLoc != null && destLat != 0) {
+                bounds = LatLngBounds(
+                  southwest: LatLng(
+                    math.min(providerLoc.latitude, destLat),
+                    math.min(providerLoc.longitude, destLng),
+                  ),
+                  northeast: LatLng(
+                    math.max(providerLoc.latitude, destLat),
+                    math.max(providerLoc.longitude, destLng),
+                  ),
+                );
+                
+                // Animate to fit both markers with some padding
+                _mapController!.animateCamera(CameraUpdate.newLatLngBounds(bounds, 100));
+              } else if (destLat != 0) {
+                _mapController!.animateCamera(CameraUpdate.newLatLng(destLatLng));
+              }
             }
             
             // If the provider location exists but no controller yet, update providerLatLng for initial camera
@@ -244,6 +276,7 @@ class _TrackingScreenState extends State<TrackingScreen> {
                         zoom: 15
                       ),
                       markers: _markers,
+                      polylines: _polylines,
                       onMapCreated: (controller) => _mapController = controller,
                       myLocationButtonEnabled: false,
                       zoomControlsEnabled: false,
