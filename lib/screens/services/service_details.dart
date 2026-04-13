@@ -490,7 +490,7 @@ class _ServiceDetailsScreenState extends State<ServiceDetailsScreen> {
       clipBehavior: Clip.none,
       children: [
         Container(
-          height: 240,
+          height: 320,
           width: double.infinity,
           decoration: BoxDecoration(
             image: DecorationImage(

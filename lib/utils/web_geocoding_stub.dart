@@ -1,4 +1,4 @@
-// ignore: avoid_web_libraries_in_flutter
+// ignore: deprecated_member_use
 import 'dart:js' as js;
 import 'package:google_maps_flutter/google_maps_flutter.dart';
 

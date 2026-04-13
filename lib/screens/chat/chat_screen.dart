@@ -46,7 +46,7 @@ class _ChatScreenState extends State<ChatScreen> {
           isSelectionMode = false;
         });
         ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text("Chats deleted")),
+          const SnackBar(content: Text("Conversations deleted")),
         );
       }
     } catch (e) {
@@ -246,7 +246,7 @@ class _ChatScreenState extends State<ChatScreen> {
                         ),
                         const SizedBox(height: 8),
                         Text(
-                          "Start a chat with a provider to see it here.",
+                          "Start a conversation with a provider to see it here.",
                           textAlign: TextAlign.center,
                           style: GoogleFonts.outfit(color: Colors.grey.shade300, fontSize: 13),
                         ),
@@ -272,7 +272,7 @@ class _ChatScreenState extends State<ChatScreen> {
                         
                         final Map<String, dynamic>? otherUserData = chatData['users']?[otherUserId] as Map<String, dynamic>?;
                         final String otherName = otherUserData?['name'] ?? 'User';
-                        final String otherPhoto = otherUserData?['profileUrl'] ?? otherUserData?['photo'] ?? '';
+                        final String otherPhoto = otherUserData?['photo'] ?? '';
                         
                         // Robust extraction of service name
                         String serviceName = chatData['serviceTitle'] ?? 
@@ -307,33 +307,16 @@ class _ChatScreenState extends State<ChatScreen> {
                         
                         final int unreadCount = (chatData['unreadCount']?[currentUser.uid] ?? 0) as int;
 
-                        return FutureBuilder<DocumentSnapshot>(
-                          future: FirebaseFirestore.instance.collection('users').doc(otherUserId).get().then((doc) {
-                            if (doc.exists) return doc;
-                            return FirebaseFirestore.instance.collection('providers').doc(otherUserId).get();
-                          }),
-                          builder: (context, userSnapshot) {
-                            String displayName = otherName;
-                            String displayPhoto = otherPhoto;
-
-                            if (userSnapshot.hasData && userSnapshot.data!.exists) {
-                              final userData = userSnapshot.data!.data() as Map<String, dynamic>;
-                              displayName = userData['name'] ?? otherName;
-                              displayPhoto = userData['profileUrl'] ?? userData['photo'] ?? otherPhoto;
-                            }
-
-                            return _buildChatItem(
-                              context,
-                              chatId: chatId,
-                              name: displayName,
-                              photo: displayPhoto,
-                              service: serviceName,
-                              lastMessage: lastMessage,
-                              time: timeStr,
-                              unreadCount: unreadCount,
-                              otherUserId: otherUserId,
-                            );
-                          }
+                        return _buildChatItem(
+                          context,
+                          chatId: chatId,
+                          name: otherName,
+                          photo: otherPhoto,
+                          service: serviceName,
+                          lastMessage: lastMessage,
+                          time: timeStr,
+                          unreadCount: unreadCount,
+                          otherUserId: otherUserId,
                         );
                       },
                     ),
@@ -372,34 +355,7 @@ class _ChatScreenState extends State<ChatScreen> {
               style: GoogleFonts.outfit(color: Colors.black87, fontWeight: FontWeight.w500),
             ),
             GestureDetector(
-              onTap: () {
-                showDialog(
-                  context: context,
-                  builder: (context) => AlertDialog(
-                    backgroundColor: Colors.white,
-                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
-                    title: Text("Delete Chats?", 
-                      style: GoogleFonts.outfit(fontWeight: FontWeight.bold, fontSize: 20)),
-                    content: Text(
-                      "Are you sure you want to delete the selected chats? This action cannot be undone.",
-                      style: GoogleFonts.outfit(color: Colors.black54),
-                    ),
-                    actions: [
-                      TextButton(
-                        onPressed: () => Navigator.pop(context),
-                        child: Text("Cancel", style: GoogleFonts.outfit(color: Colors.grey, fontWeight: FontWeight.w600)),
-                      ),
-                      TextButton(
-                        onPressed: () {
-                          Navigator.pop(context);
-                          _handleBulkAction('delete');
-                        },
-                        child: Text("Delete", style: GoogleFonts.outfit(color: Colors.red, fontWeight: FontWeight.bold)),
-                      ),
-                    ],
-                  ),
-                );
-              },
+              onTap: () => _handleBulkAction('delete'),
               child: Container(
                 padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 8),
                 decoration: BoxDecoration(

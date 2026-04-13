@@ -4,10 +4,6 @@ import 'package:firebase_auth/firebase_auth.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import '../profile/profile_screen.dart';
 
-import '../profile/provider_reviews.dart';
-import '../provider/my_services_screen.dart';
-import '../provider/provider_activity_screen.dart';
-import '../provider/service_selector.dart';
 import 'package:url_launcher/url_launcher.dart';
 import '../chat/single_chat_screen.dart';
 import 'package:table_calendar/table_calendar.dart';
@@ -423,9 +419,16 @@ class _ProviderHomeScreenState extends State<ProviderHomeScreen> {
             firstDay: DateTime.utc(2025, 1, 1),
             lastDay: DateTime.utc(2030, 12, 31),
             focusedDay: _focusedDay,
-            calendarFormat: CalendarFormat.month,
+            calendarFormat: _calendarFormat,
             availableCalendarFormats: const {
               CalendarFormat.month: 'Month',
+            },
+            onFormatChanged: (format) {
+              if (_calendarFormat != format) {
+                setState(() {
+                  _calendarFormat = format;
+                });
+              }
             },
             selectedDayPredicate: (day) => isSameDay(_selectedDay, day),
             onDaySelected: (selectedDay, focusedDay) {

@@ -27,7 +27,8 @@ class _HomeScreenState extends State<HomeScreen> {
   final TextEditingController _searchController = TextEditingController();
 
   int _currentBannerPage = 0;
-  final PageController _bannerController = PageController();
+  // Use a large initial page for infinite scroll
+  final PageController _bannerController = PageController(viewportFraction: 0.91, initialPage: 300);
   Timer? _bannerTimer;
 
   Map<String, dynamic>? _userData;
@@ -47,18 +48,13 @@ class _HomeScreenState extends State<HomeScreen> {
     _fetchServices();
     _determinePosition();
 
-    _bannerTimer = Timer.periodic(const Duration(seconds: 3), (Timer timer) {
-      if (_currentBannerPage < 2) {
-        _currentBannerPage++;
-      } else {
-        _currentBannerPage = 0;
-      }
-
+    _bannerTimer = Timer.periodic(const Duration(seconds: 4), (Timer timer) {
       if (_bannerController.hasClients) {
+        int nextPage = _bannerController.page!.round() + 1;
         _bannerController.animateToPage(
-          _currentBannerPage,
-          duration: const Duration(milliseconds: 350),
-          curve: Curves.easeIn,
+          nextPage,
+          duration: const Duration(milliseconds: 600),
+          curve: Curves.easeInOut,
         );
       }
     });
@@ -283,13 +279,13 @@ class _HomeScreenState extends State<HomeScreen> {
                 ),
               );
             }),
-            const SizedBox(height: 8),
+            const SizedBox(height: 16),
             _buildCategoriesGrid(),
             const SizedBox(height: 8),
             _buildRecommendationSection(),
             const SizedBox(height: 8),
             _buildSectionHeader('Top Rated', 'See All', () {}),
-            const SizedBox(height: 8),
+            const SizedBox(height: 16),
             _buildServicesList(),
             const SizedBox(height: 24),
           ],
@@ -363,7 +359,7 @@ class _HomeScreenState extends State<HomeScreen> {
                   },
                   child: const Icon(
                     Icons.notifications_outlined,
-                    color: Color(0xFFFF6B00),
+                    color: Colors.white,
                     size: 32,
                   ),
                 ),
@@ -438,73 +434,103 @@ class _HomeScreenState extends State<HomeScreen> {
   }
 
   Widget _buildBanner() {
-    return Padding(
-      padding: const EdgeInsets.symmetric(horizontal: 20),
-      child: Column(
-        children: [
-          SizedBox(
-            height: 200,
-            width: double.infinity,
-            child: PageView(
-              controller: _bannerController,
-              onPageChanged: (int page) {
-                setState(() {
-                  _currentBannerPage = page;
-                });
-              },
-              children: [
-                _buildBannerCard(
-                  bgColors: const [Color(0xFF1A1A2E), Color(0xFF16213E)],
-                  glowColor: const Color(0xFFFF6B00),
-                  badgeText: '✦ Top Rated Pros',
-                  title: 'Book your\nservice now!',
-                  btnLabel: 'Book Now →',
-                  btnColors: const [Color(0xFFFF8C42), Color(0xFFFF6B00)],
-                  imageUrl: 'https://images.unsplash.com/photo-1621905251189-08b45d6a269e?q=80&w=800&auto=format&fit=crop',
-                ),
-                _buildBannerCard(
-                  bgColors: const [Color(0xFF0F3460), Color(0xFF1A5276)],
-                  glowColor: const Color(0xFF00B4DB),
-                  badgeText: '🕐 Quick & Easy',
-                  title: 'Find trusted\npros near you!',
-                  btnLabel: 'Explore →',
-                  btnColors: const [Color(0xFF0083B0), Color(0xFF00B4DB)],
-                  imageUrl: 'https://images.unsplash.com/photo-1581578731548-c64695cc6952?q=80&w=800&auto=format&fit=crop',
-                ),
-                _buildBannerCard(
-                  bgColors: const [Color(0xFF2D1B69), Color(0xFF11998E)],
-                  glowColor: const Color(0xFF11998E),
-                  badgeText: '🎁 Exclusive Offer',
-                  title: 'Refer a friend,\nearn rewards!',
-                  btnLabel: 'Share Now →',
-                  btnColors: const [Color(0xFF38EF7D), Color(0xFF11998E)],
-                  imageUrl: 'https://images.unsplash.com/photo-1522071820081-009f0129c71c?q=80&w=800&auto=format&fit=crop',
-                ),
-              ],
-            ),
+    return Column(
+      children: [
+        SizedBox(
+          height: 210, // Increased height to prevent bottom overflow
+          width: double.infinity,
+          child: PageView.builder(
+            controller: _bannerController,
+            clipBehavior: Clip.none,
+            onPageChanged: (int page) {
+              setState(() {
+                _currentBannerPage = page % 3;
+              });
+            },
+            itemCount: 999, // Infinite scroll
+            itemBuilder: (context, index) {
+              final realIndex = index % 3;
+              return AnimatedBuilder(
+                animation: _bannerController,
+                builder: (context, child) {
+                  double value = 1.0;
+                  if (_bannerController.position.hasContentDimensions) {
+                    value = _bannerController.page! - index;
+                    value = (1 - (value.abs() * 0.04)).clamp(0.0, 1.0);
+                  } else {
+                    // Initial load fallback: index 300 is the first displayed card
+                    value = index == 300 ? 1.0 : 0.92;
+                  }
+
+                  return Center(
+                    child: Transform.scale(
+                      scale: value,
+                      child: Padding(
+                        padding: const EdgeInsets.symmetric(horizontal: 0), // Removed gap for perfect alignment
+                        child: _getBannerCardByIndex(realIndex),
+                      ),
+                    ),
+                  );
+                },
+              );
+            },
           ),
-          const SizedBox(height: 12),
-          Row(
-            mainAxisAlignment: MainAxisAlignment.center,
-            children: List.generate(
-              3,
-              (index) => AnimatedContainer(
-                duration: const Duration(milliseconds: 300),
-                margin: const EdgeInsets.symmetric(horizontal: 4),
-                width: _currentBannerPage == index ? 24 : 8,
-                height: 8,
-                decoration: BoxDecoration(
-                  color: _currentBannerPage == index
-                      ? const Color(0xFFFF6B00)
-                      : Colors.grey.shade300,
-                  borderRadius: BorderRadius.circular(4),
-                ),
+        ),
+        const SizedBox(height: 12),
+        Row(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: List.generate(
+            3,
+            (index) => AnimatedContainer(
+              duration: const Duration(milliseconds: 300),
+              margin: const EdgeInsets.symmetric(horizontal: 4),
+              width: _currentBannerPage == index ? 24 : 8,
+              height: 8,
+              decoration: BoxDecoration(
+                color: _currentBannerPage == index
+                    ? const Color(0xFFFF6B00)
+                    : Colors.grey.shade300,
+                borderRadius: BorderRadius.circular(4),
               ),
             ),
           ),
-        ],
-      ),
+        ),
+      ],
     );
+  }
+
+  Widget _getBannerCardByIndex(int index) {
+    if (index == 0) {
+      return _buildBannerCard(
+        bgColors: const [Color(0xFF1A1A2E), Color(0xFF16213E)],
+        glowColor: const Color(0xFFFF6B00),
+        badgeText: '✦ Top Rated Pros',
+        title: 'Book your\nservice now!',
+        btnLabel: 'Book Now →',
+        btnColors: const [Color(0xFFFF8C42), Color(0xFFFF6B00)],
+        imageUrl: 'https://images.unsplash.com/photo-1621905251189-08b45d6a269e?q=80&w=800&auto=format&fit=crop',
+      );
+    } else if (index == 1) {
+      return _buildBannerCard(
+        bgColors: const [Color(0xFF0F3460), Color(0xFF1A5276)],
+        glowColor: const Color(0xFF00B4DB),
+        badgeText: '🕐 Quick & Easy',
+        title: 'Find trusted\npros near you!',
+        btnLabel: 'Explore →',
+        btnColors: const [Color(0xFF0083B0), Color(0xFF00B4DB)],
+        imageUrl: 'https://images.unsplash.com/photo-1581578731548-c64695cc6952?q=80&w=800&auto=format&fit=crop',
+      );
+    } else {
+      return _buildBannerCard(
+        bgColors: const [Color(0xFF2D1B69), Color(0xFF11998E)],
+        glowColor: const Color(0xFF11998E),
+        badgeText: '🎁 Exclusive Offer',
+        title: 'Refer a friend,\nearn rewards!',
+        btnLabel: 'Share Now →',
+        btnColors: const [Color(0xFF38EF7D), Color(0xFF11998E)],
+        imageUrl: 'https://images.unsplash.com/photo-1522071820081-009f0129c71c?q=80&w=800&auto=format&fit=crop',
+      );
+    }
   }
 
   Widget _buildBannerCard({
@@ -517,6 +543,7 @@ class _HomeScreenState extends State<HomeScreen> {
     required String imageUrl,
   }) {
     return Container(
+      clipBehavior: Clip.antiAlias,
       decoration: BoxDecoration(
         borderRadius: BorderRadius.circular(24),
         gradient: LinearGradient(
@@ -560,7 +587,7 @@ class _HomeScreenState extends State<HomeScreen> {
               Expanded(
                 flex: 3,
                 child: Padding(
-                  padding: const EdgeInsets.fromLTRB(22, 22, 10, 22),
+                  padding: const EdgeInsets.fromLTRB(22, 18, 10, 18),
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     mainAxisAlignment: MainAxisAlignment.spaceBetween,
@@ -783,7 +810,7 @@ class _HomeScreenState extends State<HomeScreen> {
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         _buildSectionHeader('Recommendation', 'See All', () {}),
-        const SizedBox(height: 8),
+        const SizedBox(height: 16),
         SizedBox(
           height: 280, 
           child: ListView.builder(

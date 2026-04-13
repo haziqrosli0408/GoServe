@@ -293,9 +293,6 @@ class _ProviderRegisterScreenState extends State<ProviderRegisterScreen> {
       });
 
       if (!mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text("Account created successfully!")),
-      );
 
       if (mounted) {
         Navigator.pushReplacementNamed(context, "/provider");

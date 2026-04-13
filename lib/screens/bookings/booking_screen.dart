@@ -303,7 +303,14 @@ class _BookingPageState extends State<BookingPage> {
       onTap: () => setState(() => selectedTime = time),
       child: Container(
         width: 100, height: 50,
-        decoration: BoxDecoration(color: isSelected ? primaryGreen : Colors.white, borderRadius: BorderRadius.circular(8), boxShadow: [if (!isSelected) BoxShadow(color: Colors.black.withValues(alpha: 0.01), blurRadius: 4, offset: const Offset(0, 2))]),
+        decoration: BoxDecoration(
+          color: isSelected ? primaryGreen : Colors.white, 
+          borderRadius: BorderRadius.circular(8), 
+          border: isSelected ? null : Border.all(color: Colors.black.withValues(alpha: 0.1), width: 1.5),
+          boxShadow: [
+            if (!isSelected) BoxShadow(color: Colors.black.withValues(alpha: 0.01), blurRadius: 4, offset: const Offset(0, 2))
+          ],
+        ),
         child: Center(child: Text(time, style: GoogleFonts.outfit(fontSize: 14, fontWeight: FontWeight.w600, color: isSelected ? Colors.white : Colors.black87))),
       ),
     );
@@ -687,7 +694,8 @@ class _BookingPageState extends State<BookingPage> {
           latitude = locs.first.latitude;
           longitude = locs.first.longitude;
         }
-      }).catchError((e) => debugPrint("Geocoding failed: $e"));
+        return [];
+      });
     }
 
     showModalBottomSheet(

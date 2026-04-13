@@ -269,9 +269,13 @@ class _BookingsScreenState extends State<BookingsScreen> {
     Color statusColor = status == 'Pending' ? Colors.orange : (isAwaiting ? const Color(0xFF4F46E5) : (activeWork ? Colors.amber : Colors.green));
 
     double progressValue = 0.0;
-    if (status == 'On the way') progressValue = 0.25;
-    else if (status == 'Arrived') progressValue = 0.5;
-    else if (status == 'In progress') progressValue = 0.8;
+    if (status == 'On the way') {
+      progressValue = 0.25;
+    } else if (status == 'Arrived') {
+      progressValue = 0.5;
+    } else if (status == 'In progress') {
+      progressValue = 0.8;
+    }
 
     bool isInProgress = activeWork;
 
@@ -745,6 +749,7 @@ class _BookingsScreenState extends State<BookingsScreen> {
       }
     }
 
+    if (!mounted) return;
     showModalBottomSheet(
       context: context,
       isScrollControlled: true,

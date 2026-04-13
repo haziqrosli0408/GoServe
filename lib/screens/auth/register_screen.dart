@@ -264,9 +264,6 @@ class _RegisterScreenState extends State<RegisterScreen> {
       });
 
       if (!mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text("Registration successful!")),
-      );
 
       if (mounted) {
         Navigator.pushReplacementNamed(context, "/customer");
