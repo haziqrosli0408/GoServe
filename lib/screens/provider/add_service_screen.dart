@@ -82,6 +82,7 @@ class _AddServiceScreenState extends State<AddServiceScreen> {
   final TextEditingController _addOnPriceController = TextEditingController();
   final TextEditingController _addOnDescriptionController = TextEditingController();
   final TextEditingController _searchController = TextEditingController();
+  final TextEditingController _customCategoryController = TextEditingController();
   String _searchQuery = '';
   String _priceType = 'per hour'; // 'per hour' or 'one-time'
   
@@ -126,6 +127,14 @@ class _AddServiceScreenState extends State<AddServiceScreen> {
       }
       if (draft['addOns'] != null) {
         _addOns.addAll(List<Map<String, dynamic>>.from(draft['addOns']));
+      }
+
+      // If category starts with "Others > " and it's not "Others > Other Services", it's a custom one
+      if (selectedCategory != null && selectedCategory!.startsWith('Others > ')) {
+        final sub = selectedCategory!.split('>').last.trim();
+        if (sub != 'Other Services') {
+          _customCategoryController.text = sub;
+        }
       }
     }
   }
@@ -228,7 +237,9 @@ class _AddServiceScreenState extends State<AddServiceScreen> {
     _descriptionController.dispose();
     _addOnNameController.dispose();
     _addOnPriceController.dispose();
+    _addOnDescriptionController.dispose();
     _searchController.dispose();
+    _customCategoryController.dispose();
     super.dispose();
   }
 
@@ -446,66 +457,86 @@ class _AddServiceScreenState extends State<AddServiceScreen> {
         ),
         const SizedBox(height: 24),
 
-        ListView.separated(
-          shrinkWrap: true,
-          physics: const NeverScrollableScrollPhysics(),
-          itemCount: filteredData.length,
-          separatorBuilder: (context, index) => const SizedBox(height: 12),
-          itemBuilder: (context, index) {
-            final category = filteredData[index];
-            final String catName = category['name'];
-            
-            return Container(
-              decoration: BoxDecoration(
-                color: Colors.white,
-                borderRadius: BorderRadius.circular(8),
-                border: Border.all(color: const Color(0xFFF1F5F9)),
+        for (var category in filteredData) ...[
+          Container(
+            margin: const EdgeInsets.only(bottom: 12),
+            decoration: BoxDecoration(
+              color: Colors.white,
+              borderRadius: BorderRadius.circular(8),
+              border: Border.all(color: const Color(0xFFF1F5F9)),
+            ),
+            child: ExpansionTile(
+              initiallyExpanded: _searchQuery.isNotEmpty,
+              key: ValueKey('tile_${category['name']}'),
+              shape: const RoundedRectangleBorder(side: BorderSide.none),
+              collapsedShape: const RoundedRectangleBorder(side: BorderSide.none),
+              leading: Container(
+                padding: const EdgeInsets.all(10),
+                decoration: BoxDecoration(
+                  color: primaryIndigo.withValues(alpha: 0.1),
+                  shape: BoxShape.circle,
+                ),
+                child: Icon(category['icon'], color: primaryIndigo, size: 24),
               ),
-              child: ExpansionTile(
-                initiallyExpanded: _searchQuery.isNotEmpty,
-                key: PageStorageKey(catName),
-                shape: const RoundedRectangleBorder(side: BorderSide.none),
-                collapsedShape: const RoundedRectangleBorder(side: BorderSide.none),
-                leading: Container(
-                  padding: const EdgeInsets.all(10),
-                  decoration: BoxDecoration(
-                    color: primaryIndigo.withValues(alpha: 0.1),
-                    shape: BoxShape.circle,
-                  ),
-                  child: Icon(category['icon'], color: primaryIndigo, size: 24),
+              title: Text(
+                category['name'],
+                style: GoogleFonts.outfit(
+                  fontSize: 17,
+                  fontWeight: FontWeight.w600,
+                  color: const Color(0xFF1E293B),
                 ),
-                title: Text(
-                  catName,
-                  style: GoogleFonts.outfit(
-                    fontSize: 17,
-                    fontWeight: FontWeight.w600,
-                    color: const Color(0xFF1E293B),
-                  ),
-                ),
-                children: (category['subs'] as List<String>).map((sub) {
-                  final String fullSelection = '$catName > $sub';
-                  final bool isSelected = selectedCategory == fullSelection;
-                  
-                  return ListTile(
-                    contentPadding: const EdgeInsets.fromLTRB(68, 0, 24, 0),
-                    title: Text(
-                      sub,
-                      style: GoogleFonts.outfit(
-                        fontSize: 15,
-                        color: isSelected ? primaryIndigo : const Color(0xFF64748B),
-                        fontWeight: isSelected ? FontWeight.w600 : FontWeight.normal,
+              ),
+              children: (category['subs'] as List<String>).map((sub) {
+                final String catName = category['name'];
+                final String fullSelection = '$catName > $sub';
+                final bool isSelected = selectedCategory != null && (
+                  selectedCategory == fullSelection || 
+                  (catName == 'Others' && selectedCategory!.startsWith('Others > '))
+                );
+                
+                return Column(
+                  children: [
+                    ListTile(
+                      contentPadding: const EdgeInsets.fromLTRB(68, 0, 24, 0),
+                      title: Text(
+                        sub,
+                        style: GoogleFonts.outfit(
+                          fontSize: 15,
+                          color: isSelected ? primaryIndigo : const Color(0xFF64748B),
+                          fontWeight: isSelected ? FontWeight.w600 : FontWeight.normal,
+                        ),
                       ),
+                      trailing: isSelected 
+                        ? Icon(Icons.check_circle_rounded, color: primaryIndigo, size: 20)
+                        : null,
+                      onTap: () {
+                        setState(() {
+                          selectedCategory = fullSelection;
+                          if (catName != 'Others') {
+                            _customCategoryController.clear();
+                          }
+                        });
+                      },
                     ),
-                    trailing: isSelected 
-                      ? Icon(Icons.check_circle_rounded, color: primaryIndigo, size: 20)
-                      : null,
-                    onTap: () => setState(() => selectedCategory = fullSelection),
-                  );
-                }).toList(),
-              ),
-            );
-          },
-        ),
+                    if (catName == 'Others' && sub == 'Other Services' && isSelected)
+                      Padding(
+                        padding: const EdgeInsets.fromLTRB(68, 0, 24, 16),
+                        child: _buildTextField(
+                          _customCategoryController, 
+                          'Enter your custom category name...',
+                          onChanged: (val) {
+                            setState(() {
+                              selectedCategory = 'Others > ${val.trim().isEmpty ? 'Other Services' : val.trim()}';
+                            });
+                          }
+                        ),
+                      ),
+                  ],
+                );
+              }).toList(),
+            ),
+          ),
+        ],
         const SizedBox(height: 32),
       ],
     );
@@ -693,11 +724,13 @@ class _AddServiceScreenState extends State<AddServiceScreen> {
     );
   }
 
-  Widget _buildTextField(TextEditingController controller, String hint, {bool isNumber = false, int maxLines = 1}) {
+  Widget _buildTextField(TextEditingController controller, String hint, {Key? key, bool isNumber = false, int maxLines = 1, Function(String)? onChanged}) {
     return Container(
+      key: key,
       margin: const EdgeInsets.only(top: 8),
-      child: TextFormField(
+      child: TextField(
         controller: controller,
+        onChanged: onChanged,
         keyboardType: isNumber ? TextInputType.number : TextInputType.text,
         maxLines: maxLines,
         style: GoogleFonts.outfit(fontSize: 15),
@@ -1073,11 +1106,40 @@ class _AddServiceScreenState extends State<AddServiceScreen> {
       final CollectionReference servicesCollection = FirebaseFirestore.instance.collection('services');
       DocumentReference serviceDoc;
       final String? existingServiceId = widget.initialDraftData?['serviceId'];
+      String? customServiceId;
       
       if (existingServiceId != null && existingServiceId.isNotEmpty) {
         serviceDoc = servicesCollection.doc(existingServiceId);
+        // If it's an existing service, it might already have a customId, 
+        // but we'll fetch it from the draft or leave it to be assigned if missing.
       } else {
         serviceDoc = servicesCollection.doc();
+        
+        // Generate custom SVCXXX ID
+        try {
+          final lastServiceQuery = await servicesCollection
+              .orderBy("customId", descending: true)
+              .limit(1)
+              .get();
+          
+          if (lastServiceQuery.docs.isNotEmpty) {
+            final lastData = lastServiceQuery.docs.first.data() as Map<String, dynamic>;
+            final String? idStr = lastData['customId'] as String?;
+            if (idStr != null && idStr.startsWith('SVC')) {
+              final String numPart = idStr.substring(3);
+              final int? num = int.tryParse(numPart);
+              if (num != null) {
+                customServiceId = 'SVC${(num + 1).toString().padLeft(3, '0')}';
+              }
+            }
+          }
+          
+          // Default if no services exist or format is wrong
+          customServiceId ??= "SVC001";
+        } catch (e) {
+          debugPrint("Error generating customId: $e");
+          customServiceId = 'SVC${DateTime.now().millisecondsSinceEpoch.toString().substring(10)}';
+        }
       }
 
       // 🔹 3. Upload New Images
@@ -1107,6 +1169,7 @@ class _AddServiceScreenState extends State<AddServiceScreen> {
       // 🔹 4. Final Service Data
       final Map<String, dynamic> serviceData = {
         'serviceId': serviceDoc.id,
+        if (customServiceId != null) 'customId': customServiceId,
         'providerId': user.uid,
         'providerName': providerName,
         'providerAddress': providerAddress,
@@ -1144,19 +1207,22 @@ class _AddServiceScreenState extends State<AddServiceScreen> {
         await AddServiceScreen.clearDraft(draftId);
       }
 
-      if (!mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text('Service published successfully!',
-              style: GoogleFonts.outfit(color: Colors.white)),
-          backgroundColor: const Color(0xFF16A34A),
-          behavior: SnackBarBehavior.floating,
-          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
-        ),
-      );
-      
-      // Return to dashboard and refresh
-      Navigator.pop(context, true);
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Service published successfully!',
+                style: GoogleFonts.outfit(color: Colors.white)),
+            backgroundColor: const Color(0xFF16A34A),
+            behavior: SnackBarBehavior.floating,
+            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+          ),
+        );
+        
+        // Use a small delay or ensure state is updated before popping
+        Future.delayed(Duration.zero, () {
+          if (mounted) Navigator.pop(context, true);
+        });
+      }
     } catch (e) {
       if (!mounted) return;
       debugPrint("Publishing error: $e");

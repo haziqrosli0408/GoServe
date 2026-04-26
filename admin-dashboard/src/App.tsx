@@ -9,6 +9,8 @@ import {
   doc,
   updateDoc,
   orderBy,
+  getDocs,
+  writeBatch,
 } from 'firebase/firestore';
 import {
   Users,
@@ -43,6 +45,8 @@ import {
   Bookmark,
   LayoutGrid,
   List,
+  CreditCard,
+  Wallet,
 } from 'lucide-react';
 import {
   BarChart,
@@ -99,6 +103,7 @@ interface AppUser {
   status: 'Active' | 'Suspended';
   profileUrl?: string;
   createdAt?: any;
+  customId?: string;
   verificationStatus?: 'verified' | 'pending' | 'rejected' | string;
 }
 
@@ -126,13 +131,29 @@ interface Service {
   details?: string[];
   addOns?: { name: string; price: string | number }[];
   galleryUrls?: string[];
+  customId?: string;
 }
 
 interface Booking {
   id: string;
+  orderId: string;
+  customerId: string;
+  providerId: string;
+  providerName: string;
+  serviceName: string;
+  serviceId: string;
+  category: string;
+  serviceImage?: string;
+  date: string;
+  time: string;
+  address: string;
   totalPrice: number;
-  status: string;
+  basePrice: number;
+  chargeFee: number;
+  paymentMethod: string;
+  status: 'Pending' | 'Confirmed' | 'In Progress' | 'Completed' | 'Cancelled';
   createdAt: any;
+  selectedAddOns?: { name: string; price: string | number }[];
 }
 
 interface VerificationRequest {
@@ -237,9 +258,10 @@ function App() {
         <nav className="flex-1 px-4 space-y-1 mt-4 overflow-y-auto">
           <NavItem icon={<BarChart3 size={20} />} label="Dashboard" active={activeTab === 'dashboard'} collapsed={!sidebarOpen} onClick={() => setActiveTab('dashboard')} />
           <NavItem icon={<Users size={20} />} label="Users" active={activeTab === 'users'} collapsed={!sidebarOpen} onClick={() => setActiveTab('users')} />
-          <NavItem icon={<Star size={20} />} label="Reviews" active={activeTab === 'reviews'} collapsed={!sidebarOpen} onClick={() => setActiveTab('reviews')} />
-          <NavItem icon={<Briefcase size={20} />} label="Services" active={activeTab === 'services'} collapsed={!sidebarOpen} onClick={() => setActiveTab('services')} />
           <NavItem icon={<UserCheck size={20} />} label="Verification" active={activeTab === 'verification'} collapsed={!sidebarOpen} onClick={() => setActiveTab('verification')} />
+          <NavItem icon={<Briefcase size={20} />} label="Services" active={activeTab === 'services'} collapsed={!sidebarOpen} onClick={() => setActiveTab('services')} />
+          <NavItem icon={<Calendar size={20} />} label="Bookings" active={activeTab === 'bookings'} collapsed={!sidebarOpen} onClick={() => setActiveTab('bookings')} />
+          <NavItem icon={<Star size={20} />} label="Reviews" active={activeTab === 'reviews'} collapsed={!sidebarOpen} onClick={() => setActiveTab('reviews')} />
         </nav>
 
         <div className="p-4 border-t border-gray-100 mt-auto">
@@ -308,10 +330,334 @@ function TabContent({ activeTab, data }: any) {
     case 'dashboard': return <DashboardPage data={data} />;
     case 'users': return <UsersPage users={data.users} bookings={data.bookings} reviews={data.reviews} pendingApprovalsCount={data.verifications.length} />;
     case 'reviews': return <ReviewsPage reviews={data.reviews} />;
-    case 'services': return <ServicesPage services={data.services} bookings={data.bookings} reviews={data.reviews} />;
+    case 'services': return <ServicesPage services={data.services} users={data.users} bookings={data.bookings} reviews={data.reviews} />;
+    case 'bookings': return <BookingsPage bookings={data.bookings} users={data.users} services={data.services} />;
     case 'verification': return <VerificationPage requests={data.verifications} />;
     default: return <DashboardPage data={data} />;
   }
+}
+
+function BookingsPage({ bookings, users, services }: { bookings: Booking[], users: AppUser[], services: Service[] }) {
+  const [search, setSearch] = useState('');
+  const [statusFilter, setStatusFilter] = useState('All');
+  const [selectedBooking, setSelectedBooking] = useState<Booking | null>(null);
+
+  const filteredBookings = bookings.filter(b => {
+    const seeker = users.find(u => u.id === b.customerId);
+    const matchesSearch = 
+      b.orderId?.toLowerCase().includes(search.toLowerCase()) ||
+      b.serviceName?.toLowerCase().includes(search.toLowerCase()) ||
+      b.providerName?.toLowerCase().includes(search.toLowerCase()) ||
+      seeker?.name?.toLowerCase().includes(search.toLowerCase());
+    
+    const matchesStatus = statusFilter === 'All' || b.status === statusFilter;
+    return matchesSearch && matchesStatus;
+  }).sort((a, b) => (b.createdAt?.seconds || 0) - (a.createdAt?.seconds || 0));
+
+  const stats = {
+    total: bookings.length,
+    active: bookings.filter(b => ['Confirmed', 'In Progress'].includes(b.status)).length,
+    completed: bookings.filter(b => b.status === 'Completed').length,
+    revenue: bookings.filter(b => b.status === 'Completed').reduce((acc, b) => acc + (b.totalPrice || 0), 0)
+  };
+
+  const getStatusColor = (status: string) => {
+    switch (status) {
+      case 'Pending': return 'bg-amber-50 text-amber-600 border-amber-100';
+      case 'Confirmed': return 'bg-blue-50 text-blue-600 border-blue-100';
+      case 'In Progress': return 'bg-indigo-50 text-indigo-600 border-indigo-100';
+      case 'Completed': return 'bg-emerald-50 text-emerald-600 border-emerald-100';
+      case 'Cancelled': return 'bg-rose-50 text-rose-600 border-rose-100';
+      default: return 'bg-gray-50 text-gray-600 border-gray-100';
+    }
+  };
+
+  return (
+    <div className="space-y-6">
+      {/* HEADER & STATS */}
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+        <div className="bg-white p-5 rounded-xl border border-gray-100 shadow-sm">
+          <div className="flex items-center gap-4">
+            <div className="p-3 bg-blue-50 text-blue-600 rounded-lg">
+              <Calendar size={24} />
+            </div>
+            <div>
+              <p className="text-xs font-bold text-gray-400 uppercase tracking-widest">Total Bookings</p>
+              <h3 className="text-2xl font-black text-gray-900">{stats.total}</h3>
+            </div>
+          </div>
+        </div>
+        <div className="bg-white p-5 rounded-xl border border-gray-100 shadow-sm">
+          <div className="flex items-center gap-4">
+            <div className="p-3 bg-indigo-50 text-indigo-600 rounded-lg">
+              <Clock size={24} />
+            </div>
+            <div>
+              <p className="text-xs font-bold text-gray-400 uppercase tracking-widest">Active Now</p>
+              <h3 className="text-2xl font-black text-gray-900">{stats.active}</h3>
+            </div>
+          </div>
+        </div>
+        <div className="bg-white p-5 rounded-xl border border-gray-100 shadow-sm">
+          <div className="flex items-center gap-4">
+            <div className="p-3 bg-emerald-50 text-emerald-600 rounded-lg">
+              <Check size={24} />
+            </div>
+            <div>
+              <p className="text-xs font-bold text-gray-400 uppercase tracking-widest">Completed</p>
+              <h3 className="text-2xl font-black text-gray-900">{stats.completed}</h3>
+            </div>
+          </div>
+        </div>
+        <div className="bg-white p-5 rounded-xl border border-gray-100 shadow-sm">
+          <div className="flex items-center gap-4">
+            <div className="p-3 bg-orange-50 text-orange-600 rounded-lg">
+              <DollarSign size={24} />
+            </div>
+            <div>
+              <p className="text-xs font-bold text-gray-400 uppercase tracking-widest">Total GMV</p>
+              <h3 className="text-2xl font-black text-gray-900">RM {stats.revenue.toLocaleString()}</h3>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      {/* FILTERS */}
+      <div className="bg-white p-4 rounded-xl border border-gray-100 shadow-sm flex flex-col md:flex-row items-center justify-between gap-4">
+        <div className="relative flex-1 w-full max-w-md">
+          <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" size={18} />
+          <input
+            type="text"
+            placeholder="Search Order ID, Service, Provider or Customer..."
+            value={search}
+            onChange={(e) => setSearch(e.target.value)}
+            className="w-full pl-10 pr-4 py-2.5 bg-gray-50 border border-gray-200 rounded-lg text-sm font-medium focus:outline-none focus:ring-2 focus:ring-orange-500/20 transition-all"
+          />
+        </div>
+        <div className="flex items-center gap-2 overflow-x-auto w-full md:w-auto pb-2 md:pb-0">
+          {['All', 'Pending', 'Confirmed', 'In Progress', 'Completed', 'Cancelled'].map((status) => (
+            <button
+              key={status}
+              onClick={() => setStatusFilter(status)}
+              className={`px-4 py-2 rounded-lg text-xs font-bold transition-all whitespace-nowrap ${statusFilter === status
+                  ? 'bg-orange-500 text-white shadow-lg shadow-orange-100'
+                  : 'bg-gray-100 text-gray-500 hover:bg-gray-200'
+                }`}
+            >
+              {status}
+            </button>
+          ))}
+        </div>
+      </div>
+
+      {/* TABLE */}
+      <div className="bg-white rounded-xl border border-gray-100 shadow-sm overflow-hidden">
+        <div className="overflow-x-auto">
+          <table className="w-full text-left">
+            <thead>
+              <tr className="bg-gray-50/50 border-b border-gray-100">
+                <th className="px-6 py-4 text-[10px] font-bold text-gray-400 uppercase tracking-widest">Booking Info</th>
+                <th className="px-6 py-4 text-[10px] font-bold text-gray-400 uppercase tracking-widest">Customer</th>
+                <th className="px-6 py-4 text-[10px] font-bold text-gray-400 uppercase tracking-widest text-center">Status</th>
+                <th className="px-6 py-4 text-[10px] font-bold text-gray-400 uppercase tracking-widest">Payment</th>
+                <th className="px-6 py-4 text-[10px] font-bold text-gray-400 uppercase tracking-widest">Scheduled</th>
+                <th className="px-6 py-4 text-[10px] font-bold text-gray-400 uppercase tracking-widest text-right">Actions</th>
+              </tr>
+            </thead>
+            <tbody className="divide-y divide-gray-50">
+              {filteredBookings.map((b) => {
+                const seeker = users.find(u => u.id === b.customerId);
+                const platformFee = b.chargeFee || (b.totalPrice * 0.15);
+                const providerEarnings = b.totalPrice - platformFee;
+
+                return (
+                  <tr key={b.id} className="hover:bg-gray-50/50 transition-colors">
+                    <td className="px-6 py-4">
+                      <div>
+                        <p className="text-xs font-black text-orange-600 mb-1">{b.orderId || b.id.substring(0, 8)}</p>
+                        <p className="text-sm font-bold text-gray-900 truncate max-w-[200px]">{b.serviceName}</p>
+                        <p className="text-[10px] font-medium text-gray-400">by {b.providerName}</p>
+                      </div>
+                    </td>
+                    <td className="px-6 py-4">
+                      <div className="flex items-center gap-3">
+                        <div className="w-8 h-8 rounded-full bg-gray-100 flex items-center justify-center text-xs font-bold text-gray-500">
+                          {seeker?.name?.[0] || 'C'}
+                        </div>
+                        <div>
+                          <p className="text-sm font-bold text-gray-900">{seeker?.name || 'Customer'}</p>
+                          <p className="text-[10px] font-medium text-gray-400">{seeker?.customId || 'Seeker'}</p>
+                        </div>
+                      </div>
+                    </td>
+                    <td className="px-6 py-4">
+                      <div className="flex justify-center">
+                        <span className={`px-2.5 py-1 rounded-full text-[10px] font-bold border uppercase tracking-wider ${getStatusColor(b.status)}`}>
+                          {b.status}
+                        </span>
+                      </div>
+                    </td>
+                    <td className="px-6 py-4">
+                      <div>
+                        <p className="text-sm font-bold text-gray-900">RM {b.totalPrice?.toFixed(2)}</p>
+                        <div className="flex items-center gap-1.5 mt-1">
+                          <span className="text-[9px] font-bold text-emerald-600 bg-emerald-50 px-1 rounded uppercase tracking-tighter">Pro: RM {providerEarnings.toFixed(2)}</span>
+                          <span className="text-[9px] font-bold text-indigo-600 bg-indigo-50 px-1 rounded uppercase tracking-tighter">Fee: RM {platformFee.toFixed(2)}</span>
+                        </div>
+                      </div>
+                    </td>
+                    <td className="px-6 py-4">
+                      <div className="flex flex-col gap-1">
+                        <div className="flex items-center gap-1 text-xs font-bold text-gray-700">
+                          <Calendar size={12} className="text-orange-500" />
+                          {b.date}
+                        </div>
+                        <div className="flex items-center gap-1 text-[10px] font-medium text-gray-400 uppercase tracking-widest">
+                          <Clock size={12} />
+                          {b.time}
+                        </div>
+                      </div>
+                    </td>
+                    <td className="px-6 py-4 text-right">
+                      <button 
+                        onClick={() => setSelectedBooking(b)}
+                        className="p-2 text-gray-400 hover:text-orange-500 hover:bg-orange-50 rounded-lg transition-all"
+                      >
+                        <Eye size={18} />
+                      </button>
+                    </td>
+                  </tr>
+                );
+              })}
+            </tbody>
+          </table>
+        </div>
+      </div>
+
+      {/* DETAIL MODAL */}
+      {selectedBooking && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm animate-in fade-in duration-300">
+          <div className="bg-white rounded-2xl w-full max-w-2xl max-h-[90vh] overflow-hidden flex flex-col shadow-2xl animate-in zoom-in-95 duration-300">
+            {/* Modal Header */}
+            <div className="p-6 border-b border-gray-100 flex items-center justify-between bg-white sticky top-0 z-10">
+              <div className="flex items-center gap-4">
+                <div className="w-12 h-12 bg-orange-100 text-orange-600 rounded-xl flex items-center justify-center">
+                  <FileText size={24} />
+                </div>
+                <div>
+                  <h2 className="text-xl font-black text-gray-900 tracking-tight">Booking Details</h2>
+                  <p className="text-xs font-bold text-orange-500 uppercase tracking-widest">{selectedBooking.orderId || selectedBooking.id}</p>
+                </div>
+              </div>
+              <button onClick={() => setSelectedBooking(null)} className="p-2 hover:bg-gray-100 rounded-full transition-colors text-gray-400">
+                <X size={24} />
+              </button>
+            </div>
+
+            <div className="p-6 overflow-y-auto space-y-8">
+              {/* Status Section */}
+              <div className="flex items-center justify-between p-4 bg-gray-50 rounded-xl border border-gray-100">
+                <div className="flex items-center gap-3">
+                  <div className={`w-3 h-3 rounded-full animate-pulse ${
+                    selectedBooking.status === 'Completed' ? 'bg-emerald-500' :
+                    selectedBooking.status === 'Cancelled' ? 'bg-rose-500' : 'bg-amber-500'
+                  }`} />
+                  <span className="text-sm font-black text-gray-900 uppercase tracking-tight">Current Progress: {selectedBooking.status}</span>
+                </div>
+                <span className="text-xs font-bold text-gray-400">{selectedBooking.createdAt?.seconds ? new Date(selectedBooking.createdAt.seconds * 1000).toLocaleString() : 'N/A'}</span>
+              </div>
+
+              {/* Service & People */}
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
+                <div className="space-y-4">
+                  <p className="text-[10px] font-bold text-gray-400 uppercase tracking-widest border-l-2 border-orange-500 pl-2">Service Info</p>
+                  <div className="space-y-3">
+                    <div className="flex items-center gap-3">
+                      <div className="w-10 h-10 bg-indigo-50 text-indigo-600 rounded-lg flex items-center justify-center shrink-0">
+                        <Briefcase size={20} />
+                      </div>
+                      <div>
+                        <p className="text-xs font-bold text-gray-400">Service Category</p>
+                        <p className="text-sm font-bold text-gray-900">{selectedBooking.category}</p>
+                      </div>
+                    </div>
+                    <div>
+                      <p className="text-sm font-bold text-gray-900 leading-tight">{selectedBooking.serviceName}</p>
+                      <p className="text-xs text-gray-500 mt-1">Provided by <span className="font-bold text-indigo-600">{selectedBooking.providerName}</span></p>
+                    </div>
+                  </div>
+                </div>
+
+                <div className="space-y-4">
+                  <p className="text-[10px] font-bold text-gray-400 uppercase tracking-widest border-l-2 border-blue-500 pl-2">Logistics</p>
+                  <div className="space-y-3">
+                    <div className="flex items-center gap-3">
+                      <Calendar size={16} className="text-orange-500 shrink-0" />
+                      <p className="text-sm font-bold text-gray-900">{selectedBooking.date} at {selectedBooking.time}</p>
+                    </div>
+                    <div className="flex items-start gap-3">
+                      <MapPin size={16} className="text-orange-500 shrink-0 mt-1" />
+                      <p className="text-sm font-medium text-gray-600 leading-relaxed italic">"{selectedBooking.address}"</p>
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              {/* Financial Breakdown */}
+              <div className="space-y-4">
+                <p className="text-[10px] font-bold text-gray-400 uppercase tracking-widest border-l-2 border-emerald-500 pl-2">Financial Breakdown</p>
+                <div className="bg-white border border-gray-100 rounded-xl overflow-hidden shadow-sm">
+                  <div className="p-4 space-y-3">
+                    <div className="flex justify-between items-center text-sm">
+                      <span className="text-gray-500 font-medium">Base Service Price</span>
+                      <span className="font-bold text-gray-900">RM {selectedBooking.basePrice?.toFixed(2)}</span>
+                    </div>
+                    {selectedBooking.selectedAddOns?.map((add, i) => (
+                      <div key={i} className="flex justify-between items-center text-sm pl-4 border-l-2 border-gray-100">
+                        <span className="text-gray-400 font-medium">+ {add.name}</span>
+                        <span className="font-bold text-gray-700">RM {Number(add.price).toFixed(2)}</span>
+                      </div>
+                    ))}
+                    <div className="pt-2 border-t border-dashed border-gray-100 flex justify-between items-center text-sm">
+                      <span className="text-indigo-600 font-bold">Platform Commission (15%)</span>
+                      <span className="font-bold text-indigo-600">- RM {(selectedBooking.chargeFee || (selectedBooking.totalPrice * 0.15)).toFixed(2)}</span>
+                    </div>
+                  </div>
+                  <div className="p-4 bg-emerald-50/50 border-t border-emerald-100 flex justify-between items-center">
+                    <div>
+                      <p className="text-[10px] font-bold text-emerald-600 uppercase tracking-widest mb-0.5">Payment to Provider</p>
+                      <div className="flex items-center gap-2">
+                        <Wallet size={16} className="text-emerald-600" />
+                        <span className="text-lg font-black text-emerald-700">RM {(selectedBooking.totalPrice - (selectedBooking.chargeFee || (selectedBooking.totalPrice * 0.15))).toFixed(2)}</span>
+                      </div>
+                    </div>
+                    <div className="text-right">
+                      <p className="text-[10px] font-bold text-gray-400 uppercase tracking-widest mb-0.5">Customer Paid</p>
+                      <span className="text-lg font-black text-gray-900">RM {selectedBooking.totalPrice?.toFixed(2)}</span>
+                    </div>
+                  </div>
+                </div>
+                <div className="flex items-center gap-2 px-4 py-2 bg-gray-50 rounded-lg border border-gray-100">
+                  <CreditCard size={14} className="text-gray-400" />
+                  <p className="text-[10px] font-bold text-gray-500 uppercase tracking-widest">Paid via {selectedBooking.paymentMethod?.toUpperCase() || 'Digital Payment'}</p>
+                </div>
+              </div>
+            </div>
+
+            {/* Modal Footer */}
+            <div className="p-6 border-t border-gray-100 bg-gray-50 sticky bottom-0 z-10">
+              <button 
+                onClick={() => setSelectedBooking(null)}
+                className="w-full py-3 bg-white border border-gray-200 rounded-xl font-black text-sm text-gray-700 hover:bg-gray-100 transition-all uppercase tracking-widest"
+              >
+                Close Details
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+    </div>
+  );
 }
 
 function VerificationPage({ requests }: { requests: VerificationRequest[] }) {
@@ -724,7 +1070,7 @@ function UsersPage({ users, bookings, reviews, pendingApprovalsCount }: { users:
 
           <button 
             onClick={exportToCSV}
-            className="flex-1 md:flex-none flex items-center justify-center gap-2 px-4 py-2.5 bg-white border border-gray-200 rounded-lg text-sm font-bold text-gray-700 hover:bg-gray-50 transition-all shadow-sm"
+            className="flex-1 md:flex-none flex items-center justify-center gap-2 px-4 py-2.5 bg-orange-500 text-white rounded-lg text-sm font-bold hover:bg-orange-600 transition-all shadow-sm shadow-orange-100"
           >
             <Download size={18} />
             Export CSV
@@ -1295,11 +1641,53 @@ function ReviewsPage({ reviews }: any) {
   );
 }
 
-function ServicesPage({ services, bookings, reviews }: { services: Service[], bookings: any[], reviews: any[] }) {
+function ServicesPage({ services, users, bookings, reviews }: { services: Service[], users: AppUser[], bookings: any[], reviews: any[] }) {
   const [selectedService, setSelectedService] = useState<Service | null>(null);
   const [search, setSearch] = useState('');
   const [categoryFilter, setCategoryFilter] = useState('All');
   const [layout, setLayout] = useState<'grid' | 'list'>('grid');
+  const [isMigrating, setIsMigrating] = useState(false);
+
+  const migrateServiceIds = async () => {
+    if (!window.confirm("This will assign SVCXXX IDs to all services that don't have one. Continue?")) return;
+    
+    setIsMigrating(true);
+    try {
+      // Use existing services from props to find max ID
+      let maxNum = 0;
+      services.forEach(s => {
+        if (s.customId && s.customId.startsWith('SVC')) {
+          const numPart = s.customId.substring(3);
+          const num = parseInt(numPart);
+          if (!isNaN(num) && num > maxNum) maxNum = num;
+        }
+      });
+
+      // Find services without customId
+      const toFix = services.filter(s => !s.customId);
+      
+      if (toFix.length === 0) {
+        alert("All services already have custom IDs.");
+        return;
+      }
+
+      const batch = writeBatch(db);
+      toFix.forEach((s) => {
+        maxNum++;
+        const newId = `SVC${maxNum.toString().padStart(3, '0')}`;
+        const ref = doc(db, 'services', s.id);
+        batch.update(ref, { customId: newId });
+      });
+
+      await batch.commit();
+      alert(`Successfully migrated ${toFix.length} services.`);
+    } catch (e: any) {
+      console.error(e);
+      alert(`Migration failed: ${e.message}`);
+    } finally {
+      setIsMigrating(false);
+    }
+  };
 
   const getServiceStats = (serviceId: string) => {
     const serviceBookings = bookings.filter(b => b.serviceId === serviceId);
@@ -1337,22 +1725,96 @@ function ServicesPage({ services, bookings, reviews }: { services: Service[], bo
   };
 
   const filteredServices = services.filter(s => {
+    const provider = users.find(u => u.id === s.providerId);
     const matchesSearch = !search || 
       s.title?.toLowerCase().includes(search.toLowerCase()) ||
       s.description?.toLowerCase().includes(search.toLowerCase()) ||
-      s.providerName?.toLowerCase().includes(search.toLowerCase());
+      s.providerName?.toLowerCase().includes(search.toLowerCase()) ||
+      s.providerId?.toLowerCase().includes(search.toLowerCase()) ||
+      provider?.customId?.toLowerCase().includes(search.toLowerCase()) ||
+      s.id?.toLowerCase().includes(search.toLowerCase()) ||
+      s.customId?.toLowerCase().includes(search.toLowerCase());
     
-    const matchesCategory = categoryFilter === 'All' || s.category === categoryFilter;
+    const matchesCategory = categoryFilter === 'All' || (s.category && s.category.startsWith(categoryFilter));
     
     return matchesSearch && matchesCategory;
   });
+
+  const getCategoryColor = (category?: string) => {
+    const mainCat = category?.split('>')[0].trim().toLowerCase() || '';
+    
+    if (mainCat.includes('cleaning') || mainCat.includes('home')) return 'bg-blue-50 text-blue-600 border-blue-100';
+    if (mainCat.includes('plumbing')) return 'bg-cyan-50 text-cyan-600 border-cyan-100';
+    if (mainCat.includes('electrical')) return 'bg-amber-50 text-amber-600 border-amber-100';
+    if (mainCat.includes('automotive')) return 'bg-rose-50 text-rose-600 border-rose-100';
+    if (mainCat.includes('moving')) return 'bg-purple-50 text-purple-600 border-purple-100';
+    if (mainCat.includes('health')) return 'bg-emerald-50 text-emerald-600 border-emerald-100';
+    if (mainCat.includes('pet')) return 'bg-pink-50 text-pink-600 border-pink-100';
+    if (mainCat.includes('safety')) return 'bg-slate-50 text-slate-600 border-slate-100';
+    if (mainCat.includes('event')) return 'bg-indigo-50 text-indigo-600 border-indigo-100';
+    
+    return 'bg-gray-50 text-gray-600 border-gray-100';
+  };
+
+  const exportToCSV = () => {
+    const headers = [
+      "Service ID",
+      "Service Title",
+      "Provider Name",
+      "Provider ID",
+      "Category",
+      "Price (RM)",
+      "Total Bookings",
+      "Average Rating",
+      "Status"
+    ];
+
+    const rows = filteredServices.map(s => {
+      const stats = getServiceStats(s.id);
+      const provider = users.find(u => u.id === s.providerId);
+      return [
+        s.customId || s.id,
+        s.title || "Untitled",
+        s.providerName || "Unknown",
+        provider?.customId || s.providerId || "N/A",
+        s.category || "N/A",
+        Number(s.price).toFixed(2),
+        stats.totalBookings,
+        stats.avgRating,
+        (s.isActive ?? true) ? "Active" : "Hidden"
+      ];
+    });
+
+    const csvContent = [
+      headers.join(","),
+      ...rows.map(row => row.map(cell => `"${String(cell).replace(/"/g, '""')}"`).join(","))
+    ].join("\n");
+
+    const blob = new Blob([csvContent], { type: "text/csv;charset=utf-8;" });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement("a");
+    link.setAttribute("href", url);
+    link.setAttribute("download", `GoServe_Services_${new Date().toISOString().split('T')[0]}.csv`);
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+  };
 
   return (
     <div className="space-y-6">
       <div className="flex flex-col xl:flex-row justify-between items-start xl:items-center gap-6">
         <div>
           <h1 className="text-lg font-bold text-gray-900 uppercase tracking-tight">Marketplace Services</h1>
-          <p className="text-gray-500 text-sm font-medium">Monitoring active offerings ({filteredServices.length})</p>
+          <div className="flex items-center gap-3">
+            <p className="text-gray-500 text-sm font-medium">Monitoring active offerings ({filteredServices.length})</p>
+            <button 
+              onClick={migrateServiceIds}
+              disabled={isMigrating}
+              className={`text-[10px] font-bold uppercase tracking-widest transition-all ${isMigrating ? 'text-gray-400 cursor-not-allowed' : 'text-orange-500 hover:text-orange-600 underline'}`}
+            >
+              {isMigrating ? 'Migrating...' : 'Fix Missing IDs'}
+            </button>
+          </div>
         </div>
 
         <div className="flex flex-col md:flex-row items-center gap-4 w-full xl:w-auto">
@@ -1399,6 +1861,14 @@ function ServicesPage({ services, bookings, reviews }: { services: Service[], bo
                 ))}
               </select>
             </div>
+
+            <button
+              onClick={exportToCSV}
+              className="flex items-center gap-2 px-4 py-2 bg-orange-500 text-white rounded-lg text-sm font-bold hover:bg-orange-600 transition-all shadow-sm shadow-orange-100 whitespace-nowrap"
+            >
+              <Download size={18} />
+              Export CSV
+            </button>
             
             {(search || categoryFilter !== 'All') && (
               <button 
@@ -1448,7 +1918,7 @@ function ServicesPage({ services, bookings, reviews }: { services: Service[], bo
               <div className="p-6 flex flex-col flex-1">
                 <div className="flex justify-between items-start mb-4">
                   <div className="flex-1">
-                    <span className="text-[10px] font-bold uppercase text-orange-500 tracking-widest block mb-1">
+                    <span className={`text-[10px] font-bold uppercase tracking-widest px-2 py-0.5 rounded border inline-block mb-2 ${getCategoryColor(s.category)}`}>
                       {s.category} {s.subcategory && `> ${s.subcategory}`}
                     </span>
                     <h3 className="text-lg font-bold text-gray-900 line-clamp-1">{s.title || 'Untitled Service'}</h3>
@@ -1494,8 +1964,10 @@ function ServicesPage({ services, bookings, reviews }: { services: Service[], bo
             <thead>
               <tr className="bg-gray-50/50 border-b border-gray-100">
                 <th className="px-6 py-4 text-[10px] font-bold text-gray-400 uppercase tracking-widest">Service</th>
+                <th className="px-6 py-4 text-[10px] font-bold text-gray-400 uppercase tracking-widest">Provider</th>
                 <th className="px-6 py-4 text-[10px] font-bold text-gray-400 uppercase tracking-widest">Category</th>
-                <th className="px-6 py-4 text-[10px] font-bold text-gray-400 uppercase tracking-widest text-center">Stats</th>
+                <th className="px-6 py-4 text-[10px] font-bold text-gray-400 uppercase tracking-widest text-center">Bookings</th>
+                <th className="px-6 py-4 text-[10px] font-bold text-gray-400 uppercase tracking-widest text-center">Rating</th>
                 <th className="px-6 py-4 text-[10px] font-bold text-gray-400 uppercase tracking-widest">Price</th>
                 <th className="px-6 py-4 text-[10px] font-bold text-gray-400 uppercase tracking-widest text-center">Status</th>
                 <th className="px-6 py-4 text-[10px] font-bold text-gray-400 uppercase tracking-widest text-right">Actions</th>
@@ -1504,6 +1976,7 @@ function ServicesPage({ services, bookings, reviews }: { services: Service[], bo
             <tbody className="divide-y divide-gray-50">
               {filteredServices.map((s) => {
                 const stats = getServiceStats(s.id);
+                const provider = users.find(u => u.id === s.providerId);
                 return (
                   <tr key={s.id} className="hover:bg-gray-50/50 transition-colors">
                     <td className="px-6 py-4">
@@ -1519,25 +1992,34 @@ function ServicesPage({ services, bookings, reviews }: { services: Service[], bo
                         </div>
                         <div className="min-w-0">
                           <p className="text-sm font-bold text-gray-900 truncate">{s.title || 'Untitled'}</p>
-                          <p className="text-[10px] font-medium text-gray-400">By {s.providerName || 'Unknown'}</p>
+                          <p className="text-[10px] font-medium text-gray-400 line-clamp-1">{s.customId || s.id}</p>
                         </div>
                       </div>
                     </td>
                     <td className="px-6 py-4">
-                      <span className="px-2 py-1 bg-orange-50 text-orange-600 rounded text-[10px] font-bold uppercase tracking-wider">
+                      <div className="min-w-0">
+                        <p className="text-sm font-bold text-gray-900 truncate">{s.providerName || 'Unknown'}</p>
+                        <p className="text-[10px] font-medium text-gray-400 truncate">{provider?.customId || s.providerId || 'No ID'}</p>
+                      </div>
+                    </td>
+                    <td className="px-6 py-4">
+                      <span className={`px-2 py-1 rounded text-[10px] font-bold uppercase tracking-wider border ${getCategoryColor(s.category)}`}>
                         {s.category}
                       </span>
                     </td>
-                    <td className="px-6 py-4">
+                    <td className="px-6 py-4 text-center">
+                      <div className="flex flex-col items-center gap-1">
+                        <span className="text-sm font-bold text-gray-900">{stats.totalBookings}</span>
+                        <span className="text-[10px] font-bold text-gray-400 uppercase tracking-tight">Bookings</span>
+                      </div>
+                    </td>
+                    <td className="px-6 py-4 text-center">
                       <div className="flex flex-col items-center gap-1">
                         <div className="flex items-center gap-1 text-sm font-bold text-gray-900">
                           <Star size={12} className="text-amber-500" fill="currentColor" />
                           {stats.avgRating}
                         </div>
-                        <div className="flex items-center gap-1 text-[10px] font-bold text-gray-400 uppercase tracking-tight">
-                          <Calendar size={10} />
-                          {stats.totalBookings} Bkgs
-                        </div>
+                        <span className="text-[10px] font-bold text-gray-400 uppercase tracking-tight">{stats.reviewCount} Reviews</span>
                       </div>
                     </td>
                     <td className="px-6 py-4">
@@ -1597,7 +2079,12 @@ function ServicesPage({ services, bookings, reviews }: { services: Service[], bo
                 <div>
                   <span className="text-sm font-bold text-orange-500 uppercase tracking-widest">{selectedService.category}</span>
                   <h2 className="text-4xl font-extrabold text-gray-900 mt-2">{selectedService.title}</h2>
-                  <p className="text-gray-500 mt-2 font-medium">Provided by <span className="text-gray-900 font-bold">{selectedService.providerName}</span></p>
+                  <p className="text-gray-500 mt-2 font-medium">
+                    Provided by <span className="text-gray-900 font-bold">{selectedService.providerName}</span>
+                    <span className="text-[10px] text-gray-400 font-bold uppercase ml-2 px-1.5 py-0.5 bg-gray-100 rounded">
+                      {users.find(u => u.id === selectedService.providerId)?.customId || selectedService.providerId}
+                    </span>
+                  </p>
                 </div>
 
                 <div className="text-3xl font-bold text-gray-900">RM {Number(selectedService.price).toLocaleString(undefined, { minimumFractionDigits: 2 })}</div>

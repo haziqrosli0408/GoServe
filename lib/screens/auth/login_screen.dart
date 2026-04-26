@@ -31,7 +31,7 @@ class _LoginScreenState extends State<LoginScreen> {
 
       final uid = userCredential.user!.uid;
 
-      // Check if user exists in providers collection first (higher privilege)
+      // 1. Check if user exists in providers collection (Higher priority)
       final providerDoc = await FirebaseFirestore.instance.collection("providers").doc(uid).get();
       if (providerDoc.exists) {
         if (!mounted) return;
@@ -39,7 +39,7 @@ class _LoginScreenState extends State<LoginScreen> {
         return;
       }
 
-      // Check if user exists in users collection
+      // 2. Check if user exists in users collection
       final userDoc = await FirebaseFirestore.instance.collection("users").doc(uid).get();
       if (userDoc.exists) {
         if (!mounted) return;
@@ -84,17 +84,7 @@ class _LoginScreenState extends State<LoginScreen> {
         return;
       }
 
-      // 🔹 3. CHECK CUSTOMER COLLECTION (users)
-      DocumentSnapshot userDoc =
-          await FirebaseFirestore.instance.collection("users").doc(uid).get();
-
-      if (userDoc.exists) {
-        if (!mounted) return;
-        Navigator.pushReplacementNamed(context, "/customer");
-        return;
-      }
-
-      // 🔹 4. CHECK PROVIDER COLLECTION
+      // 🔹 3. CHECK PROVIDER COLLECTION (Highest Priority)
       DocumentSnapshot providerDoc =
           await FirebaseFirestore.instance
               .collection("providers")
@@ -104,6 +94,16 @@ class _LoginScreenState extends State<LoginScreen> {
       if (providerDoc.exists) {
         if (!mounted) return;
         Navigator.pushReplacementNamed(context, "/provider");
+        return;
+      }
+
+      // 🔹 4. CHECK CUSTOMER COLLECTION (users)
+      DocumentSnapshot userDoc =
+          await FirebaseFirestore.instance.collection("users").doc(uid).get();
+
+      if (userDoc.exists) {
+        if (!mounted) return;
+        Navigator.pushReplacementNamed(context, "/customer");
       } else {
         throw Exception("Account not registered in database");
       }
