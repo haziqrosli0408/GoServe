@@ -8,6 +8,7 @@ import 'package:image_picker/image_picker.dart';
 import 'package:path/path.dart' as path;
 import 'package:gooservee/services/google_auth_service.dart';
 import 'package:flutter/services.dart';
+import 'dart:math';
 
 class ProviderRegisterScreen extends StatefulWidget {
   const ProviderRegisterScreen({super.key});
@@ -275,11 +276,52 @@ class _ProviderRegisterScreenState extends State<ProviderRegisterScreen> {
       }
 
       // 🔥 Upload profile photo if exists
-      _profileImageUrl = await _uploadImage(uid);
+      if (_imageBytes != null) {
+        _profileImageUrl = await _uploadImage(uid);
+      }
+
+      // Generate Sequential USRXXX ID by querying last user
+      String customId = "USR000";
+      try {
+        final lastUserQuery = await FirebaseFirestore.instance
+            .collection("users")
+            .orderBy("customId", descending: true)
+            .limit(1)
+            .get();
+        
+        final lastProviderQuery = await FirebaseFirestore.instance
+            .collection("providers")
+            .orderBy("customId", descending: true)
+            .limit(1)
+            .get();
+
+        int maxNum = -1;
+        
+        if (lastUserQuery.docs.isNotEmpty) {
+          final id = lastUserQuery.docs.first.data()['customId'] as String?;
+          if (id != null && id.startsWith("USR")) {
+            maxNum = max(maxNum, int.tryParse(id.replaceFirst("USR", "")) ?? -1);
+          }
+        }
+
+        if (lastProviderQuery.docs.isNotEmpty) {
+          final id = lastProviderQuery.docs.first.data()['customId'] as String?;
+          if (id != null && id.startsWith("USR")) {
+            maxNum = max(maxNum, int.tryParse(id.replaceFirst("USR", "")) ?? -1);
+          }
+        }
+
+        customId = 'USR${(maxNum + 1).toString().padLeft(3, '0')}';
+      } catch (e) {
+        debugPrint("ID Generation Error: $e");
+        // Fallback to timestamp if query fails
+        customId = 'USR${DateTime.now().millisecondsSinceEpoch.toString().substring(10)}';
+      }
 
       // 🔥 Save provider data to Firestore
       await FirebaseFirestore.instance.collection("providers").doc(uid).set({
         "uid": uid,
+        "customId": customId, // 👈 New field
         "name": nameController.text.trim(),
         "email": emailController.text.trim(),
         "phone": phoneController.text.trim(),
@@ -289,6 +331,7 @@ class _ProviderRegisterScreenState extends State<ProviderRegisterScreen> {
         "accountNumber": accountNumberController.text.trim(),
         "services": selectedServices,
         "role": "provider",
+        "status": "Active",
         "createdAt": DateTime.now(),
       });
 
@@ -488,7 +531,7 @@ class _ProviderRegisterScreenState extends State<ProviderRegisterScreen> {
               validator: (v) => v!.isEmpty ? "Professional name is required" : null,
             ),
             const SizedBox(height: 20),
-            const Text("Phone number", style: TextStyle(fontSize: 13, fontWeight: FontWeight.w400, color: Colors.black54, letterSpacing: 0.5)),
+            const Text("Phone number", style: TextStyle(fontSize: 15, fontWeight: FontWeight.w400, color: Colors.black54, letterSpacing: 0.5)),
             const SizedBox(height: 8),
             Row(
               children: [
@@ -685,7 +728,7 @@ class _ProviderRegisterScreenState extends State<ProviderRegisterScreen> {
               },
             ),
             const SizedBox(height: 20),
-            const Text("Password", style: TextStyle(fontSize: 13, fontWeight: FontWeight.w400, color: Colors.black54, letterSpacing: 0.5)),
+            const Text("Password", style: TextStyle(fontSize: 15, fontWeight: FontWeight.w400, color: Colors.black54, letterSpacing: 0.5)),
             const SizedBox(height: 8),
             TextFormField(
               controller: passwordController,
@@ -762,7 +805,7 @@ class _ProviderRegisterScreenState extends State<ProviderRegisterScreen> {
               }),
             ),
             const SizedBox(height: 20),
-            const Text("Confirm password", style: TextStyle(fontSize: 13, fontWeight: FontWeight.w400, color: Colors.black54, letterSpacing: 0.5)),
+            const Text("Confirm password", style: TextStyle(fontSize: 15, fontWeight: FontWeight.w400, color: Colors.black54, letterSpacing: 0.5)),
             const SizedBox(height: 8),
             TextFormField(
               controller: confirmController,
@@ -849,7 +892,7 @@ class _ProviderRegisterScreenState extends State<ProviderRegisterScreen> {
           children: [
             _buildHeader("Get Paid\nDirectly", "Securely add your payment details to receive\nearnings directly."),
             
-            const Text("BANK ACCOUNT", style: TextStyle(fontSize: 10, fontWeight: FontWeight.w600, color: Colors.black54, letterSpacing: 1.0)),
+            const Text("Bank account", style: TextStyle(fontSize: 15, fontWeight: FontWeight.w400, color: Colors.black54, letterSpacing: 0.5)),
             const SizedBox(height: 12),
 
             // --- Custom Premium Dropdown ---
@@ -1080,7 +1123,7 @@ class _ProviderRegisterScreenState extends State<ProviderRegisterScreen> {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        Text(label.substring(0, 1).toUpperCase() + label.substring(1).toLowerCase(), style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w400, color: Colors.black54, letterSpacing: 0.5)),
+        Text(label.substring(0, 1).toUpperCase() + label.substring(1).toLowerCase(), style: const TextStyle(fontSize: 15, fontWeight: FontWeight.w400, color: Colors.black54, letterSpacing: 0.5)),
         const SizedBox(height: 6),
         TextFormField(
           controller: controller,

@@ -282,8 +282,15 @@ class _ProviderBookingsScreenState extends State<ProviderBookingsScreen> {
                                       addOnsTotal += (price is num) ? price.toDouble() : (double.tryParse(price.toString()) ?? 0.0);
                                     }
                                     
+                                    double earnings = basePrice + addOnsTotal;
+                                    // Fallback for older bookings
+                                    if (earnings == 0 && data['totalPrice'] != null) {
+                                      final double total = double.tryParse(data['totalPrice'].toString().replaceAll('RM', '').trim()) ?? 0.0;
+                                      earnings = total / 1.15;
+                                    }
+                                    
                                     return Text(
-                                      'RM ${(basePrice + addOnsTotal).toStringAsFixed(2)}',
+                                      'RM ${earnings.toStringAsFixed(2)}',
                                       style: GoogleFonts.outfit(
                                         fontWeight: FontWeight.w600,
                                         color: const Color(0xFF4F46E5),
@@ -582,7 +589,12 @@ class _ProviderBookingsScreenState extends State<ProviderBookingsScreen> {
                                 addOnsTotal += (price is num) ? price.toDouble() : (double.tryParse(price.toString()) ?? 0.0);
                               }
                               
-                              final totalEarnings = basePrice + addOnsTotal;
+                              double totalEarnings = basePrice + addOnsTotal;
+                              // Fallback for older bookings
+                              if (totalEarnings == 0 && data['totalPrice'] != null) {
+                                final double total = double.tryParse(data['totalPrice'].toString().replaceAll('RM', '').trim()) ?? 0.0;
+                                totalEarnings = total / 1.15;
+                              }
                               
                               return Text(
                                 'RM ${totalEarnings.toStringAsFixed(2)}',

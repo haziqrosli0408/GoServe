@@ -517,7 +517,16 @@ class _ActiveServiceScreenState extends State<ActiveServiceScreen> {
 
   Widget _buildPaymentSummary(Map<String, dynamic> data) {
     final totalPrice = double.tryParse(data['totalPrice']?.toString().replaceAll('RM', '').trim() ?? '0') ?? 0.0;
-    final platformFee = totalPrice * 0.15;
+    
+    // Use stored chargeFee if available, or calculate from 15% markup (Total = Subtotal * 1.15)
+    double platformFee = 0.0;
+    if (data['chargeFee'] != null) {
+      platformFee = (data['chargeFee'] as num).toDouble();
+    } else {
+      // Fallback: Fee = Total - (Total / 1.15)
+      platformFee = totalPrice - (totalPrice / 1.15);
+    }
+    
     final netEarnings = totalPrice - platformFee;
 
     return Container(

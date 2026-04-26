@@ -2,6 +2,9 @@ import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:image_picker/image_picker.dart';
 import 'dart:io';
+import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:firebase_auth/firebase_auth.dart';
+import 'package:firebase_storage/firebase_storage.dart';
 import '../dashboards/customer_home.dart';
 
 class RateServiceScreen extends StatefulWidget {
@@ -379,33 +382,102 @@ class _RateServiceScreenState extends State<RateServiceScreen> {
     );
   }
 
-  Widget _buildSubmitButton() {
-    return GestureDetector(
-      onTap: () {
-        Navigator.push(
+  bool _isSubmitting = false;
+
+  Future<void> _submitReview() async {
+    if (_rating == 0) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Please select a star rating')),
+      );
+      return;
+    }
+
+    setState(() => _isSubmitting = true);
+
+    try {
+      final user = FirebaseAuth.instance.currentUser;
+      if (user == null) return;
+
+      // 1. Upload Images to Storage
+      List<String> imageUrls = [];
+      for (var imageFile in _selectedImages) {
+        String fileName = '${DateTime.now().millisecondsSinceEpoch}_${imageFile.path.split('/').last}';
+        Reference ref = FirebaseStorage.instance.ref().child('reviews').child(fileName);
+        await ref.putFile(imageFile);
+        String downloadUrl = await ref.getDownloadURL();
+        imageUrls.add(downloadUrl);
+      }
+
+      // 2. Prepare Review Data
+      final reviewData = {
+        'userId': user.uid,
+        'userName': user.displayName ?? 'Customer',
+        'userProfileUrl': user.photoURL ?? '',
+        'providerId': widget.bookingData['providerId'],
+        'serviceId': widget.bookingData['serviceId'],
+        'serviceName': widget.bookingData['serviceName'],
+        'bookingId': widget.bookingData['id'],
+        'rating': _rating,
+        'comment': _reviewController.text.trim(),
+        'tags': _selectedTags,
+        'images': imageUrls,
+        'createdAt': FieldValue.serverTimestamp(),
+      };
+
+      // 3. Save to Global Reviews Collection
+      await FirebaseFirestore.instance.collection('reviews').add(reviewData);
+
+      // 4. Also update the booking as 'rated' so they don't rate twice
+      if (widget.bookingData['id'] != null) {
+        await FirebaseFirestore.instance
+            .collection('bookings')
+            .doc(widget.bookingData['id'])
+            .update({'isRated': true});
+      }
+
+      if (mounted) {
+        Navigator.pushReplacement(
           context,
           MaterialPageRoute(builder: (context) => const ReviewSuccessScreen()),
         );
-      },
+      }
+    } catch (e) {
+      debugPrint("Error submitting review: $e");
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Failed to submit review: $e')),
+        );
+      }
+    } finally {
+      if (mounted) setState(() => _isSubmitting = false);
+    }
+  }
+
+  Widget _buildSubmitButton() {
+    return GestureDetector(
+      onTap: _isSubmitting ? null : _submitReview,
       child: Container(
         width: double.infinity,
         height: 60,
         decoration: BoxDecoration(
-          color: const Color(0xFFFF6B00),
+          color: _isSubmitting ? Colors.grey : const Color(0xFFFF6B00),
           borderRadius: BorderRadius.circular(30),
           boxShadow: [
-            BoxShadow(
-              color: const Color(0xFFFF6B00).withValues(alpha: 0.3),
-              blurRadius: 20,
-              offset: const Offset(0, 10),
-            ),
+            if (!_isSubmitting)
+              BoxShadow(
+                color: const Color(0xFFFF6B00).withValues(alpha: 0.3),
+                blurRadius: 20,
+                offset: const Offset(0, 10),
+              ),
           ],
         ),
         child: Center(
-          child: Text(
-            'Submit Review',
-            style: GoogleFonts.outfit(color: Colors.white, fontWeight: FontWeight.w600, fontSize: 16),
-          ),
+          child: _isSubmitting 
+            ? const SizedBox(height: 24, width: 24, child: CircularProgressIndicator(color: Colors.white, strokeWidth: 2))
+            : Text(
+                'Submit Review',
+                style: GoogleFonts.outfit(color: Colors.white, fontWeight: FontWeight.w600, fontSize: 16),
+              ),
         ),
       ),
     );

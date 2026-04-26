@@ -5,6 +5,7 @@ import '../services/home_screen.dart';
 import '../bookings/bookings_screen.dart';
 import '../chat/chat_screen.dart';
 import '../profile/profile_screen.dart';
+import '../../services/presence_service.dart';
 
 class CustomerHome extends StatefulWidget {
   final int initialIndex;
@@ -15,7 +16,7 @@ class CustomerHome extends StatefulWidget {
 }
 
 class _CustomerHomeState extends State<CustomerHome>
-    with SingleTickerProviderStateMixin {
+    with SingleTickerProviderStateMixin, WidgetsBindingObserver {
   late int _index;
   bool _showStatusBarCover = false;
 
@@ -23,6 +24,24 @@ class _CustomerHomeState extends State<CustomerHome>
   void initState() {
     super.initState();
     _index = widget.initialIndex;
+    WidgetsBinding.instance.addObserver(this);
+    PresenceService.updatePresence(true);
+  }
+
+  @override
+  void dispose() {
+    WidgetsBinding.instance.removeObserver(this);
+    PresenceService.updatePresence(false);
+    super.dispose();
+  }
+
+  @override
+  void didChangeAppLifecycleState(AppLifecycleState state) {
+    if (state == AppLifecycleState.resumed) {
+      PresenceService.updatePresence(true);
+    } else {
+      PresenceService.updatePresence(false);
+    }
   }
 
   final List<Widget> screens = [

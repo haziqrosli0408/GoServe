@@ -1,11 +1,14 @@
 import 'package:flutter/material.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:google_fonts/google_fonts.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import './provider_home_screen.dart';
 import '../provider/provider_bookings_screen.dart';
 import '../provider/my_services_screen.dart';
 import '../chat/chat_screen.dart';
 import '../provider/service_selector.dart';
+import '../provider/verification_screen.dart';
+import '../../services/presence_service.dart';
 
 class ProviderDashboard extends StatefulWidget {
   final int initialIndex;
@@ -16,13 +19,31 @@ class ProviderDashboard extends StatefulWidget {
 }
 
 class _ProviderDashboardState extends State<ProviderDashboard>
-    with SingleTickerProviderStateMixin {
+    with SingleTickerProviderStateMixin, WidgetsBindingObserver {
   late int _index;
 
   @override
   void initState() {
     super.initState();
     _index = widget.initialIndex;
+    WidgetsBinding.instance.addObserver(this);
+    PresenceService.updatePresence(true);
+  }
+
+  @override
+  void dispose() {
+    WidgetsBinding.instance.removeObserver(this);
+    PresenceService.updatePresence(false);
+    super.dispose();
+  }
+
+  @override
+  void didChangeAppLifecycleState(AppLifecycleState state) {
+    if (state == AppLifecycleState.resumed) {
+      PresenceService.updatePresence(true);
+    } else {
+      PresenceService.updatePresence(false);
+    }
   }
 
   @override
@@ -92,9 +113,20 @@ class _ProviderDashboardState extends State<ProviderDashboard>
     bool isCenter = index == 2;
 
     return GestureDetector(
-      onTap: () {
+      onTap: () async {
         if (isCenter) {
-          ServiceSelector.show(context);
+          final user = FirebaseAuth.instance.currentUser;
+          if (user != null) {
+            // Fetch latest verification status
+            final doc = await FirebaseFirestore.instance.collection('providers').doc(user.uid).get();
+            final status = doc.data()?['verificationStatus'] ?? 'none';
+
+            if (status == 'verified') {
+              if (mounted) ServiceSelector.show(context);
+            } else {
+              if (mounted) _showVerificationPopup(context, status);
+            }
+          }
         } else {
           setState(() => _index = index);
         }
@@ -193,6 +225,80 @@ class _ProviderDashboardState extends State<ProviderDashboard>
           ),
         );
       },
+    );
+  }
+  void _showVerificationPopup(BuildContext context, String status) {
+    showModalBottomSheet(
+      context: context,
+      backgroundColor: Colors.transparent,
+      builder: (ctx) => Container(
+        padding: const EdgeInsets.all(32),
+        decoration: const BoxDecoration(
+          color: Colors.white,
+          borderRadius: BorderRadius.vertical(top: Radius.circular(32)),
+        ),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Container(
+              width: 60,
+              height: 60,
+              decoration: BoxDecoration(
+                color: status == 'pending' ? Colors.orange.withValues(alpha: 0.1) : const Color(0xFF4F46E5).withValues(alpha: 0.1),
+                shape: BoxShape.circle,
+              ),
+              child: Icon(
+                status == 'pending' ? Icons.hourglass_empty_rounded : Icons.verified_user_rounded,
+                color: status == 'pending' ? Colors.orange : const Color(0xFF4F46E5),
+                size: 30,
+              ),
+            ),
+            const SizedBox(height: 24),
+            Text(
+              status == 'pending' ? 'Verification Pending' : 'Get Verified First',
+              style: GoogleFonts.outfit(fontSize: 22, fontWeight: FontWeight.bold),
+            ),
+            const SizedBox(height: 12),
+            Text(
+              status == 'pending' 
+                ? 'Our team is reviewing your documents. You will be able to add services once approved.'
+                : 'To ensure platform safety, you must complete your identity verification before listing services.',
+              textAlign: TextAlign.center,
+              style: GoogleFonts.outfit(color: Colors.grey[600], fontSize: 15, height: 1.5),
+            ),
+            const SizedBox(height: 32),
+            if (status != 'pending')
+              SizedBox(
+                width: double.infinity,
+                height: 56,
+                child: ElevatedButton(
+                  onPressed: () {
+                    Navigator.pop(ctx);
+                    Navigator.push(context, MaterialPageRoute(builder: (c) => const VerificationScreen()));
+                  },
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: const Color(0xFF4F46E5),
+                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+                  ),
+                  child: const Text('Start Verification', style: TextStyle(fontWeight: FontWeight.bold, color: Colors.white)),
+                ),
+              ),
+            if (status == 'pending')
+              SizedBox(
+                width: double.infinity,
+                height: 56,
+                child: OutlinedButton(
+                  onPressed: () => Navigator.pop(ctx),
+                  style: OutlinedButton.styleFrom(
+                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+                  ),
+                  child: const Text('Close'),
+                ),
+              ),
+            const SizedBox(height: 16),
+          ],
+        ),
+      ),
     );
   }
 }

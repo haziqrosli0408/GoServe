@@ -31,18 +31,19 @@ class _LoginScreenState extends State<LoginScreen> {
 
       final uid = userCredential.user!.uid;
 
-      // Check if user exists in database
-      final userDoc = await FirebaseFirestore.instance.collection("users").doc(uid).get();
-      if (userDoc.exists) {
-        if (!mounted) return;
-        Navigator.pushReplacementNamed(context, "/customer");
-        return;
-      }
-
+      // Check if user exists in providers collection first (higher privilege)
       final providerDoc = await FirebaseFirestore.instance.collection("providers").doc(uid).get();
       if (providerDoc.exists) {
         if (!mounted) return;
         Navigator.pushReplacementNamed(context, "/provider");
+        return;
+      }
+
+      // Check if user exists in users collection
+      final userDoc = await FirebaseFirestore.instance.collection("users").doc(uid).get();
+      if (userDoc.exists) {
+        if (!mounted) return;
+        Navigator.pushReplacementNamed(context, "/customer");
         return;
       }
 
@@ -265,7 +266,7 @@ class _LoginScreenState extends State<LoginScreen> {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        const Text("Email address", style: TextStyle(fontSize: 10, fontWeight: FontWeight.w400, color: Colors.black54, letterSpacing: 0.5)),
+        const Text("Email address", style: TextStyle(fontSize: 13, fontWeight: FontWeight.w400, color: Colors.black54, letterSpacing: 0.5)),
         const SizedBox(height: 6),
         TextFormField(
           controller: emailController,
@@ -296,7 +297,7 @@ class _LoginScreenState extends State<LoginScreen> {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        const Text("Password", style: TextStyle(fontSize: 10, fontWeight: FontWeight.w400, color: Colors.black54, letterSpacing: 0.5)),
+        const Text("Password", style: TextStyle(fontSize: 13, fontWeight: FontWeight.w400, color: Colors.black54, letterSpacing: 0.5)),
         const SizedBox(height: 6),
         TextFormField(
           controller: passwordController,

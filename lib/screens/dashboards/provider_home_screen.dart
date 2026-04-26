@@ -19,8 +19,6 @@ class ProviderHomeScreen extends StatefulWidget {
 class _ProviderHomeScreenState extends State<ProviderHomeScreen> {
   final user = FirebaseAuth.instance.currentUser;
   Map<String, dynamic>? providerData;
-  bool isOnline = true;
-
   // Real Stats
   double totalEarnings = 0.0;
   int totalBookings = 0;
@@ -97,7 +95,6 @@ class _ProviderHomeScreenState extends State<ProviderHomeScreen> {
     if (doc.exists && mounted) {
       setState(() {
         providerData = doc.data();
-        isOnline = providerData?['isOnline'] ?? true;
       });
     }
   }
@@ -116,7 +113,7 @@ class _ProviderHomeScreenState extends State<ProviderHomeScreen> {
       }
     });
 
-    // 2. Calculate Total Earnings (from completed bookings)
+    // 2. Calculate Total Earnings (net earnings after platform fee)
     FirebaseFirestore.instance
         .collection('bookings')
         .where('providerId', isEqualTo: user!.uid)
@@ -124,14 +121,27 @@ class _ProviderHomeScreenState extends State<ProviderHomeScreen> {
         .get()
         .then((snapshot) {
       if (mounted) {
-        double total = 0;
+        double totalNetEarnings = 0;
         for (var doc in snapshot.docs) {
           final data = doc.data();
-          final priceStr = data['totalPrice'] ?? data['price'] ?? '0';
-          final cleanPrice = priceStr.toString().replaceAll('RM', '').trim();
-          total += double.tryParse(cleanPrice) ?? 0.0;
+          
+          // Get Total Price
+          final totalPriceStr = data['totalPrice'] ?? data['price'] ?? '0';
+          final cleanTotalPrice = double.tryParse(totalPriceStr.toString().replaceAll('RM', '').trim()) ?? 0.0;
+          
+          // Get Platform Fee (Charge Fee)
+          // If chargeFee is stored, use it. Otherwise calculate based on 15% markup (Total = Subtotal * 1.15)
+          double chargeFee = 0.0;
+          if (data['chargeFee'] != null) {
+            chargeFee = (data['chargeFee'] as num).toDouble();
+          } else {
+            // Fallback: Charge Fee = Total Price - (Total Price / 1.15)
+            chargeFee = cleanTotalPrice - (cleanTotalPrice / 1.15);
+          }
+          
+          totalNetEarnings += (cleanTotalPrice - chargeFee);
         }
-        setState(() => totalEarnings = total);
+        setState(() => totalEarnings = totalNetEarnings);
       }
     });
 
@@ -151,17 +161,6 @@ class _ProviderHomeScreenState extends State<ProviderHomeScreen> {
     });
   }
 
-  Future<void> _toggleOnline(bool value) async {
-    setState(() => isOnline = value);
-    if (user != null) {
-      await FirebaseFirestore.instance
-          .collection('providers')
-          .doc(user!.uid)
-          .update({
-        'isOnline': value,
-      });
-    }
-  }
 
   String _getGreeting() {
     final hour = DateTime.now().hour;
@@ -174,27 +173,94 @@ class _ProviderHomeScreenState extends State<ProviderHomeScreen> {
     }
   }
 
+  Widget _buildSkeletonLoader() {
+    return SingleChildScrollView(
+      physics: const NeverScrollableScrollPhysics(),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          // Header Skeleton
+          Container(
+            color: Colors.white,
+            padding: const EdgeInsets.fromLTRB(24, 60, 24, 20),
+            child: Row(
+              children: [
+                const Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      SkeletonBox(width: 100, height: 14),
+                      SizedBox(height: 8),
+                      SkeletonBox(width: 150, height: 26),
+                    ],
+                  ),
+                ),
+                Container(
+                  width: 52,
+                  height: 52,
+                  decoration: const BoxDecoration(
+                    color: Color(0xFFF1F5F9),
+                    shape: BoxShape.circle,
+                  ),
+                ),
+              ],
+            ),
+          ),
+
+          // Calendar Skeleton
+          Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 20),
+            child: SkeletonBox(
+              width: double.infinity,
+              height: 350,
+              borderRadius: BorderRadius.circular(24),
+            ),
+          ),
+
+          // Requests Title Skeleton
+          const Padding(
+            padding: EdgeInsets.symmetric(horizontal: 24),
+            child: SkeletonBox(width: 180, height: 20),
+          ),
+          const SizedBox(height: 16),
+          
+          // Requests Box Skeleton
+          Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 24),
+            child: SkeletonBox(
+              width: double.infinity,
+              height: 120,
+              borderRadius: BorderRadius.circular(24),
+            ),
+          ),
+
+
+          // Stats Skeleton
+          Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 24),
+            child: Row(
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              children: [
+                SkeletonBox(width: (MediaQuery.of(context).size.width - 64) / 3, height: 80, borderRadius: BorderRadius.circular(16)),
+                SkeletonBox(width: (MediaQuery.of(context).size.width - 64) / 3, height: 80, borderRadius: BorderRadius.circular(16)),
+                SkeletonBox(width: (MediaQuery.of(context).size.width - 64) / 3, height: 80, borderRadius: BorderRadius.circular(16)),
+              ],
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
       backgroundColor: Colors.grey[50],
       body: providerData == null
-          ? const Center(child: CircularProgressIndicator())
+          ? _buildSkeletonLoader()
           : CustomScrollView(
               slivers: [
                 SliverToBoxAdapter(child: _buildHeader()),
-                SliverToBoxAdapter(
-                  child: Padding(
-                    padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 10),
-                    child: _buildAvailabilityCard(),
-                  ),
-                ),
-                SliverToBoxAdapter(
-                  child: Padding(
-                    padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 10),
-                    child: _buildStatsRow(),
-                  ),
-                ),
                 SliverToBoxAdapter(
                   child: Padding(
                     padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 20),
@@ -202,7 +268,16 @@ class _ProviderHomeScreenState extends State<ProviderHomeScreen> {
                   ),
                 ),
                 SliverToBoxAdapter(
-                  child: _buildNewRequestsSection(),
+                  child: Padding(
+                    padding: const EdgeInsets.only(top: 10),
+                    child: _buildNewRequestsSection(),
+                  ),
+                ),
+                SliverToBoxAdapter(
+                  child: Padding(
+                    padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 10),
+                    child: _buildStatsRow(),
+                  ),
                 ),
                 const SliverToBoxAdapter(child: SizedBox(height: 40)),
               ],
@@ -346,59 +421,6 @@ class _ProviderHomeScreenState extends State<ProviderHomeScreen> {
     );
   }
 
-  Widget _buildAvailabilityCard() {
-    return Container(
-      padding: const EdgeInsets.all(16),
-      decoration: BoxDecoration(
-        color: isOnline ? const Color(0xFFF0FDF4) : const Color(0xFFFEF2F2),
-        borderRadius: BorderRadius.circular(20),
-        border: Border.all(color: isOnline ? const Color(0xFFDCFCE7) : const Color(0xFFFEE2E2)),
-      ),
-      child: Row(
-        children: [
-          Container(
-            padding: const EdgeInsets.all(10),
-            decoration: BoxDecoration(
-              color: isOnline ? const Color(0xFF22C55E) : const Color(0xFFEF4444),
-              shape: BoxShape.circle,
-            ),
-            child: Icon(isOnline ? Icons.power_settings_new : Icons.power_off, color: Colors.white, size: 20),
-          ),
-          const SizedBox(width: 12),
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
-                  isOnline ? 'You are Online' : 'You are Offline',
-                  style: GoogleFonts.outfit(
-                    fontWeight: FontWeight.w600,
-                    fontSize: 15,
-                    color: isOnline ? const Color(0xFF166534) : const Color(0xFF991B1B),
-                  ),
-                ),
-                Text(
-                  isOnline ? 'Customers can book you' : 'Switch online to receive bookings',
-                  style: GoogleFonts.outfit(
-                    fontSize: 13,
-                    color: isOnline ? const Color(0xFF166534).withValues(alpha: 0.7) : const Color(0xFF991B1B).withValues(alpha: 0.7),
-                  ),
-                ),
-              ],
-            ),
-          ),
-          Transform.scale(
-            scale: 0.8,
-            child: Switch(
-              value: isOnline,
-              activeColor: const Color(0xFF22C55E),
-              onChanged: _toggleOnline,
-            ),
-          ),
-        ],
-      ),
-    );
-  }
 
   Widget _buildCalendarSection() {
     return Container(
@@ -415,6 +437,67 @@ class _ProviderHomeScreenState extends State<ProviderHomeScreen> {
       ),
       child: Column(
         children: [
+          // 🔹 CUSTOM CALENDAR HEADER
+          Padding(
+            padding: const EdgeInsets.only(top: 16, bottom: 8, left: 12, right: 12),
+            child: Row(
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              children: [
+                IconButton(
+                  onPressed: () {
+                    setState(() {
+                      _focusedDay = DateTime(_focusedDay.year, _focusedDay.month - 1);
+                    });
+                  },
+                  icon: Icon(Icons.chevron_left_rounded, color: Colors.grey[600], size: 24),
+                ),
+                Row(
+                  children: [
+                    Text(
+                      DateFormat.yMMMM().format(_focusedDay),
+                      style: GoogleFonts.outfit(
+                        fontWeight: FontWeight.w700,
+                        fontSize: 16,
+                        color: const Color(0xFF1E293B),
+                      ),
+                    ),
+                    const SizedBox(width: 12),
+                    GestureDetector(
+                      onTap: () {
+                        setState(() {
+                          _focusedDay = DateTime.now();
+                          _selectedDay = DateTime.now();
+                        });
+                      },
+                      child: Container(
+                        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                        decoration: BoxDecoration(
+                          color: const Color(0xFF4F46E5).withValues(alpha: 0.1),
+                          borderRadius: BorderRadius.circular(20),
+                        ),
+                        child: Text(
+                          "Today",
+                          style: GoogleFonts.outfit(
+                            color: const Color(0xFF4F46E5),
+                            fontWeight: FontWeight.w600,
+                            fontSize: 12,
+                          ),
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+                IconButton(
+                  onPressed: () {
+                    setState(() {
+                      _focusedDay = DateTime(_focusedDay.year, _focusedDay.month + 1);
+                    });
+                  },
+                  icon: Icon(Icons.chevron_right_rounded, color: Colors.grey[600], size: 24),
+                ),
+              ],
+            ),
+          ),
           TableCalendar(
             firstDay: DateTime.utc(2025, 1, 1),
             lastDay: DateTime.utc(2030, 12, 31),
@@ -422,6 +505,13 @@ class _ProviderHomeScreenState extends State<ProviderHomeScreen> {
             calendarFormat: _calendarFormat,
             availableCalendarFormats: const {
               CalendarFormat.month: 'Month',
+            },
+            sixWeekMonthsEnforced: true,
+            headerVisible: false, // Hide default header
+            onPageChanged: (focusedDay) {
+              setState(() {
+                _focusedDay = focusedDay;
+              });
             },
             onFormatChanged: (format) {
               if (_calendarFormat != format) {
@@ -456,11 +546,6 @@ class _ProviderHomeScreenState extends State<ProviderHomeScreen> {
                 shape: BoxShape.circle,
               ),
               markersMaxCount: 1,
-            ),
-            headerStyle: HeaderStyle(
-              formatButtonVisible: false,
-              titleCentered: true,
-              titleTextStyle: GoogleFonts.outfit(fontWeight: FontWeight.w600, fontSize: 16),
             ),
           ),
           if (_selectedDay != null && _events[DateTime(_selectedDay!.year, _selectedDay!.month, _selectedDay!.day)] != null)
@@ -585,7 +670,7 @@ class _ProviderHomeScreenState extends State<ProviderHomeScreen> {
                       Icon(Icons.inbox_outlined, color: Colors.grey[300], size: 48),
                       const SizedBox(height: 16),
                       Text(
-                        'No new requests yet',
+                        'No new requests',
                         style: GoogleFonts.outfit(
                           color: const Color(0xFF64748B),
                           fontSize: 15,
@@ -1072,6 +1157,76 @@ class _ProviderHomeScreenState extends State<ProviderHomeScreen> {
           ),
         ],
       ),
+    );
+  }
+}
+
+class SkeletonBox extends StatefulWidget {
+  final double width;
+  final double height;
+  final BorderRadius? borderRadius;
+
+  const SkeletonBox({
+    super.key,
+    required this.width,
+    required this.height,
+    this.borderRadius,
+  });
+
+  @override
+  State<SkeletonBox> createState() => _SkeletonBoxState();
+}
+
+class _SkeletonBoxState extends State<SkeletonBox> with SingleTickerProviderStateMixin {
+  late AnimationController _controller;
+  late Animation<double> _animation;
+
+  @override
+  void initState() {
+    super.initState();
+    _controller = AnimationController(
+      vsync: this,
+      duration: const Duration(milliseconds: 1500),
+    )..repeat();
+
+    _animation = Tween<double>(begin: -2.0, end: 2.0).animate(
+      CurvedAnimation(parent: _controller, curve: Curves.easeInOutSine),
+    );
+  }
+
+  @override
+  void dispose() {
+    _controller.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return AnimatedBuilder(
+      animation: _animation,
+      builder: (context, child) {
+        return Container(
+          width: widget.width,
+          height: widget.height,
+          decoration: BoxDecoration(
+            borderRadius: widget.borderRadius ?? BorderRadius.circular(8),
+            gradient: LinearGradient(
+              begin: Alignment.topLeft,
+              end: Alignment.bottomRight,
+              stops: [
+                0.1 + (_animation.value - 1.0).clamp(0.0, 0.6),
+                0.3 + (_animation.value - 1.0).clamp(0.0, 0.6),
+                0.5 + (_animation.value - 1.0).clamp(0.0, 0.6),
+              ],
+              colors: [
+                Colors.grey[200]!,
+                Colors.grey[100]!,
+                Colors.grey[200]!,
+              ],
+            ),
+          ),
+        );
+      },
     );
   }
 }

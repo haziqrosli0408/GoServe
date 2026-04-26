@@ -8,6 +8,7 @@ import 'package:image_picker/image_picker.dart';
 import 'package:path/path.dart' as path;
 import 'package:gooservee/services/google_auth_service.dart';
 import 'package:flutter/services.dart';
+import 'dart:math';
 
 class RegisterScreen extends StatefulWidget {
   const RegisterScreen({super.key});
@@ -250,9 +251,48 @@ class _RegisterScreenState extends State<RegisterScreen> {
       // 🔥 Upload profile photo if exists
       _profileImageUrl = await _uploadImage(uid);
 
+      // Generate Sequential USRXXX ID by querying last user
+      String customId = "USR000";
+      try {
+        final lastUserQuery = await FirebaseFirestore.instance
+            .collection("users")
+            .orderBy("customId", descending: true)
+            .limit(1)
+            .get();
+        
+        final lastProviderQuery = await FirebaseFirestore.instance
+            .collection("providers")
+            .orderBy("customId", descending: true)
+            .limit(1)
+            .get();
+
+        int maxNum = -1;
+        
+        if (lastUserQuery.docs.isNotEmpty) {
+          final id = lastUserQuery.docs.first.data()['customId'] as String?;
+          if (id != null && id.startsWith("USR")) {
+            maxNum = max(maxNum, int.tryParse(id.replaceFirst("USR", "")) ?? -1);
+          }
+        }
+
+        if (lastProviderQuery.docs.isNotEmpty) {
+          final id = lastProviderQuery.docs.first.data()['customId'] as String?;
+          if (id != null && id.startsWith("USR")) {
+            maxNum = max(maxNum, int.tryParse(id.replaceFirst("USR", "")) ?? -1);
+          }
+        }
+
+        customId = 'USR${(maxNum + 1).toString().padLeft(3, '0')}';
+      } catch (e) {
+        debugPrint("ID Generation Error: $e");
+        // Fallback to timestamp if query fails
+        customId = 'USR${DateTime.now().millisecondsSinceEpoch.toString().substring(10)}';
+      }
+
       // 🔥 Save user data to Firestore
       await FirebaseFirestore.instance.collection("users").doc(uid).set({
         "uid": uid,
+        "customId": customId, // 👈 New field
         "name": nameController.text.trim(),
         "email": emailController.text.trim(),
         "phone": phoneController.text.trim(),
@@ -260,6 +300,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
         "profileUrl": _profileImageUrl ?? "",
         "services": selectedServices,
         "role": "customer",
+        "status": "Active",
         "createdAt": DateTime.now(),
       });
 
@@ -459,7 +500,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
               validator: (v) => v!.isEmpty ? "Name is required" : null,
             ),
             const SizedBox(height: 20),
-            const Text("Phone number", style: TextStyle(fontSize: 13, fontWeight: FontWeight.w400, color: Colors.black54, letterSpacing: 0.5)),
+            const Text("Phone number", style: TextStyle(fontSize: 15, fontWeight: FontWeight.w400, color: Colors.black54, letterSpacing: 0.5)),
             const SizedBox(height: 8),
             Row(
               children: [
@@ -656,7 +697,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
               },
             ),
             const SizedBox(height: 20),
-            const Text("Password", style: TextStyle(fontSize: 13, fontWeight: FontWeight.w400, color: Colors.black54, letterSpacing: 0.5)),
+            const Text("Password", style: TextStyle(fontSize: 15, fontWeight: FontWeight.w400, color: Colors.black54, letterSpacing: 0.5)),
             const SizedBox(height: 8),
             TextFormField(
               controller: passwordController,
@@ -736,7 +777,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
             const Text("Add a special character to make it very strong.", style: TextStyle(fontSize: 10, color: Colors.black54, fontStyle: FontStyle.italic)),
             const SizedBox(height: 20),
             
-            const Text("Confirm password", style: TextStyle(fontSize: 13, fontWeight: FontWeight.w400, color: Colors.black54, letterSpacing: 0.5)),
+            const Text("Confirm password", style: TextStyle(fontSize: 15, fontWeight: FontWeight.w400, color: Colors.black54, letterSpacing: 0.5)),
             const SizedBox(height: 8),
             TextFormField(
               controller: confirmController,
@@ -925,7 +966,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        Text(label.substring(0, 1).toUpperCase() + label.substring(1).toLowerCase(), style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w400, color: Colors.black54, letterSpacing: 0.5)),
+        Text(label.substring(0, 1).toUpperCase() + label.substring(1).toLowerCase(), style: const TextStyle(fontSize: 15, fontWeight: FontWeight.w400, color: Colors.black54, letterSpacing: 0.5)),
         const SizedBox(height: 6),
         TextFormField(
           controller: controller,

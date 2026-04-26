@@ -272,7 +272,7 @@ class _ChatScreenState extends State<ChatScreen> {
                         
                         final Map<String, dynamic>? otherUserData = chatData['users']?[otherUserId] as Map<String, dynamic>?;
                         final String otherName = otherUserData?['name'] ?? 'User';
-                        final String otherPhoto = otherUserData?['photo'] ?? '';
+                        final String otherPhoto = otherUserData?['profileUrl'] ?? '';
                         
                         // Robust extraction of service name
                         String serviceName = chatData['serviceTitle'] ?? 

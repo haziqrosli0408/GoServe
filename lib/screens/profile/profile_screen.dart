@@ -35,25 +35,32 @@ class _ProfileScreenState extends State<ProfileScreen> {
     if (user == null) return;
     
     // 1. Fetch Basic Info & Role
-    DocumentSnapshot doc = await FirebaseFirestore.instance.collection('users').doc(user!.uid).get();
-    role = 'customer';
+    DocumentSnapshot userDoc = await FirebaseFirestore.instance.collection('users').doc(user!.uid).get();
+    DocumentSnapshot providerDoc = await FirebaseFirestore.instance.collection('providers').doc(user!.uid).get();
     
-    if (!doc.exists) {
-      doc = await FirebaseFirestore.instance.collection('providers').doc(user!.uid).get();
+    // Determine if they are actually an active provider (must have a customId)
+    final bool hasProviderRecord = providerDoc.exists && (providerDoc.data() as Map<String, dynamic>)['customId'] != null;
+
+    if (hasProviderRecord) {
       role = 'provider';
-    }
-
-    if (!mounted) return;
-
-    if (doc.exists) {
-      final data = doc.data() as Map<String, dynamic>;
+      final pData = providerDoc.data() as Map<String, dynamic>;
+      final uData = userDoc.exists ? userDoc.data() as Map<String, dynamic> : {};
+      
       setState(() {
-        userData = data;
-        // Set initial values from doc if they exist (as fallbacks)
-        rating = (data['rating']?.toDouble() ?? 0.0);
-        earnings = double.tryParse(data['earnings']?.toString() ?? '0') ?? 0.0;
-        savedCount = (data['savedServices'] as List?)?.length ?? 0;
+        userData = { ...uData, ...pData };
+        rating = (userData!['rating']?.toDouble() ?? 0.0);
+        earnings = double.tryParse(userData!['earnings']?.toString() ?? '0') ?? 0.0;
+        savedCount = (userData!['savedServices'] as List?)?.length ?? 0;
       });
+    } else if (userDoc.exists) {
+      role = 'customer';
+      setState(() {
+        userData = userDoc.data() as Map<String, dynamic>;
+        savedCount = (userData!['savedServices'] as List?)?.length ?? 0;
+      });
+    } else {
+      return;
+    }
 
       // 2. Fetch Real Booking Count
       FirebaseFirestore.instance.collection('bookings')
@@ -117,7 +124,6 @@ class _ProfileScreenState extends State<ProfileScreen> {
         });
       }
     }
-  }
 
   @override
   Widget build(BuildContext context) {
@@ -287,9 +293,9 @@ class _ProfileScreenState extends State<ProfileScreen> {
                             const SizedBox(width: 12),
                             Expanded(
                               child: _ProfileStat(
-                                  icon: role == 'provider' ? Icons.star_outline_rounded : Icons.rate_review_outlined,
-                                  value: role == 'provider' ? rating.toStringAsFixed(1) : reviewsCount.toString(),
-                                  label: role == 'provider' ? 'Rating' : 'Reviews',
+                                  icon: Icons.star_outline_rounded,
+                                  value: rating.toStringAsFixed(1),
+                                  label: 'Rating',
                                   themeColor: widget.themeColor),
                             ),
                             const SizedBox(width: 12),

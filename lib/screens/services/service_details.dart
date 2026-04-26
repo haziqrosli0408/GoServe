@@ -2,6 +2,7 @@ import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:firebase_auth/firebase_auth.dart';
 import '../bookings/booking_screen.dart';
 import '../chat/single_chat_screen.dart';
 
@@ -18,11 +19,158 @@ class _ServiceDetailsScreenState extends State<ServiceDetailsScreen> {
   int _activeTab = 0; // 0: About, 1: Add-ons, 2: Gallery, 3: Reviews
   bool _isSaved = false;
   String? _liveProfileUrl;
+  
+  // Review Data
+  List<Map<String, dynamic>> _reviews = [];
+  double _averageRating = 0.0;
+  int _reviewCount = 0;
+  bool _isLoadingReviews = true;
 
   @override
   void initState() {
     super.initState();
     _fetchLiveProviderData();
+    _checkIfSaved();
+    _fetchReviews();
+  }
+
+  Future<void> _fetchReviews() async {
+    final String serviceId = widget.provider['serviceId'] ?? widget.provider['id'] ?? '';
+    if (serviceId.isEmpty) return;
+
+    try {
+      final snapshot = await FirebaseFirestore.instance
+          .collection('reviews')
+          .where('serviceId', isEqualTo: serviceId)
+          .orderBy('createdAt', descending: true)
+          .get();
+
+      final List<Map<String, dynamic>> fetchedReviews = snapshot.docs.map((doc) {
+        final data = doc.data();
+        data['id'] = doc.id;
+        return data;
+      }).toList();
+
+      if (fetchedReviews.isNotEmpty) {
+        double sum = 0;
+        for (var r in fetchedReviews) {
+          sum += (r['rating'] ?? 0).toDouble();
+        }
+        
+        if (mounted) {
+          setState(() {
+            _reviews = fetchedReviews;
+            _reviewCount = fetchedReviews.length;
+            _averageRating = sum / _reviewCount;
+            _isLoadingReviews = false;
+          });
+        }
+      } else {
+        if (mounted) {
+          setState(() {
+            _isLoadingReviews = false;
+          });
+        }
+      }
+    } catch (e) {
+      debugPrint("Error fetching reviews: $e");
+      if (mounted) {
+        setState(() {
+          _isLoadingReviews = false;
+        });
+      }
+    }
+  }
+
+  String _formatDate(dynamic timestamp) {
+    if (timestamp == null) return 'Recent';
+    if (timestamp is Timestamp) {
+      final date = timestamp.toDate();
+      final months = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+      return '${months[date.month - 1]} ${date.day}, ${date.year}';
+    }
+    return 'Recent';
+  }
+
+  Future<void> _checkIfSaved() async {
+    final user = FirebaseAuth.instance.currentUser;
+    if (user == null) return;
+
+    final String serviceId = widget.provider['serviceId'] ?? widget.provider['id'] ?? '';
+    if (serviceId.isEmpty) return;
+
+    try {
+      final doc = await FirebaseFirestore.instance.collection('users').doc(user.uid).get();
+      if (doc.exists) {
+        final List<dynamic> savedIds = doc.data()?['savedServices'] ?? [];
+        if (mounted) {
+          setState(() {
+            _isSaved = savedIds.contains(serviceId);
+          });
+        }
+      }
+    } catch (e) {
+      debugPrint("Error checking if service is saved: $e");
+    }
+  }
+
+  Future<void> _toggleSave() async {
+    final user = FirebaseAuth.instance.currentUser;
+    if (user == null) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Please log in to save services')),
+      );
+      return;
+    }
+
+    final String serviceId = widget.provider['serviceId'] ?? widget.provider['id'] ?? '';
+    if (serviceId.isEmpty) return;
+
+    // Optimistic UI update
+    setState(() {
+      _isSaved = !_isSaved;
+    });
+
+    try {
+      if (_isSaved) {
+        await FirebaseFirestore.instance.collection('users').doc(user.uid).update({
+          'savedServices': FieldValue.arrayUnion([serviceId]),
+        });
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(
+              content: Text('Saved to your bookmarks!'),
+              behavior: SnackBarBehavior.floating,
+              duration: Duration(seconds: 2),
+            ),
+          );
+        }
+      } else {
+        await FirebaseFirestore.instance.collection('users').doc(user.uid).update({
+          'savedServices': FieldValue.arrayRemove([serviceId]),
+        });
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(
+              content: Text('Removed from bookmarks'),
+              behavior: SnackBarBehavior.floating,
+              duration: Duration(seconds: 2),
+            ),
+          );
+        }
+      }
+    } catch (e) {
+      debugPrint("Error toggling save: $e");
+      // Revert on error
+      if (mounted) {
+        setState(() {
+          _isSaved = !_isSaved;
+        });
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Failed to update bookmarks: $e')),
+        );
+      }
+    }
   }
 
   Future<void> _fetchLiveProviderData() async {
@@ -85,10 +233,24 @@ class _ServiceDetailsScreenState extends State<ServiceDetailsScreen> {
             top: MediaQuery.of(context).padding.top + 10,
             left: 20,
             child: CircleAvatar(
-              backgroundColor: Colors.white,
+              backgroundColor: Colors.white.withValues(alpha: 0.9),
               child: IconButton(
                 icon: const Icon(Icons.arrow_back, color: Color(0xFF1E293B)),
                 onPressed: () => Navigator.pop(context),
+              ),
+            ),
+          ),
+          Positioned(
+            top: MediaQuery.of(context).padding.top + 10,
+            right: 20,
+            child: CircleAvatar(
+              backgroundColor: Colors.white.withValues(alpha: 0.9),
+              child: IconButton(
+                icon: Icon(
+                  _isSaved ? Icons.bookmark : Icons.bookmark_border, 
+                  color: _isSaved ? const Color(0xFFFF6B00) : const Color(0xFF1E293B)
+                ),
+                onPressed: _toggleSave,
               ),
             ),
           ),
@@ -358,48 +520,61 @@ class _ServiceDetailsScreenState extends State<ServiceDetailsScreen> {
           return ClipRRect(
             borderRadius: BorderRadius.circular(16),
             child: path.startsWith('http') 
-              ? Image.network(path, fit: BoxFit.cover, errorBuilder: (_, __, ___) => _imageError())
+              ? Image.network(
+                  path, 
+                  fit: BoxFit.cover, 
+                  loadingBuilder: (context, child, loadingProgress) {
+                    if (loadingProgress == null) return child;
+                    return const SkeletonContainer(width: double.infinity, height: double.infinity, borderRadius: 0);
+                  },
+                  errorBuilder: (_, __, ___) => _imageError()
+                )
               : Image.file(File(path), fit: BoxFit.cover, errorBuilder: (_, __, ___) => _imageError()),
           );
         },
       );
     } else {
+      if (_isLoadingReviews) {
+        return const Center(child: Padding(
+          padding: EdgeInsets.all(40.0),
+          child: CircularProgressIndicator(color: Color(0xFFFF6B00)),
+        ));
+      }
+
+      if (_reviews.isEmpty) {
+        return Center(
+          child: Column(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              const SizedBox(height: 40),
+              Icon(Icons.rate_review_outlined, size: 48, color: Colors.grey.shade300),
+              const SizedBox(height: 16),
+              Text(
+                'No reviews yet for this service',
+                style: GoogleFonts.outfit(color: Colors.grey.shade400, fontSize: 14),
+              ),
+            ],
+          ),
+        );
+      }
+
       return Column(
         children: [
-          const SizedBox(height: 20),
-          _buildReviewItem(
-            'Sarah J.', 
-            'Oct 24, 2023',
-            'Excellent service! Very professional and clean. They even helped me move some of the heavier items back into place.', 
-            5,
-            reviewImages: [
-              'https://images.unsplash.com/photo-1527515637462-cff94eecc1ac?q=80&w=400&auto=format&fit=crop',
-              'https://images.unsplash.com/photo-1584622650111-993a426fbf0a?q=80&w=400&auto=format&fit=crop',
-            ],
-          ),
-          const SizedBox(height: 16),
-          _buildReviewItem(
-            'Michael R.', 
-            'Sep 15, 2023',
-            'Did a great job with the plumbing. No leaks at all since the repair. Very impressed with the speed.', 
-            4,
-            reviewImages: [
-              'https://images.unsplash.com/photo-1541899481282-d53bffe3c35d?q=80&w=400&auto=format&fit=crop',
-            ],
-          ),
-          const SizedBox(height: 16),
-          _buildReviewItem(
-            'Lina W.', 
-            'Aug 10, 2023',
-            'Solid work, though I wished they had arrived a few minutes earlier. Overall satisfactory and will use again.', 
-            4,
-          ),
+          const SizedBox(height: 10),
+          ..._reviews.map((review) => _buildReviewItem(
+            review['userName'] ?? 'Customer', 
+            _formatDate(review['createdAt']),
+            review['comment'] ?? '', 
+            (review['rating'] ?? 5).toInt(),
+            userProfile: review['userProfileUrl'],
+            reviewImages: (review['images'] as List?)?.map((e) => e.toString()).toList(),
+          )),
         ],
       );
     }
   }
 
-  Widget _buildReviewItem(String name, String date, String comment, int rating, {List<String>? reviewImages}) {
+  Widget _buildReviewItem(String name, String date, String comment, int rating, {String? userProfile, List<String>? reviewImages}) {
     return Container(
       width: double.infinity,
       padding: const EdgeInsets.all(20),
@@ -418,7 +593,10 @@ class _ServiceDetailsScreenState extends State<ServiceDetailsScreen> {
               CircleAvatar(
                 radius: 20,
                 backgroundColor: const Color(0xFFF1F5F9),
-                child: Text(name.isNotEmpty ? name[0].toUpperCase() : 'U', style: GoogleFonts.outfit(color: const Color(0xFF1F212C), fontSize: 14, fontWeight: FontWeight.w600)),
+                backgroundImage: (userProfile != null && userProfile.isNotEmpty) ? NetworkImage(userProfile) : null,
+                child: (userProfile == null || userProfile.isEmpty) 
+                  ? Text(name.isNotEmpty ? name[0].toUpperCase() : 'U', style: GoogleFonts.outfit(color: const Color(0xFF1F212C), fontSize: 14, fontWeight: FontWeight.w600))
+                  : null,
               ),
               const SizedBox(width: 12),
               Expanded(
@@ -490,7 +668,7 @@ class _ServiceDetailsScreenState extends State<ServiceDetailsScreen> {
       clipBehavior: Clip.none,
       children: [
         Container(
-          height: 320,
+          height: 400,
           width: double.infinity,
           decoration: BoxDecoration(
             image: DecorationImage(
@@ -556,9 +734,9 @@ class _ServiceDetailsScreenState extends State<ServiceDetailsScreen> {
                         children: [
                           const Icon(Icons.star, color: Colors.amber, size: 16),
                           const SizedBox(width: 4),
-                          Text('4.9', style: GoogleFonts.outfit(fontSize: 13, fontWeight: FontWeight.w600, color: const Color(0xFF1E293B))),
+                          Text(_averageRating > 0 ? _averageRating.toStringAsFixed(1) : 'New', style: GoogleFonts.outfit(fontSize: 13, fontWeight: FontWeight.w600, color: const Color(0xFF1E293B))),
                           const SizedBox(width: 4),
-                          Text('(128 reviews)', style: GoogleFonts.outfit(fontSize: 13, color: Colors.grey.shade400)),
+                          Text(_reviewCount > 0 ? '($_reviewCount reviews)' : '(No reviews)', style: GoogleFonts.outfit(fontSize: 13, color: Colors.grey.shade400)),
                         ],
                       ),
                     ],
@@ -615,40 +793,13 @@ class _ServiceDetailsScreenState extends State<ServiceDetailsScreen> {
 
   Widget _buildFooter(BuildContext context, String providerName, String serviceTitle, String category, String price, String serviceImageUrl) {
     return Container(
-      padding: const EdgeInsets.fromLTRB(24, 16, 24, 20),
+      padding: const EdgeInsets.fromLTRB(24, 16, 24, 32), 
       decoration: BoxDecoration(
         color: Colors.white,
         boxShadow: [BoxShadow(color: Colors.black.withValues(alpha: 0.05), blurRadius: 20, offset: const Offset(0, -5))],
       ),
       child: Row(
         children: [
-          // 🔹 SAVE BUTTON
-          Container(
-            height: 56,
-            width: 56,
-            decoration: BoxDecoration(
-              color: const Color(0xFFF1F5F9),
-              borderRadius: BorderRadius.circular(12),
-            ),
-            child: IconButton(
-              icon: Icon(
-                _isSaved ? Icons.bookmark : Icons.bookmark_outline, 
-                color: _isSaved ? Colors.black : const Color(0xFF1E293B)
-              ),
-              onPressed: () {
-                setState(() {
-                  _isSaved = !_isSaved;
-                });
-                ScaffoldMessenger.of(context).showSnackBar(
-                  SnackBar(
-                    content: Text(_isSaved ? 'Saved to your bookmarks!' : 'Removed from bookmarks'),
-                    behavior: SnackBarBehavior.floating,
-                  ),
-                );
-              },
-            ),
-          ),
-          const SizedBox(width: 16),
           // Book Now Button
           Expanded(
             child: SizedBox(
@@ -686,6 +837,60 @@ class _ServiceDetailsScreenState extends State<ServiceDetailsScreen> {
       color: Colors.grey.shade100,
       child: Center(
         child: Icon(Icons.broken_image_outlined, color: Colors.grey.shade300, size: 32),
+      ),
+    );
+  }
+}
+
+class SkeletonContainer extends StatefulWidget {
+  final double width;
+  final double height;
+  final double borderRadius;
+
+  const SkeletonContainer({
+    super.key, 
+    required this.width, 
+    required this.height, 
+    this.borderRadius = 16
+  });
+
+  @override
+  State<SkeletonContainer> createState() => _SkeletonContainerState();
+}
+
+class _SkeletonContainerState extends State<SkeletonContainer> with SingleTickerProviderStateMixin {
+  late AnimationController _controller;
+  late Animation<double> _animation;
+
+  @override
+  void initState() {
+    super.initState();
+    _controller = AnimationController(
+      vsync: this, 
+      duration: const Duration(milliseconds: 1500)
+    )..repeat(reverse: true);
+    _animation = Tween<double>(begin: 0.4, end: 1.0).animate(
+      CurvedAnimation(parent: _controller, curve: Curves.easeInOut)
+    );
+  }
+
+  @override
+  void dispose() {
+    _controller.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return FadeTransition(
+      opacity: _animation,
+      child: Container(
+        width: widget.width,
+        height: widget.height,
+        decoration: BoxDecoration(
+          color: const Color(0xFFF1F5F9), // Matches app's light grey theme
+          borderRadius: BorderRadius.circular(widget.borderRadius),
+        ),
       ),
     );
   }

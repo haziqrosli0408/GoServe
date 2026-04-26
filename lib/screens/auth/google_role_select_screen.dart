@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'dart:math';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 
@@ -17,9 +18,48 @@ class _GoogleRoleSelectScreenState extends State<GoogleRoleSelectScreen> {
     setState(() => isLoading = true);
     try {
       final collection = role == "customer" ? "users" : "providers";
+
+      // Generate Sequential USRXXX ID by querying last user
+      String customId = "USR000";
+      try {
+        final lastUserQuery = await FirebaseFirestore.instance
+            .collection("users")
+            .orderBy("customId", descending: true)
+            .limit(1)
+            .get();
+        
+        final lastProviderQuery = await FirebaseFirestore.instance
+            .collection("providers")
+            .orderBy("customId", descending: true)
+            .limit(1)
+            .get();
+
+        int maxNum = -1;
+        
+        if (lastUserQuery.docs.isNotEmpty) {
+          final id = lastUserQuery.docs.first.data()['customId'] as String?;
+          if (id != null && id.startsWith("USR")) {
+            maxNum = max(maxNum, int.tryParse(id.replaceFirst("USR", "")) ?? -1);
+          }
+        }
+
+        if (lastProviderQuery.docs.isNotEmpty) {
+          final id = lastProviderQuery.docs.first.data()['customId'] as String?;
+          if (id != null && id.startsWith("USR")) {
+            maxNum = max(maxNum, int.tryParse(id.replaceFirst("USR", "")) ?? -1);
+          }
+        }
+
+        customId = 'USR${(maxNum + 1).toString().padLeft(3, '0')}';
+      } catch (e) {
+        debugPrint("ID Generation Error: $e");
+        // Fallback to timestamp if query fails
+        customId = 'USR${DateTime.now().millisecondsSinceEpoch.toString().substring(10)}';
+      }
       
       await FirebaseFirestore.instance.collection(collection).doc(widget.user.uid).set({
         "uid": widget.user.uid,
+        "customId": customId, // 👈 New field
         "name": widget.user.displayName ?? "",
         "email": widget.user.email ?? "",
         "phone": widget.user.phoneNumber ?? "", // Usually empty from Google for security

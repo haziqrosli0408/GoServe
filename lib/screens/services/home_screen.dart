@@ -237,7 +237,9 @@ class _HomeScreenState extends State<HomeScreen> {
   Widget build(BuildContext context) {
     return Scaffold(
       backgroundColor: Colors.white,
-      body: SingleChildScrollView(
+      body: _isLoadingServices 
+          ? _buildSkeletonLoader()
+          : SingleChildScrollView(
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
@@ -847,17 +849,21 @@ class _HomeScreenState extends State<HomeScreen> {
             // Image
             ClipRRect(
               borderRadius: BorderRadius.circular(16),
-              child: servicePhotoUrl.isNotEmpty ? Image.network(
-                servicePhotoUrl,
+              child: Image.network(
+                servicePhotoUrl.isNotEmpty ? servicePhotoUrl : 'https://images.unsplash.com/photo-1581578731548-c64695cc6952?q=80&w=800&auto=format&fit=crop',
                 height: 160, 
                 width: 170, 
                 fit: BoxFit.cover,
-                errorBuilder: (_, __, ___) => Image.network('https://images.unsplash.com/photo-1581578731548-c64695cc6952?q=80&w=800&auto=format&fit=crop', height: 160, width: 170, fit: BoxFit.cover),
-              ) : Image.network(
-                'https://images.unsplash.com/photo-1581578731548-c64695cc6952?q=80&w=800&auto=format&fit=crop',
-                height: 160, 
-                width: 170, 
-                fit: BoxFit.cover,
+                loadingBuilder: (context, child, loadingProgress) {
+                  if (loadingProgress == null) return child;
+                  return const SkeletonBox(width: 170, height: 160, borderRadiusValue: 16);
+                },
+                errorBuilder: (_, __, ___) => Image.network(
+                  'https://images.unsplash.com/photo-1581578731548-c64695cc6952?q=80&w=800&auto=format&fit=crop', 
+                  height: 160, 
+                  width: 170, 
+                  fit: BoxFit.cover
+                ),
               ),
             ),
             const SizedBox(height: 10), 
@@ -1059,17 +1065,22 @@ class _HomeScreenState extends State<HomeScreen> {
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 // Image
-                Container(
-                  width: 140, // Increased from 120
-                  height: 140, // Increased from 120
-                  decoration: BoxDecoration(
-                    borderRadius: BorderRadius.circular(16),
-                    image: servicePhotoUrl.isNotEmpty ? DecorationImage(
-                      image: NetworkImage(servicePhotoUrl),
-                      fit: BoxFit.cover,
-                    ) : const DecorationImage(
-                      image: NetworkImage('https://images.unsplash.com/photo-1581578731548-c64695cc6952?q=80&w=800&auto=format&fit=crop'),
-                      fit: BoxFit.cover,
+                ClipRRect(
+                  borderRadius: BorderRadius.circular(16),
+                  child: Image.network(
+                    servicePhotoUrl.isNotEmpty ? servicePhotoUrl : 'https://images.unsplash.com/photo-1581578731548-c64695cc6952?q=80&w=800&auto=format&fit=crop',
+                    width: 140, 
+                    height: 140, 
+                    fit: BoxFit.cover,
+                    loadingBuilder: (context, child, loadingProgress) {
+                      if (loadingProgress == null) return child;
+                      return const SkeletonBox(width: 140, height: 140, borderRadiusValue: 16);
+                    },
+                    errorBuilder: (_, __, ___) => Image.network(
+                      'https://images.unsplash.com/photo-1581578731548-c64695cc6952?q=80&w=800&auto=format&fit=crop', 
+                      width: 140, 
+                      height: 140, 
+                      fit: BoxFit.cover
                     ),
                   ),
                 ),
@@ -1206,4 +1217,179 @@ class _HomeScreenState extends State<HomeScreen> {
     );
   }
 
+  Widget _buildSkeletonLoader() {
+    return SingleChildScrollView(
+      physics: const NeverScrollableScrollPhysics(),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          // Header Skeleton
+          Container(
+            width: double.infinity,
+            padding: const EdgeInsets.fromLTRB(20, 60, 20, 20),
+            decoration: BoxDecoration(
+              gradient: LinearGradient(
+                begin: Alignment.topCenter,
+                end: Alignment.bottomCenter,
+                colors: [
+                  const Color(0xFFFF6B00).withValues(alpha: 0.15),
+                  const Color(0xFFFF6B00).withValues(alpha: 0.1),
+                  Colors.white,
+                ],
+              ),
+            ),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                const SkeletonBox(width: 80, height: 14),
+                const SizedBox(height: 8),
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                  children: [
+                    const SkeletonBox(width: 200, height: 20),
+                    const SkeletonBox(width: 32, height: 32, isCircle: true),
+                  ],
+                ),
+                const SizedBox(height: 24),
+                const SkeletonBox(width: double.infinity, height: 52, borderRadiusValue: 12),
+              ],
+            ),
+          ),
+          
+          // Banner Skeleton
+          const Padding(
+            padding: EdgeInsets.symmetric(horizontal: 20),
+            child: SkeletonBox(
+              width: double.infinity, 
+              height: 180, 
+              borderRadiusValue: 24
+            ),
+          ),
+          const SizedBox(height: 24),
+
+          // Categories Skeleton
+          Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 20),
+            child: Column(
+              children: [
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                  children: [
+                    const SkeletonBox(width: 120, height: 20),
+                    const SkeletonBox(width: 50, height: 14),
+                  ],
+                ),
+                const SizedBox(height: 16),
+                GridView.builder(
+                  shrinkWrap: true,
+                  physics: const NeverScrollableScrollPhysics(),
+                  gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
+                    crossAxisCount: 3,
+                    mainAxisSpacing: 10,
+                    crossAxisSpacing: 10,
+                    mainAxisExtent: 100,
+                  ),
+                  itemCount: 6,
+                  itemBuilder: (_, __) => const SkeletonBox(width: double.infinity, height: 100, borderRadiusValue: 14),
+                ),
+              ],
+            ),
+          ),
+          const SizedBox(height: 24),
+
+          // Recommendation Skeleton
+          const Padding(
+            padding: EdgeInsets.symmetric(horizontal: 20),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                SkeletonBox(width: 150, height: 20),
+                SizedBox(height: 16),
+                Row(
+                  children: [
+                    Expanded(child: SkeletonBox(width: double.infinity, height: 180, borderRadiusValue: 20)),
+                    SizedBox(width: 16),
+                    Expanded(child: SkeletonBox(width: double.infinity, height: 180, borderRadiusValue: 20)),
+                  ],
+                ),
+              ],
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class SkeletonBox extends StatefulWidget {
+  final double width;
+  final double height;
+  final double borderRadiusValue;
+  final bool isCircle;
+
+  const SkeletonBox({
+    super.key,
+    required this.width,
+    required this.height,
+    this.borderRadiusValue = 8,
+    this.isCircle = false,
+  });
+
+  @override
+  State<SkeletonBox> createState() => _SkeletonBoxState();
+}
+
+class _SkeletonBoxState extends State<SkeletonBox> with SingleTickerProviderStateMixin {
+  late AnimationController _controller;
+  late Animation<double> _animation;
+
+  @override
+  void initState() {
+    super.initState();
+    _controller = AnimationController(
+      vsync: this,
+      duration: const Duration(milliseconds: 1500),
+    )..repeat();
+
+    _animation = Tween<double>(begin: -2.0, end: 2.0).animate(
+      CurvedAnimation(parent: _controller, curve: Curves.easeInOutSine),
+    );
+  }
+
+  @override
+  void dispose() {
+    _controller.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return AnimatedBuilder(
+      animation: _animation,
+      builder: (context, child) {
+        return Container(
+          width: widget.width,
+          height: widget.height,
+          decoration: BoxDecoration(
+            shape: widget.isCircle ? BoxShape.circle : BoxShape.rectangle,
+            borderRadius: widget.isCircle ? null : BorderRadius.circular(widget.borderRadiusValue),
+            gradient: LinearGradient(
+              begin: Alignment.topLeft,
+              end: Alignment.bottomRight,
+              stops: [
+                (0.1 + (_animation.value - 1.0).clamp(0.0, 0.6)).toDouble(),
+                (0.3 + (_animation.value - 1.0).clamp(0.0, 0.6)).toDouble(),
+                (0.5 + (_animation.value - 1.0).clamp(0.0, 0.6)).toDouble(),
+              ],
+              colors: [
+                Colors.grey[200]!,
+                Colors.grey[100]!,
+                Colors.grey[200]!,
+              ],
+            ),
+          ),
+        );
+      },
+    );
+  }
 }

@@ -7,6 +7,7 @@ import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_storage/firebase_storage.dart';
 import 'package:path/path.dart' as path_pkg;
 import 'package:geocoding/geocoding.dart';
+import '../../utils/categories_data.dart';
 
 class AddServiceScreen extends StatefulWidget {
   final bool startNew;
@@ -84,38 +85,17 @@ class _AddServiceScreenState extends State<AddServiceScreen> {
   String _searchQuery = '';
   String _priceType = 'per hour'; // 'per hour' or 'one-time'
   
-  final List<Map<String, dynamic>> _categoryData = [
-    {
-      'name': 'Cleaning',
-      'icon': Icons.cleaning_services_rounded,
-      'subs': ['House Cleaning', 'Office Cleaning', 'Deep Cleaning', 'Window Cleaning', 'Carpet Cleaning']
-    },
-    {
-      'name': 'Plumbing',
-      'icon': Icons.plumbing_rounded,
-      'subs': ['Leak Repair', 'Pipe Installation', 'Clogged Drains', 'Water Heater Service']
-    },
-    {
-      'name': 'Electrical',
-      'icon': Icons.electrical_services_rounded,
-      'subs': ['Wiring', 'Lighting', 'Fan Installation', 'Switch & Socket Repair']
-    },
-    {
-      'name': 'Moving',
-      'icon': Icons.local_shipping_rounded,
-      'subs': ['House Moving', 'Office Relocation', 'Local Furniture Delivery']
-    },
-    {
-      'name': 'Painting',
-      'icon': Icons.format_paint_rounded,
-      'subs': ['Interior Painting', 'Exterior Painting', 'Wall Stencil & Design']
-    },
-    {
-      'name': 'Landscaping',
-      'icon': Icons.grass_rounded,
-      'subs': ['Lawn Mowing', 'Garden Maintenance', 'Tree Trimming', 'Pest Control']
-    },
-  ];
+  List<Map<String, dynamic>> get _categoryData {
+    return AppCategories.allCategories.map((cat) {
+      final name = cat['name'] as String;
+      final subcats = AppCategories.subcategoryMap[name] ?? [];
+      return {
+        'name': name,
+        'icon': cat['icon'],
+        'subs': subcats.map((s) => s['name'] as String).toList(),
+      };
+    }).toList();
+  }
 
   final ImagePicker _picker = ImagePicker();
   final Color primaryIndigo = const Color(0xFF4F46E5);
