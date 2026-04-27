@@ -181,25 +181,25 @@ class _ProviderHomeScreenState extends State<ProviderHomeScreen> {
         children: [
           // Header Skeleton
           Container(
-            color: Colors.white,
+            color: const Color(0xFF4F46E5),
             padding: const EdgeInsets.fromLTRB(24, 60, 24, 20),
             child: Row(
               children: [
-                const Expanded(
+                Expanded(
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      SkeletonBox(width: 100, height: 14),
-                      SizedBox(height: 8),
-                      SkeletonBox(width: 150, height: 26),
+                      SkeletonBox(width: 100, height: 14, color: Colors.white.withValues(alpha: 0.2)),
+                      const SizedBox(height: 8),
+                      SkeletonBox(width: 150, height: 26, color: Colors.white.withValues(alpha: 0.2)),
                     ],
                   ),
                 ),
                 Container(
-                  width: 52,
-                  height: 52,
-                  decoration: const BoxDecoration(
-                    color: Color(0xFFF1F5F9),
+                  width: 40,
+                  height: 40,
+                  decoration: BoxDecoration(
+                    color: Colors.white.withValues(alpha: 0.2),
                     shape: BoxShape.circle,
                   ),
                 ),
@@ -288,9 +288,8 @@ class _ProviderHomeScreenState extends State<ProviderHomeScreen> {
   Widget _buildHeader() {
     return Container(
       width: double.infinity,
-      decoration: BoxDecoration(
-        color: Colors.white,
-        border: Border(bottom: BorderSide(color: Colors.grey.shade100)),
+      decoration: const BoxDecoration(
+        color: Color(0xFF4F46E5),
       ),
       child: Padding(
         padding: const EdgeInsets.fromLTRB(24, 60, 24, 20),
@@ -303,7 +302,7 @@ class _ProviderHomeScreenState extends State<ProviderHomeScreen> {
                   Text(
                     _getGreeting(),
                     style: GoogleFonts.outfit(
-                      color: const Color(0xFF64748B),
+                      color: Colors.white.withValues(alpha: 0.8),
                       fontSize: 14,
                       fontWeight: FontWeight.w500,
                     ),
@@ -312,7 +311,7 @@ class _ProviderHomeScreenState extends State<ProviderHomeScreen> {
                   Text(
                     providerData?['name'] ?? 'Provider',
                     style: GoogleFonts.outfit(
-                      color: const Color(0xFF1E293B),
+                      color: Colors.white,
                       fontSize: 26,
                       fontWeight: FontWeight.w700,
                     ),
@@ -330,11 +329,11 @@ class _ProviderHomeScreenState extends State<ProviderHomeScreen> {
               child: Container(
                 decoration: BoxDecoration(
                   shape: BoxShape.circle,
-                  border: Border.all(color: const Color(0xFF4F46E5).withValues(alpha: 0.2), width: 2),
+                  border: Border.all(color: Colors.white.withValues(alpha: 0.3), width: 2),
                 ),
                 child: CircleAvatar(
-                  radius: 26,
-                  backgroundColor: const Color(0xFFF1F5F9),
+                  radius: 20,
+                  backgroundColor: Colors.white.withValues(alpha: 0.2),
                   backgroundImage: (providerData?['profileUrl'] != null && providerData!['profileUrl'].toString().isNotEmpty)
                       ? NetworkImage(providerData!['profileUrl'])
                       : null,
@@ -342,9 +341,9 @@ class _ProviderHomeScreenState extends State<ProviderHomeScreen> {
                       ? Text(
                           (providerData?['name'] ?? 'P')[0].toUpperCase(),
                           style: GoogleFonts.outfit(
-                            fontSize: 18,
+                            fontSize: 14,
                             fontWeight: FontWeight.w600,
-                            color: const Color(0xFF4F46E5),
+                            color: Colors.white,
                           ),
                         )
                       : null,
@@ -1165,12 +1164,14 @@ class SkeletonBox extends StatefulWidget {
   final double width;
   final double height;
   final BorderRadius? borderRadius;
+  final Color? color;
 
   const SkeletonBox({
     super.key,
     required this.width,
     required this.height,
     this.borderRadius,
+    this.color,
   });
 
   @override
@@ -1218,11 +1219,17 @@ class _SkeletonBoxState extends State<SkeletonBox> with SingleTickerProviderStat
                 0.3 + (_animation.value - 1.0).clamp(0.0, 0.6),
                 0.5 + (_animation.value - 1.0).clamp(0.0, 0.6),
               ],
-              colors: [
-                Colors.grey[200]!,
-                Colors.grey[100]!,
-                Colors.grey[200]!,
-              ],
+              colors: widget.color != null 
+                  ? [
+                      widget.color!,
+                      widget.color!.withValues(alpha: widget.color!.a * 0.5),
+                      widget.color!,
+                    ]
+                  : [
+                      Colors.grey[200]!,
+                      Colors.grey[100]!,
+                      Colors.grey[200]!,
+                    ],
             ),
           ),
         );

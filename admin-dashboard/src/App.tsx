@@ -302,6 +302,7 @@ function App() {
         <section className="flex-1 overflow-y-auto bg-gray-50/50 p-4 sm:p-8">
           <TabContent
             activeTab={activeTab}
+            setActiveTab={setActiveTab}
             data={{ users, services, reviews, bookings, verifications }}
           />
         </section>
@@ -325,9 +326,9 @@ function NavItem({ icon, label, active, onClick, collapsed }: any) {
   );
 }
 
-function TabContent({ activeTab, data }: any) {
+function TabContent({ activeTab, data, setActiveTab }: any) {
   switch (activeTab) {
-    case 'dashboard': return <DashboardPage data={data} />;
+    case 'dashboard': return <DashboardPage data={data} setActiveTab={setActiveTab} />;
     case 'users': return <UsersPage users={data.users} bookings={data.bookings} reviews={data.reviews} pendingApprovalsCount={data.verifications.length} />;
     case 'reviews': return <ReviewsPage reviews={data.reviews} />;
     case 'services': return <ServicesPage services={data.services} users={data.users} bookings={data.bookings} reviews={data.reviews} />;
@@ -818,7 +819,7 @@ function VerificationPage({ requests }: { requests: VerificationRequest[] }) {
   );
 }
 
-function DashboardPage({ data }: any) {
+function DashboardPage({ data, setActiveTab }: any) {
   const { users, services, reviews, bookings } = data;
 
   const totalRevenue = bookings.reduce((acc: number, b: any) => acc + (Number(b.totalPrice) || 0), 0);
@@ -837,6 +838,10 @@ function DashboardPage({ data }: any) {
     name: day,
     revenue: revenueByDay[day] || 0
   }));
+
+  const latestUsers = [...users]
+    .sort((a: any, b: any) => (b.createdAt?.seconds || 0) - (a.createdAt?.seconds || 0))
+    .slice(0, 5);
 
   return (
     <div className="space-y-8">
@@ -860,51 +865,114 @@ function DashboardPage({ data }: any) {
         </PDFDownloadLink>
       </div>
 
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
-        <StatCard label="Total Community" value={users.length.toLocaleString()} trend="+Real-time" icon={<Users size={20} />} color="bg-blue-500" />
+      <div className="grid grid-cols-1 sm:grid-cols-3 gap-6">
         <StatCard label="Total Revenue" value={`RM ${totalRevenue.toLocaleString(undefined, { minimumFractionDigits: 2 })}`} trend="+Actual" icon={<TrendingUp size={20} />} color="bg-emerald-500" />
         <StatCard label="Serviced Orders" value={completedBookings.toLocaleString()} trend="+Actual" icon={<Calendar size={20} />} color="bg-orange-500" />
         <StatCard label="Review Sentiment" value={avgRating} trend="Out of 5" icon={<Star size={20} />} color="bg-amber-500" />
       </div>
 
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
-        <div className="bg-white p-8 rounded-xl border border-gray-100 shadow-sm">
-          <h3 className="font-bold text-gray-900 mb-8 flex items-center gap-2">
-            <TrendingUp size={18} className="text-emerald-500" />
-            Revenue Distribution
-          </h3>
-          <div className="h-80 w-full">
-            <ResponsiveContainer width="100%" height="100%">
-              <LineChart data={chartData}>
-                <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#f1f5f9" />
-                <XAxis dataKey="name" axisLine={false} tickLine={false} tick={{ fontSize: 12, fill: '#94a3b8' }} dy={10} />
-                <YAxis axisLine={false} tickLine={false} tick={{ fontSize: 12, fill: '#94a3b8' }} />
-                <Tooltip
-                  contentStyle={{ borderRadius: '16px', border: 'none', boxShadow: '0 10px 15px -3px rgb(0 0 0 / 0.1)' }}
-                />
-                <Line type="monotone" dataKey="revenue" stroke="#10b981" strokeWidth={3} dot={{ r: 4, fill: '#10b981', strokeWidth: 2, stroke: '#fff' }} />
-              </LineChart>
-            </ResponsiveContainer>
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
+        {/* Main Charts Area */}
+        <div className="lg:col-span-2 space-y-8">
+          <div className="bg-white p-8 rounded-xl border border-gray-100 shadow-sm">
+            <h3 className="font-bold text-gray-900 mb-8 flex items-center gap-2">
+              <TrendingUp size={18} className="text-emerald-500" />
+              Revenue Distribution
+            </h3>
+            <div className="h-80 w-full">
+              <ResponsiveContainer width="100%" height="100%">
+                <LineChart data={chartData}>
+                  <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#f1f5f9" />
+                  <XAxis dataKey="name" axisLine={false} tickLine={false} tick={{ fontSize: 12, fill: '#94a3b8' }} dy={10} />
+                  <YAxis axisLine={false} tickLine={false} tick={{ fontSize: 12, fill: '#94a3b8' }} />
+                  <Tooltip
+                    contentStyle={{ borderRadius: '16px', border: 'none', boxShadow: '0 10px 15px -3px rgb(0 0 0 / 0.1)' }}
+                  />
+                  <Line type="monotone" dataKey="revenue" stroke="#10b981" strokeWidth={3} dot={{ r: 4, fill: '#10b981', strokeWidth: 2, stroke: '#fff' }} />
+                </LineChart>
+              </ResponsiveContainer>
+            </div>
+          </div>
+
+          <div className="bg-white p-8 rounded-xl border border-gray-100 shadow-sm">
+            <h3 className="font-bold text-gray-900 mb-8 flex items-center gap-2">
+              <Users size={18} className="text-blue-500" />
+              Order Volume
+            </h3>
+            <div className="h-80 w-full">
+              <ResponsiveContainer width="100%" height="100%">
+                <BarChart data={chartData}>
+                  <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#f1f5f9" />
+                  <XAxis dataKey="name" axisLine={false} tickLine={false} tick={{ fontSize: 12, fill: '#94a3b8' }} dy={10} />
+                  <YAxis axisLine={false} tickLine={false} tick={{ fontSize: 12, fill: '#94a3b8' }} />
+                  <Tooltip
+                    contentStyle={{ borderRadius: '16px', border: 'none', boxShadow: '0 10px 15px -3px rgb(0 0 0 / 0.1)' }}
+                  />
+                  <Bar dataKey="revenue" fill="#3b82f6" radius={[6, 6, 0, 0]} barSize={20} />
+                </BarChart>
+              </ResponsiveContainer>
+            </div>
           </div>
         </div>
 
-        <div className="bg-white p-8 rounded-xl border border-gray-100 shadow-sm">
-          <h3 className="font-bold text-gray-900 mb-8 flex items-center gap-2">
-            <Users size={18} className="text-blue-500" />
-            Order Volume
-          </h3>
-          <div className="h-80 w-full">
-            <ResponsiveContainer width="100%" height="100%">
-              <BarChart data={chartData}>
-                <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#f1f5f9" />
-                <XAxis dataKey="name" axisLine={false} tickLine={false} tick={{ fontSize: 12, fill: '#94a3b8' }} dy={10} />
-                <YAxis axisLine={false} tickLine={false} tick={{ fontSize: 12, fill: '#94a3b8' }} />
-                <Tooltip
-                  contentStyle={{ borderRadius: '16px', border: 'none', boxShadow: '0 10px 15px -3px rgb(0 0 0 / 0.1)' }}
-                />
-                <Bar dataKey="revenue" fill="#3b82f6" radius={[6, 6, 0, 0]} barSize={20} />
-              </BarChart>
-            </ResponsiveContainer>
+        {/* Right Sidebar: Total Community & Latest Members */}
+        <div className="space-y-6">
+          <div className="bg-white p-6 rounded-xl border border-gray-100 shadow-sm">
+            <div className="flex items-center gap-4 mb-4">
+              <div className="p-3 bg-blue-500 text-white rounded-lg shadow-lg">
+                <Users size={20} />
+              </div>
+              <div>
+                <p className="text-gray-500 text-xs font-medium uppercase tracking-wider">Total Community</p>
+                <p className="text-2xl font-bold text-gray-900">{users.length.toLocaleString()}</p>
+              </div>
+            </div>
+            <div className="pt-4 border-t border-gray-50">
+              <div className="flex justify-between items-center mb-4">
+                <h4 className="text-xs font-bold text-gray-400 uppercase tracking-widest">Latest Members</h4>
+                <span className="px-2 py-0.5 bg-orange-50 text-orange-600 rounded-full text-[10px] font-black uppercase">New</span>
+              </div>
+              <div className="space-y-4">
+                {latestUsers.map((u: any, idx: number) => (
+                  <div key={u.id || idx} className="flex items-center gap-3 group">
+                    <div className="w-8 h-8 rounded-lg bg-gray-50 flex items-center justify-center text-xs font-bold text-gray-400 group-hover:bg-orange-50 group-hover:text-orange-500 transition-colors">
+                      {u.name?.[0]?.toUpperCase() || 'U'}
+                    </div>
+                    <div className="flex-1 min-w-0">
+                      <p className="text-sm font-bold text-gray-900 truncate group-hover:text-orange-500 transition-colors">{u.name || 'Anonymous'}</p>
+                      <p className="text-[10px] text-gray-400 font-medium uppercase">{u.role || 'Member'}</p>
+                    </div>
+                    <span className="text-[10px] font-bold text-gray-300 italic whitespace-nowrap">
+                      {u.createdAt ? new Date(u.createdAt.seconds * 1000).toLocaleDateString(undefined, { month: 'short', day: 'numeric' }) : '---'}
+                    </span>
+                  </div>
+                ))}
+              </div>
+              <button 
+                onClick={() => setActiveTab('users')}
+                className="w-full mt-6 py-2.5 bg-gray-50 text-gray-500 rounded-lg text-[10px] font-black uppercase tracking-widest hover:bg-gray-100 hover:text-gray-700 transition-all border border-gray-100"
+              >
+                View All Community
+              </button>
+            </div>
+          </div>
+
+          <div className="bg-orange-500 p-6 rounded-xl shadow-xl shadow-orange-500/20 text-white relative overflow-hidden">
+            <div className="relative z-10">
+              <h3 className="font-bold text-lg mb-1">Growth Update</h3>
+              <p className="text-white/80 text-xs leading-relaxed mb-4">You have {users.filter((u: any) => u.status === 'Active').length} active members contributing to the ecosystem.</p>
+              <div className="flex items-center gap-2">
+                <div className="flex -space-x-2">
+                  {latestUsers.slice(0, 3).map((u: any, i: number) => (
+                    <div key={i} className="w-6 h-6 rounded-full border-2 border-orange-500 bg-white flex items-center justify-center text-[8px] font-bold text-orange-500">
+                      {u.name?.[0] || 'U'}
+                    </div>
+                  ))}
+                </div>
+                <span className="text-[10px] font-bold">+ {users.length - 3} others</span>
+              </div>
+            </div>
+            <TrendingUp size={80} className="absolute -bottom-4 -right-4 text-white/10 rotate-12" />
           </div>
         </div>
       </div>
@@ -1889,11 +1957,11 @@ function ServicesPage({ services, users, bookings, reviews }: { services: Servic
           <p className="font-medium">No services found</p>
         </div>
       ) : layout === 'grid' ? (
-        <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-6">
+        <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-4 gap-4">
           {filteredServices.map((s) => (
             <div key={s.id} className="bg-white rounded-xl border border-gray-100 shadow-sm overflow-hidden flex flex-col group hover:shadow-xl hover:shadow-orange-500/5 transition-all duration-300">
               {/* Header Image */}
-              <div className="relative h-48 bg-gray-50 overflow-hidden">
+              <div className="relative h-40 bg-gray-50 overflow-hidden">
                 {s.servicePhotoUrl ? (
                   <img src={s.servicePhotoUrl} alt={s.title} className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500" />
                 ) : (
@@ -1915,7 +1983,7 @@ function ServicesPage({ services, users, bookings, reviews }: { services: Servic
               </div>
 
               {/* Content */}
-              <div className="p-6 flex flex-col flex-1">
+              <div className="p-5 flex flex-col flex-1">
                 <div className="flex justify-between items-start mb-4">
                   <div className="flex-1">
                     <span className={`text-[10px] font-bold uppercase tracking-widest px-2 py-0.5 rounded border inline-block mb-2 ${getCategoryColor(s.category)}`}>

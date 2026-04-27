@@ -31,18 +31,43 @@ class _LoginScreenState extends State<LoginScreen> {
 
       final uid = userCredential.user!.uid;
 
-      // 1. Check if user exists in providers collection (Higher priority)
-      final providerDoc = await FirebaseFirestore.instance.collection("providers").doc(uid).get();
+      // Parallel fetch for both potential roles
+      final results = await Future.wait([
+        FirebaseFirestore.instance.collection("providers").doc(uid).get(),
+        FirebaseFirestore.instance.collection("users").doc(uid).get(),
+      ]);
+
+      final providerDoc = results[0];
+      final userDoc = results[1];
+
+      if (!mounted) return;
+
+      // Priority 1: Check if actually a Provider
       if (providerDoc.exists) {
-        if (!mounted) return;
+        final data = providerDoc.data() as Map<String, dynamic>?;
+        if (data?['role'] == 'provider') {
+          Navigator.pushReplacementNamed(context, "/provider");
+          return;
+        }
+      }
+
+      // Priority 2: Check if Customer
+      if (userDoc.exists) {
+        final data = userDoc.data() as Map<String, dynamic>?;
+        if (data?['role'] == 'customer') {
+          Navigator.pushReplacementNamed(context, "/customer");
+          return;
+        }
+      }
+
+      // Fallback: If in providers but role field is weird
+      if (providerDoc.exists) {
         Navigator.pushReplacementNamed(context, "/provider");
         return;
       }
 
-      // 2. Check if user exists in users collection
-      final userDoc = await FirebaseFirestore.instance.collection("users").doc(uid).get();
+      // Final Check for users
       if (userDoc.exists) {
-        if (!mounted) return;
         Navigator.pushReplacementNamed(context, "/customer");
         return;
       }
@@ -84,25 +109,39 @@ class _LoginScreenState extends State<LoginScreen> {
         return;
       }
 
-      // 🔹 3. CHECK PROVIDER COLLECTION (Highest Priority)
-      DocumentSnapshot providerDoc =
-          await FirebaseFirestore.instance
-              .collection("providers")
-              .doc(uid)
-              .get();
+      // 🔹 3. PARALLEL ROLE CHECK
+      final results = await Future.wait([
+        FirebaseFirestore.instance.collection("providers").doc(uid).get(),
+        FirebaseFirestore.instance.collection("users").doc(uid).get(),
+      ]);
 
+      final providerDoc = results[0];
+      final userDoc = results[1];
+
+      if (!mounted) return;
+
+      // Priority 1: Provider Role
       if (providerDoc.exists) {
-        if (!mounted) return;
-        Navigator.pushReplacementNamed(context, "/provider");
-        return;
+        final data = providerDoc.data() as Map<String, dynamic>?;
+        if (data?['role'] == 'provider') {
+          Navigator.pushReplacementNamed(context, "/provider");
+          return;
+        }
       }
 
-      // 🔹 4. CHECK CUSTOMER COLLECTION (users)
-      DocumentSnapshot userDoc =
-          await FirebaseFirestore.instance.collection("users").doc(uid).get();
-
+      // Priority 2: Customer Role
       if (userDoc.exists) {
-        if (!mounted) return;
+        final data = userDoc.data() as Map<String, dynamic>?;
+        if (data?['role'] == 'customer') {
+          Navigator.pushReplacementNamed(context, "/customer");
+          return;
+        }
+      }
+
+      // Fallbacks
+      if (providerDoc.exists) {
+        Navigator.pushReplacementNamed(context, "/provider");
+      } else if (userDoc.exists) {
         Navigator.pushReplacementNamed(context, "/customer");
       } else {
         throw Exception("Account not registered in database");
