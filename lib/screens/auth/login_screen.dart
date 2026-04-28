@@ -44,7 +44,7 @@ class _LoginScreenState extends State<LoginScreen> {
 
       // Priority 1: Check if actually a Provider
       if (providerDoc.exists) {
-        final data = providerDoc.data() as Map<String, dynamic>?;
+        final data = providerDoc.data();
         if (data?['role'] == 'provider') {
           Navigator.pushReplacementNamed(context, "/provider");
           return;
@@ -53,7 +53,7 @@ class _LoginScreenState extends State<LoginScreen> {
 
       // Priority 2: Check if Customer
       if (userDoc.exists) {
-        final data = userDoc.data() as Map<String, dynamic>?;
+        final data = userDoc.data();
         if (data?['role'] == 'customer') {
           Navigator.pushReplacementNamed(context, "/customer");
           return;
@@ -122,7 +122,7 @@ class _LoginScreenState extends State<LoginScreen> {
 
       // Priority 1: Provider Role
       if (providerDoc.exists) {
-        final data = providerDoc.data() as Map<String, dynamic>?;
+        final data = providerDoc.data();
         if (data?['role'] == 'provider') {
           Navigator.pushReplacementNamed(context, "/provider");
           return;
@@ -131,7 +131,7 @@ class _LoginScreenState extends State<LoginScreen> {
 
       // Priority 2: Customer Role
       if (userDoc.exists) {
-        final data = userDoc.data() as Map<String, dynamic>?;
+        final data = userDoc.data();
         if (data?['role'] == 'customer') {
           Navigator.pushReplacementNamed(context, "/customer");
           return;

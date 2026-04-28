@@ -9,6 +9,7 @@ import 'package:path/path.dart' as path;
 import 'package:gooservee/services/google_auth_service.dart';
 import 'package:flutter/services.dart';
 import 'dart:math';
+import 'package:gooservee/utils/categories_data.dart';
 
 class ProviderRegisterScreen extends StatefulWidget {
   const ProviderRegisterScreen({super.key});
@@ -138,14 +139,7 @@ class _ProviderRegisterScreenState extends State<ProviderRegisterScreen> {
   
   List<String> selectedServices = [];
 
-  final List<Map<String, dynamic>> services = [
-    {'name': 'Plumbing', 'desc': 'Maintenance & Repair', 'icon': Icons.plumbing},
-    {'name': 'Cleaning', 'desc': 'Deep & Routine Care', 'icon': Icons.cleaning_services},
-    {'name': 'Electrical', 'desc': 'Wiring & Smart Home', 'icon': Icons.electrical_services},
-    {'name': 'Moving', 'desc': 'Packing & Transport', 'icon': Icons.local_shipping},
-    {'name': 'Painting', 'desc': 'Interior & Exterior', 'icon': Icons.format_paint},
-    {'name': 'Landscaping', 'desc': 'Garden & Lawn', 'icon': Icons.grass},
-  ];
+  List<Map<String, dynamic>> get services => AppCategories.getHomeCategories();
 
   void _nextStep() {
     if (_formKeys[_currentStep].currentState!.validate()) {
@@ -1068,41 +1062,6 @@ class _ProviderRegisterScreenState extends State<ProviderRegisterScreen> {
                   ),
                 );
               },
-            ),
-            const SizedBox(height: 12),
-            GestureDetector(
-              onTap: () {
-                final isSelected = selectedServices.contains("Other");
-                setState(() {
-                  if (isSelected) {
-                    selectedServices.remove("Other");
-                  } else {
-                    selectedServices.add("Other");
-                  }
-                });
-              },
-              child: Container(
-                width: double.infinity,
-                decoration: BoxDecoration(
-                  color: selectedServices.contains("Other") ? const Color(0xFFE0E7FF) : Colors.white,
-                  borderRadius: BorderRadius.circular(10),
-                  border: Border.all(color: selectedServices.contains("Other") ? Colors.transparent : Colors.grey.shade200),
-                ),
-                padding: const EdgeInsets.symmetric(vertical: 16, horizontal: 20),
-                child: Row(
-                  mainAxisAlignment: MainAxisAlignment.center,
-                  children: [
-                    Text(
-                      "Other",
-                      style: TextStyle(
-                        fontWeight: FontWeight.w600, 
-                        fontSize: 14, 
-                        color: selectedServices.contains("Other") ? const Color(0xFF000000) : const Color(0xFF2D3748)
-                      ),
-                    ),
-                  ],
-                ),
-              ),
             ),
             const SizedBox(height: 80),
           ],
