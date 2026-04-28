@@ -7,6 +7,8 @@ import 'package:google_fonts/google_fonts.dart';
 import '../services/service_details.dart';
 import 'package:url_launcher/url_launcher.dart';
 import '../chat/single_chat_screen.dart';
+import 'help_center_screen.dart';
+import 'reschedule_sheet.dart';
 
 class BookingsScreen extends StatefulWidget {
   const BookingsScreen({super.key});
@@ -22,9 +24,29 @@ class _BookingsScreenState extends State<BookingsScreen> {
   Widget build(BuildContext context) {
     return Scaffold(
       backgroundColor: Colors.white,
+      appBar: AppBar(
+        automaticallyImplyLeading: false,
+        backgroundColor: Colors.white,
+        elevation: 0,
+        centerTitle: false,
+        title: Padding(
+          padding: const EdgeInsets.only(left: 8),
+          child: Text(
+            "My Bookings",
+            style: GoogleFonts.outfit(
+              fontWeight: FontWeight.bold, 
+              color: Colors.black,
+              fontSize: 20,
+            ),
+          ),
+        ),
+      ),
       body: Column(
         children: [
-          _buildHeader(),
+          Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 8),
+            child: _bookingTabs(),
+          ),
           Expanded(
             child: Padding(
               padding: const EdgeInsets.only(top: 15),
@@ -36,87 +58,49 @@ class _BookingsScreenState extends State<BookingsScreen> {
     );
   }
 
-  Widget _buildHeader() {
-    return Container(
-      width: double.infinity,
-      decoration: const BoxDecoration(
-        color: Color(0xFFFF6B00), // Swapped white to Orange
-        borderRadius: BorderRadius.only(
-          bottomLeft: Radius.circular(25),
-          bottomRight: Radius.circular(25),
-        ),
-      ),
-      child: SafeArea(
-        bottom: false,
-        child: Column(
-          children: [
-            const SizedBox(height: 10),
-            Text(
-              "My Bookings",
-              style: GoogleFonts.outfit(
-                color: Colors.white,
-                fontSize: 20,
-                fontWeight: FontWeight.bold,
-              ),
-            ),
-            const SizedBox(height: 15),
-            _bookingTabs(),
-            const SizedBox(height: 20),
-
-          ],
-        ),
-      ),
-    );
-  }
-
   Widget _bookingTabs() {
-    return Padding(
-      padding: const EdgeInsets.symmetric(horizontal: 20),
-      child: Container(
-        padding: const EdgeInsets.all(4),
-        decoration: BoxDecoration(
-          color: Colors.black.withValues(alpha: 0.08), // Darker track on orange
-          borderRadius: BorderRadius.circular(30),
-        ),
-        child: LayoutBuilder(
-          builder: (context, constraints) {
-            double tabWidth = (constraints.maxWidth) / 3;
-            return Stack(
-              children: [
-                AnimatedAlign(
-                  duration: const Duration(milliseconds: 300),
-                  curve: Curves.easeInOutQuart,
-                  alignment: Alignment(
-                    selectedTab == 0 ? -1.0 : (selectedTab == 1 ? 0.0 : 1.0),
-                    0,
-                  ),
-                  child: Container(
-                    width: tabWidth,
-                    height: 36,
-                    decoration: BoxDecoration(
-                      color: Colors.white, // Active tab now white
-                      borderRadius: BorderRadius.circular(25),
-                      boxShadow: [
-                        BoxShadow(
-                          color: Colors.black.withValues(alpha: 0.1),
-                          blurRadius: 10,
-                          offset: const Offset(0, 4),
-                        ),
-                      ],
-                    ),
+    return Container(
+      padding: const EdgeInsets.all(4),
+      decoration: BoxDecoration(
+        color: const Color(0xFFF1F5F9), // Light grey track
+        borderRadius: BorderRadius.circular(12),
+      ),
+      child: LayoutBuilder(
+        builder: (context, constraints) {
+          double tabWidth = (constraints.maxWidth) / 3;
+          return Stack(
+            children: [
+              Align(
+                alignment: Alignment(
+                  selectedTab == 0 ? -1.0 : (selectedTab == 1 ? 0.0 : 1.0),
+                  0,
+                ),
+                child: Container(
+                  width: tabWidth,
+                  height: 36,
+                  decoration: BoxDecoration(
+                    color: Colors.white,
+                    borderRadius: BorderRadius.circular(10),
+                    boxShadow: [
+                      BoxShadow(
+                        color: Colors.black.withValues(alpha: 0.05),
+                        blurRadius: 10,
+                        offset: const Offset(0, 4),
+                      ),
+                    ],
                   ),
                 ),
-                Row(
-                  children: [
-                    _tabButton('Upcoming', 0),
-                    _tabButton('Completed', 1),
-                    _tabButton('Cancelled', 2),
-                  ],
-                ),
-              ],
-            );
-          }
-        ),
+              ),
+              Row(
+                children: [
+                  _tabButton('Upcoming', 0),
+                  _tabButton('Completed', 1),
+                  _tabButton('Cancelled', 2),
+                ],
+              ),
+            ],
+          );
+        }
       ),
     );
   }
@@ -130,14 +114,13 @@ class _BookingsScreenState extends State<BookingsScreen> {
         child: SizedBox(
           height: 36,
           child: Center(
-            child: AnimatedDefaultTextStyle(
-              duration: const Duration(milliseconds: 300),
+            child: Text(
+              text,
               style: GoogleFonts.outfit(
-                color: active ? const Color(0xFFFF6B00) : Colors.white.withValues(alpha: 0.8),
+                color: active ? const Color(0xFFFF6B00) : const Color(0xFF64748B),
                 fontWeight: FontWeight.w600,
                 fontSize: 13,
               ),
-              child: Text(text),
             ),
           ),
         ),
@@ -163,7 +146,7 @@ class _BookingsScreenState extends State<BookingsScreen> {
           .snapshots(),
       builder: (context, snapshot) {
         if (snapshot.connectionState == ConnectionState.waiting) {
-          return const Center(child: CircularProgressIndicator(color: Color(0xFFFF6B00)));
+          return const SizedBox.shrink();
         }
 
         final allBookings = snapshot.data?.docs ?? [];
@@ -337,11 +320,15 @@ class _BookingsScreenState extends State<BookingsScreen> {
                         children: [
                           Icon(Icons.person_outline_rounded, size: 10, color: Colors.grey.shade400),
                           const SizedBox(width: 4),
-                          Text(
-                            "$providerName • $date • $time",
-                            style: GoogleFonts.outfit(
-                              fontSize: 11,
-                              color: Colors.grey.shade600,
+                          Expanded(
+                            child: Text(
+                              "$providerName • $date • $time",
+                              style: GoogleFonts.outfit(
+                                fontSize: 11,
+                                color: Colors.grey.shade600,
+                              ),
+                              maxLines: 1,
+                              overflow: TextOverflow.ellipsis,
                             ),
                           ),
                         ],
@@ -778,20 +765,14 @@ class _BookingsScreenState extends State<BookingsScreen> {
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    Text(
-                      'Booking Details',
-                      style: GoogleFonts.outfit(
-                        fontSize: 20,
-                        fontWeight: FontWeight.w600,
-                        color: const Color(0xFF1E293B),
-                      ),
-                    ),
-                    const SizedBox(height: 8),
-                    Text(
-                      'Information about your upcoming service',
-                      style: GoogleFonts.outfit(
-                        fontSize: 14,
-                        color: Colors.grey[500],
+                    Center(
+                      child: Text(
+                        'Order ID: $orderId',
+                        style: GoogleFonts.outfit(
+                          fontSize: 14,
+                          fontWeight: FontWeight.w600,
+                          color: const Color(0xFFFF6B00),
+                        ),
                       ),
                     ),
                     const SizedBox(height: 24),
@@ -818,14 +799,7 @@ class _BookingsScreenState extends State<BookingsScreen> {
                                   color: const Color(0xFF1E293B),
                                 ),
                               ),
-                              Text(
-                                'Order ID: $orderId',
-                                style: GoogleFonts.outfit(
-                                  fontSize: 13,
-                                  color: const Color(0xFFFF6B00),
-                                  fontWeight: FontWeight.w600,
-                                ),
-                              ),
+                              const SizedBox(height: 4),
                             ],
                           ),
                         ),
@@ -945,6 +919,59 @@ class _BookingsScreenState extends State<BookingsScreen> {
                       ),
                     ]),
                     
+                      const SizedBox(height: 32),
+
+                    // Action Buttons
+                    Row(
+                      children: [
+                        // FAQ Button
+                        Expanded(
+                          child: OutlinedButton(
+                            onPressed: () {
+                              Navigator.push(
+                                context,
+                                MaterialPageRoute(builder: (context) => HelpCenterScreen(bookingData: data)),
+                              );
+                            },
+                            style: OutlinedButton.styleFrom(
+                              padding: const EdgeInsets.symmetric(vertical: 16),
+                              side: const BorderSide(color: Color(0xFFF1F5F9)),
+                              foregroundColor: const Color(0xFF64748B),
+                              textStyle: GoogleFonts.outfit(fontWeight: FontWeight.w600, fontSize: 14),
+                              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+                            ),
+                            child: const Text('FAQ'),
+                          ),
+                        ),
+                        const SizedBox(width: 16),
+                        // Reschedule Button
+                        Expanded(
+                          child: ElevatedButton(
+                            onPressed: () {
+                              showModalBottomSheet(
+                                context: context,
+                                isScrollControlled: true,
+                                backgroundColor: Colors.transparent,
+                                builder: (context) => RescheduleSheet(
+                                  bookingId: bookingId,
+                                  currentDate: date,
+                                  currentTime: time,
+                                ),
+                              );
+                            },
+                            style: ElevatedButton.styleFrom(
+                              backgroundColor: const Color(0xFFFF6B00),
+                              foregroundColor: Colors.white,
+                              padding: const EdgeInsets.symmetric(vertical: 16),
+                              elevation: 0,
+                              textStyle: GoogleFonts.outfit(fontWeight: FontWeight.w600, fontSize: 14),
+                              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+                            ),
+                            child: const Text('Reschedule'),
+                          ),
+                        ),
+                      ],
+                    ),
                     const SizedBox(height: 48),
                   ],
                 ),

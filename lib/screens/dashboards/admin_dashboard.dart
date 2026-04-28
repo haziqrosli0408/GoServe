@@ -208,7 +208,7 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
       {'id': 'verification', 'icon': Icons.verified_user_rounded},
       {'id': 'users', 'icon': Icons.people},
       {'id': 'reviews', 'icon': Icons.star},
-      {'id': 'reports', 'icon': Icons.bar_chart},
+      {'id': 'reports', 'icon': Icons.report_problem},
     ];
 
     return Container(
@@ -948,12 +948,152 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
 
   // --- 7. REPORTS TAB ---
   Widget _buildReports() {
-    return Column(
-      children: [
-        _reportCard('Revenue Report', Icons.money, Colors.green),
-        _reportCard('Booking Report', Icons.book, Colors.blue),
-        _reportCard('Provider Performance', Icons.star, Colors.purple),
-      ],
+    return StreamBuilder<QuerySnapshot>(
+      stream: FirebaseFirestore.instance.collection('reports').orderBy('timestamp', descending: true).snapshots(),
+      builder: (context, snapshot) {
+        if (!snapshot.hasData) {
+          return const Center(child: CircularProgressIndicator());
+        }
+        final docs = snapshot.data!.docs;
+
+        if (docs.isEmpty) {
+          return Center(
+            child: Column(
+              children: [
+                const SizedBox(height: 100),
+                Icon(Icons.assignment_turned_in_outlined, size: 64, color: Colors.grey[300]),
+                const SizedBox(height: 16),
+                Text('No customer reports found', style: TextStyle(color: Colors.grey[400])),
+              ],
+            ),
+          );
+        }
+
+        return ListView.builder(
+          shrinkWrap: true,
+          physics: const NeverScrollableScrollPhysics(),
+          itemCount: docs.length,
+          itemBuilder: (context, index) {
+            final data = docs[index].data() as Map<String, dynamic>;
+            final String id = docs[index].id;
+            final String customer = data['customerName'] ?? 'Anonymous';
+            final String service = data['serviceName'] ?? 'Unknown Service';
+            final String issue = data['issue'] ?? 'No description provided';
+            final String status = data['status'] ?? 'pending';
+            final bool isResolved = status == 'resolved';
+
+            return Card(
+              margin: const EdgeInsets.only(bottom: 16),
+              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+              elevation: 0,
+              color: Colors.white,
+              child: Container(
+                padding: const EdgeInsets.all(20),
+                decoration: BoxDecoration(
+                  borderRadius: BorderRadius.circular(20),
+                  border: Border.all(color: Colors.grey.shade100),
+                ),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Row(
+                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                      children: [
+                        Expanded(
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Text(
+                                customer,
+                                style: const TextStyle(fontWeight: FontWeight.w700, fontSize: 16),
+                              ),
+                              Text(
+                                service,
+                                style: TextStyle(color: primaryTeal, fontWeight: FontWeight.w600, fontSize: 13),
+                              ),
+                            ],
+                          ),
+                        ),
+                        Container(
+                          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                          decoration: BoxDecoration(
+                            color: isResolved ? Colors.green.withValues(alpha: 0.1) : Colors.orange.withValues(alpha: 0.1),
+                            borderRadius: BorderRadius.circular(100),
+                          ),
+                          child: Text(
+                            status.toUpperCase(),
+                            style: TextStyle(
+                              color: isResolved ? Colors.green : Colors.orange,
+                              fontSize: 10,
+                              fontWeight: FontWeight.w700,
+                            ),
+                          ),
+                        ),
+                      ],
+                    ),
+                    const Divider(height: 32),
+                    const Text(
+                      'ISSUE DESCRIPTION',
+                      style: TextStyle(fontSize: 10, fontWeight: FontWeight.w800, color: Colors.grey, letterSpacing: 1),
+                    ),
+                    const SizedBox(height: 8),
+                    Text(
+                      issue,
+                      style: TextStyle(color: Colors.grey[800], fontSize: 14, height: 1.5),
+                    ),
+                    const SizedBox(height: 20),
+                    Row(
+                      children: [
+                        if (!isResolved)
+                          Expanded(
+                            child: ElevatedButton(
+                              onPressed: () async {
+                                await FirebaseFirestore.instance.collection('reports').doc(id).update({
+                                  'status': 'resolved',
+                                  'resolvedAt': FieldValue.serverTimestamp(),
+                                });
+                              },
+                              style: ElevatedButton.styleFrom(
+                                backgroundColor: Colors.green,
+                                foregroundColor: Colors.white,
+                                elevation: 0,
+                                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                              ),
+                              child: const Text('Mark as Resolved'),
+                            ),
+                          ),
+                        const SizedBox(width: 8),
+                        IconButton(
+                          onPressed: () async {
+                            final confirm = await showDialog<bool>(
+                              context: context,
+                              builder: (ctx) => AlertDialog(
+                                title: const Text('Delete Report?'),
+                                content: const Text('This action cannot be undone.'),
+                                actions: [
+                                  TextButton(onPressed: () => Navigator.pop(ctx, false), child: const Text('Cancel')),
+                                  TextButton(
+                                    onPressed: () => Navigator.pop(ctx, true), 
+                                    child: const Text('Delete', style: TextStyle(color: Colors.red))
+                                  ),
+                                ],
+                              ),
+                            );
+                            if (confirm == true) {
+                              await FirebaseFirestore.instance.collection('reports').doc(id).delete();
+                            }
+                          },
+                          icon: const Icon(Icons.delete_outline, color: Colors.red),
+                        ),
+                      ],
+                    ),
+                  ],
+                ),
+              ),
+            );
+          },
+        );
+      },
     );
   }
 
@@ -1311,14 +1451,6 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
     ],
   );
 
-  Widget _reportCard(String t, IconData i, Color c) => Card(
-    margin: const EdgeInsets.only(bottom: 12),
-    child: ListTile(
-      leading: Icon(i, color: c),
-      title: Text(t),
-      trailing: const Icon(Icons.download),
-    ),
-  );
 
   Widget _sectionHeader(String t) => Padding(
     padding: const EdgeInsets.symmetric(vertical: 12),

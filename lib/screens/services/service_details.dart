@@ -26,12 +26,37 @@ class _ServiceDetailsScreenState extends State<ServiceDetailsScreen> {
   int _reviewCount = 0;
   bool _isLoadingReviews = true;
 
+  final ScrollController _scrollController = ScrollController();
+  final GlobalKey _tabsKey = GlobalKey();
+
   @override
   void initState() {
     super.initState();
     _fetchLiveProviderData();
     _checkIfSaved();
     _fetchReviews();
+  }
+
+  @override
+  void dispose() {
+    _scrollController.dispose();
+    super.dispose();
+  }
+
+  void _scrollToTabs() {
+    // Small delay to allow state change to render first if needed
+    Future.delayed(const Duration(milliseconds: 100), () {
+      if (!mounted) return;
+      final context = _tabsKey.currentContext;
+      if (context != null) {
+        Scrollable.ensureVisible(
+          context,
+          duration: const Duration(milliseconds: 300),
+          curve: Curves.easeInOut,
+          alignment: 0.0, // Align to top of viewport
+        );
+      }
+    });
   }
 
   Future<void> _fetchReviews() async {
@@ -42,14 +67,43 @@ class _ServiceDetailsScreenState extends State<ServiceDetailsScreen> {
       final snapshot = await FirebaseFirestore.instance
           .collection('reviews')
           .where('serviceId', isEqualTo: serviceId)
-          .orderBy('createdAt', descending: true)
+          .where('status', isEqualTo: 'Approved')
           .get();
 
-      final List<Map<String, dynamic>> fetchedReviews = snapshot.docs.map((doc) {
+      final List<Map<String, dynamic>> fetchedReviews = [];
+      for (var doc in snapshot.docs) {
         final data = doc.data();
         data['id'] = doc.id;
-        return data;
-      }).toList();
+        
+        if (data['userId'] != null) {
+          try {
+            final userDoc = await FirebaseFirestore.instance.collection('users').doc(data['userId']).get();
+            if (userDoc.exists && userDoc.data() != null) {
+              final userData = userDoc.data()!;
+              if (userData['name'] != null && userData['name'].toString().isNotEmpty) {
+                data['userName'] = userData['name'];
+              }
+              if (userData['profileUrl'] != null && userData['profileUrl'].toString().isNotEmpty) {
+                data['userProfileUrl'] = userData['profileUrl'];
+              }
+            }
+          } catch (e) {
+            debugPrint("Error fetching user data for review: $e");
+          }
+        }
+        
+        fetchedReviews.add(data);
+      }
+
+      // Sort locally to avoid Firestore composite index requirement
+      fetchedReviews.sort((a, b) {
+        final aTime = a['createdAt'] as Timestamp?;
+        final bTime = b['createdAt'] as Timestamp?;
+        if (aTime == null && bTime == null) return 0;
+        if (aTime == null) return 1;
+        if (bTime == null) return -1;
+        return bTime.compareTo(aTime); // descending
+      });
 
       if (fetchedReviews.isNotEmpty) {
         double sum = 0;
@@ -205,23 +259,112 @@ class _ServiceDetailsScreenState extends State<ServiceDetailsScreen> {
       body: Stack(
         children: [
           SingleChildScrollView(
+            controller: _scrollController,
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-        _buildHeader(context, serviceImageUrl, profileUrl, name),
+                _buildHeader(context, serviceImageUrl),
                 
-                Padding(
-                  padding: const EdgeInsets.fromLTRB(24, 65, 24, 40), 
+                Container(
+                  color: const Color(0xFFF8FAFC),
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      // 🔹 CUSTOM TAB BAR (Now at the top)
-                      _buildTabBar(),
-                      
-                      const SizedBox(height: 24),
-                      
-                      // 🔹 TAB CONTENT
-                      _buildTabContent(description, price),
+                      // HEADER SECTION (Title, Description, Rating)
+                      Padding(
+                        padding: const EdgeInsets.fromLTRB(24, 24, 24, 0),
+                        child: Row(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Expanded(
+                              child: Column(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: [
+                                  Text(
+                                    serviceTitle,
+                                    style: GoogleFonts.outfit(
+                                      fontSize: 22,
+                                      fontWeight: FontWeight.w700,
+                                      color: const Color(0xFF0F172A),
+                                      height: 1.2,
+                                    ),
+                                  ),
+                                  const SizedBox(height: 8),
+                                  Text(
+                                    description,
+                                    style: GoogleFonts.outfit(
+                                      fontSize: 14,
+                                      color: const Color(0xFF64748B),
+                                      height: 1.5,
+                                    ),
+                                  ),
+                                ],
+                              ),
+                            ),
+                            const SizedBox(width: 16),
+                            // 🔹 RATING PLACEMENT (Vertical Column)
+                            Column(
+                              mainAxisSize: MainAxisSize.min,
+                              children: [
+                                const Icon(
+                                  Icons.star_rounded, 
+                                  color: Color(0xFFFFC107), 
+                                  size: 28
+                                ),
+                                const SizedBox(height: 2),
+                                Text(
+                                  _averageRating > 0 ? _averageRating.toStringAsFixed(1) : 'New',
+                                  style: GoogleFonts.outfit(
+                                    fontSize: 12,
+                                    fontWeight: FontWeight.w600,
+                                    color: const Color(0xFF0F172A),
+                                  ),
+                                ),
+                                if (_reviewCount > 0)
+                                  Text(
+                                    '($_reviewCount)',
+                                    style: GoogleFonts.outfit(
+                                      fontSize: 11,
+                                      fontWeight: FontWeight.w500,
+                                      color: const Color(0xFF94A3B8),
+                                    ),
+                                  ),
+                              ],
+                            ),
+                          ],
+                        ),
+                      ),
+
+                      const SizedBox(height: 16),
+
+                      // 🔹 PROVIDER SECTION
+                      Padding(
+                        padding: const EdgeInsets.symmetric(horizontal: 24),
+                        child: _buildProviderSection(profileUrl, name),
+                      ),
+
+                      const SizedBox(height: 32),
+
+                      // 🔹 FULL WIDTH DIVIDER (Thin Edge-to-Edge)
+                      Divider(color: const Color(0xFFF1F5F9), thickness: 1, height: 1),
+
+                      // 🔹 BOTTOM SECTION (White Background)
+                      Container(
+                        key: _tabsKey,
+                        color: Colors.white,
+                        width: double.infinity,
+                        child: Padding(
+                          padding: const EdgeInsets.fromLTRB(24, 20, 24, 120),
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              _buildTabBar(),
+                              const SizedBox(height: 32),
+                              _buildTabContent(description, price),
+                            ],
+                          ),
+                        ),
+                      ),
                     ],
                   ),
                 ),
@@ -229,34 +372,47 @@ class _ServiceDetailsScreenState extends State<ServiceDetailsScreen> {
             ),
           ),
           
+          // Back Button
           Positioned(
             top: MediaQuery.of(context).padding.top + 10,
             left: 20,
-            child: CircleAvatar(
-              backgroundColor: Colors.white.withValues(alpha: 0.9),
-              child: IconButton(
-                icon: const Icon(Icons.arrow_back, color: Color(0xFF1E293B)),
-                onPressed: () => Navigator.pop(context),
+            child: GestureDetector(
+              onTap: () => Navigator.pop(context),
+              child: Container(
+                padding: const EdgeInsets.all(10),
+                decoration: BoxDecoration(
+                  color: Colors.white.withValues(alpha: 0.9),
+                  shape: BoxShape.circle,
+                  boxShadow: [BoxShadow(color: Colors.black.withValues(alpha: 0.1), blurRadius: 10)],
+                ),
+                child: const Icon(Icons.arrow_back_rounded, color: Color(0xFF1E293B), size: 22),
               ),
             ),
           ),
+          // Save Button
           Positioned(
             top: MediaQuery.of(context).padding.top + 10,
             right: 20,
-            child: CircleAvatar(
-              backgroundColor: Colors.white.withValues(alpha: 0.9),
-              child: IconButton(
-                icon: Icon(
-                  _isSaved ? Icons.bookmark : Icons.bookmark_border, 
-                  color: _isSaved ? const Color(0xFFFF6B00) : const Color(0xFF1E293B)
+            child: GestureDetector(
+              onTap: _toggleSave,
+              child: Container(
+                padding: const EdgeInsets.all(10),
+                decoration: BoxDecoration(
+                  color: Colors.white.withValues(alpha: 0.9),
+                  shape: BoxShape.circle,
+                  boxShadow: [BoxShadow(color: Colors.black.withValues(alpha: 0.1), blurRadius: 10)],
                 ),
-                onPressed: _toggleSave,
+                child: Icon(
+                  _isSaved ? Icons.bookmark_rounded : Icons.bookmark_border_rounded, 
+                  color: _isSaved ? const Color(0xFFFF6B00) : const Color(0xFF1E293B),
+                  size: 22,
+                ),
               ),
             ),
           ),
         ],
       ),
-      bottomNavigationBar: _buildFooter(context, name, serviceTitle, category, price, serviceImageUrl),
+      bottomSheet: _buildFooter(context, name, serviceTitle, category, price, serviceImageUrl),
     );
   }
 
@@ -280,20 +436,26 @@ class _ServiceDetailsScreenState extends State<ServiceDetailsScreen> {
   Widget _tabItem(int index, String label) {
     bool isActive = _activeTab == index;
     return GestureDetector(
-      onTap: () => setState(() => _activeTab = index),
-      child: Container(
-        width: 100,
-        padding: const EdgeInsets.symmetric(vertical: 12),
-        alignment: Alignment.center,
+      onTap: () {
+        setState(() => _activeTab = index);
+        _scrollToTabs();
+      },
+      child: AnimatedContainer(
+        duration: const Duration(milliseconds: 200),
+        padding: const EdgeInsets.symmetric(vertical: 8, horizontal: 16),
         decoration: BoxDecoration(
-          color: isActive ? const Color(0xFFFF6B00) : const Color(0xFFF1F5F9), 
-          borderRadius: BorderRadius.circular(16),
+          color: isActive ? const Color(0xFFFF6B00) : const Color(0xFFF8FAFC), 
+          borderRadius: BorderRadius.circular(12),
+          border: Border.all(
+            color: isActive ? const Color(0xFFFF6B00) : const Color(0xFFE2E8F0),
+            width: 1,
+          ),
         ),
         child: Text(
           label,
           style: GoogleFonts.outfit(
-            fontSize: 14,
-            fontWeight: FontWeight.w600,
+            fontSize: 12,
+            fontWeight: FontWeight.w700,
             color: isActive ? Colors.white : const Color(0xFF64748B),
           ),
         ),
@@ -303,38 +465,9 @@ class _ServiceDetailsScreenState extends State<ServiceDetailsScreen> {
 
   Widget _buildTabContent(String description, String price) {
     if (_activeTab == 0) {
-      final String serviceTitle = widget.provider['title'] ?? widget.provider['serviceName'] ?? 'Elite Service';
       return Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Text(
-            serviceTitle,
-            style: GoogleFonts.outfit(
-              fontSize: 24,
-              fontWeight: FontWeight.w600,
-              color: const Color(0xFF1E293B),
-              height: 1.2,
-            ),
-          ),
-          const SizedBox(height: 24),
-          Text(
-            'Description',
-            style: GoogleFonts.outfit(
-              fontSize: 16,
-              fontWeight: FontWeight.w600,
-              color: const Color(0xFF1E293B),
-            ),
-          ),
-          const SizedBox(height: 12),
-          Text(
-            description,
-            style: GoogleFonts.outfit(
-              fontSize: 14,
-              color: Colors.black54,
-              height: 1.6,
-            ),
-          ),
-          const SizedBox(height: 32),
           Text(
             'Service Details',
             style: GoogleFonts.outfit(
@@ -354,35 +487,8 @@ class _ServiceDetailsScreenState extends State<ServiceDetailsScreen> {
             _buildDetailItem(Icons.check_circle_outline, 'Satisfaction guaranteed service'),
             _buildDetailItem(Icons.check_circle_outline, 'Insured up to RM10,000 damage cover'),
           ],
-          const SizedBox(height: 32),
-          Container(
-            padding: const EdgeInsets.all(20),
-            decoration: BoxDecoration(
-              color: Colors.white,
-              borderRadius: BorderRadius.circular(16),
-              border: Border.all(color: Colors.grey.shade100),
-              boxShadow: [BoxShadow(color: Colors.black.withValues(alpha: 0.02), blurRadius: 10, offset: const Offset(0, 4))],
-            ),
-            child: Row(
-              children: [
-                Container(
-                  padding: const EdgeInsets.all(12),
-                  decoration: const BoxDecoration(color: Color(0xFFF1F5F9), shape: BoxShape.circle),
-                  child: const Icon(Icons.payments_outlined, color: Color(0xFFFF6B00)),
-                ),
-                const SizedBox(width: 16),
-                Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text('Pricing Model', style: GoogleFonts.outfit(fontSize: 12, color: Colors.black54)),
-                    Text('Starting from RM$price${widget.provider['priceType'] == 'one-time' ? '' : '/hr'}', style: GoogleFonts.outfit(fontSize: 16, fontWeight: FontWeight.w600, color: const Color(0xFF1E293B))),
-                  ],
-                ),
-              ],
-            ),
-          ),
-        ],
-      );
+          ],
+        );
     } else if (_activeTab == 1) {
       final List<dynamic> addOns = widget.provider['addOns'] ?? [];
       
@@ -663,12 +769,12 @@ class _ServiceDetailsScreenState extends State<ServiceDetailsScreen> {
     );
   }
 
-  Widget _buildHeader(BuildContext context, String bgUrl, String profileUrl, String name) {
+  Widget _buildHeader(BuildContext context, String bgUrl) {
     return Stack(
       clipBehavior: Clip.none,
       children: [
         Container(
-          height: 400,
+          height: 300,
           width: double.infinity,
           decoration: BoxDecoration(
             image: DecorationImage(
@@ -683,66 +789,79 @@ class _ServiceDetailsScreenState extends State<ServiceDetailsScreen> {
               gradient: LinearGradient(
                 begin: Alignment.topCenter,
                 end: Alignment.bottomCenter,
-                colors: [Colors.black.withValues(alpha: 0.3), Colors.transparent, Colors.black.withValues(alpha: 0.4)],
+                stops: const [0.0, 0.5, 1.0],
+                colors: [
+                  Colors.black.withValues(alpha: 0.4), 
+                  Colors.transparent, 
+                  Colors.black.withValues(alpha: 0.6)
+                ],
               ),
             ),
           ),
         ),
-        Positioned(
-          bottom: -45,
-          left: 20,
-          right: 20,
-          child: Container(
-            padding: const EdgeInsets.all(16),
-            decoration: BoxDecoration(
-              color: Colors.white,
-              borderRadius: BorderRadius.circular(16),
-              boxShadow: [BoxShadow(color: Colors.black.withValues(alpha: 0.08), blurRadius: 20, offset: const Offset(0, 10))],
-            ),
-            child: Row(
-              children: [
-                Stack(
+      ],
+    );
+  }
+
+  Widget _buildProviderSection(String profileUrl, String name) {
+    final String address = widget.provider['address'] ?? widget.provider['providerAddress'] ?? 'Kuala Lumpur, Malaysia';
+    final String phone = widget.provider['phone'] ?? widget.provider['providerPhone'] ?? '';
+
+    return Container(
+      padding: const EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(20),
+        border: Border.all(color: const Color(0xFFF1F5F9), width: 1),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withValues(alpha: 0.03), 
+            blurRadius: 15, 
+            offset: const Offset(0, 5)
+          )
+        ],
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              Container(
+                padding: const EdgeInsets.all(2),
+                decoration: BoxDecoration(
+                  shape: BoxShape.circle,
+                  border: Border.all(color: const Color(0xFFF1F5F9), width: 1),
+                ),
+                child: CircleAvatar(
+                  radius: 22,
+                  backgroundColor: const Color(0xFFF1F5F9),
+                  backgroundImage: profileUrl.isNotEmpty ? NetworkImage(profileUrl) : null,
+                  child: profileUrl.isEmpty 
+                      ? Text(name.isNotEmpty ? name[0].toUpperCase() : 'P', style: GoogleFonts.outfit(color: const Color(0xFF1F212C), fontSize: 14, fontWeight: FontWeight.w600)) 
+                      : null,
+                ),
+              ),
+              const SizedBox(width: 12),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  mainAxisSize: MainAxisSize.min,
                   children: [
-                    CircleAvatar(
-                      radius: 32,
-                      backgroundColor: const Color(0xFFF1F5F9),
-                      backgroundImage: profileUrl.isNotEmpty ? NetworkImage(profileUrl) : null,
-                      child: profileUrl.isEmpty 
-                          ? Text(name.isNotEmpty ? name[0].toUpperCase() : 'P', style: GoogleFonts.outfit(color: const Color(0xFF1F212C), fontSize: 24, fontWeight: FontWeight.w600)) 
-                          : null,
-                    ),
-                    Positioned(
-                      right: 0,
-                      bottom: 2,
-                      child: Container(
-                        width: 14,
-                        height: 14,
-                        decoration: BoxDecoration(color: const Color(0xFF4ADE80), shape: BoxShape.circle, border: Border.all(color: Colors.white, width: 2.5)),
-                      ),
+                    Text(
+                      name, 
+                      style: GoogleFonts.outfit(
+                        fontSize: 15, 
+                        fontWeight: FontWeight.w700, 
+                        color: const Color(0xFF0F172A)
+                      )
                     ),
                   ],
                 ),
-                const SizedBox(width: 16),
-                Expanded(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    mainAxisSize: MainAxisSize.min,
-                    children: [
-                      Text(name, style: GoogleFonts.outfit(fontSize: 18, fontWeight: FontWeight.w600, color: const Color(0xFF1E212C))),
-                      const SizedBox(height: 4),
-                      Row(
-                        children: [
-                          const Icon(Icons.star, color: Colors.amber, size: 16),
-                          const SizedBox(width: 4),
-                          Text(_averageRating > 0 ? _averageRating.toStringAsFixed(1) : 'New', style: GoogleFonts.outfit(fontSize: 13, fontWeight: FontWeight.w600, color: const Color(0xFF1E293B))),
-                          const SizedBox(width: 4),
-                          Text(_reviewCount > 0 ? '($_reviewCount reviews)' : '(No reviews)', style: GoogleFonts.outfit(fontSize: 13, color: Colors.grey.shade400)),
-                        ],
-                      ),
-                    ],
-                  ),
-                ),
-                _actionButton(Icons.chat_bubble_rounded, onTap: () {
+              ),
+              const SizedBox(width: 8),
+              // Compact Chat Button
+              GestureDetector(
+                onTap: () {
                   Navigator.push(
                     context,
                     MaterialPageRoute(
@@ -757,26 +876,67 @@ class _ServiceDetailsScreenState extends State<ServiceDetailsScreen> {
                       ),
                     ),
                   );
-                }),
-              ],
-            ),
+                },
+                child: Container(
+                  padding: const EdgeInsets.all(8),
+                  decoration: BoxDecoration(
+                    color: const Color(0xFFF1F5F9),
+                    borderRadius: BorderRadius.circular(10),
+                  ),
+                  child: const Icon(Icons.chat_bubble_outline_rounded, color: Color(0xFFFF6B00), size: 18),
+                ),
+              ),
+              const SizedBox(width: 8),
+              // Compact Call Button
+              GestureDetector(
+                onTap: () {
+                  if (phone.isNotEmpty) {
+                    ScaffoldMessenger.of(context).showSnackBar(
+                      SnackBar(content: Text('Calling $name ($phone)...'))
+                    );
+                  } else {
+                    ScaffoldMessenger.of(context).showSnackBar(
+                      const SnackBar(content: Text('Phone number not available'))
+                    );
+                  }
+                },
+                child: Container(
+                  padding: const EdgeInsets.all(8),
+                  decoration: BoxDecoration(
+                    color: const Color(0xFFF1F5F9),
+                    borderRadius: BorderRadius.circular(10),
+                  ),
+                  child: const Icon(Icons.phone_outlined, color: Color(0xFFFF6B00), size: 18),
+                ),
+              ),
+            ],
           ),
-        ),
-      ],
-    );
-  }
-
-  Widget _actionButton(IconData icon, {VoidCallback? onTap}) {
-    return GestureDetector(
-      onTap: onTap,
-      child: Container(
-        width: 48,
-        height: 48,
-        decoration: const BoxDecoration(color: Color(0xFFF1F5F9), shape: BoxShape.circle),
-        child: Icon(icon, color: const Color(0xFF1E212C), size: 20),
+          const SizedBox(height: 12),
+          Row(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              const Padding(
+                padding: EdgeInsets.only(top: 2),
+                child: Icon(Icons.location_on_rounded, color: Color(0xFFFF6B00), size: 14),
+              ),
+              const SizedBox(width: 6),
+              Expanded(
+                child: Text(
+                  address,
+                  style: GoogleFonts.outfit(
+                    fontSize: 12,
+                    color: const Color(0xFF64748B),
+                    height: 1.4,
+                  ),
+                ),
+              ),
+            ],
+          ),
+        ],
       ),
     );
   }
+
 
   Widget _buildDetailItem(IconData icon, String text) {
     return Padding(
@@ -796,10 +956,51 @@ class _ServiceDetailsScreenState extends State<ServiceDetailsScreen> {
       padding: const EdgeInsets.fromLTRB(24, 16, 24, 32), 
       decoration: BoxDecoration(
         color: Colors.white,
-        boxShadow: [BoxShadow(color: Colors.black.withValues(alpha: 0.05), blurRadius: 20, offset: const Offset(0, -5))],
+        border: Border(top: BorderSide(color: Colors.black.withValues(alpha: 0.05), width: 1)),
+        boxShadow: [BoxShadow(color: Colors.black.withValues(alpha: 0.03), blurRadius: 20, offset: const Offset(0, -10))],
       ),
       child: Row(
         children: [
+          // Price Section
+          Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(
+                'Starting from', 
+                style: GoogleFonts.outfit(
+                  fontSize: 12, 
+                  color: const Color(0xFF64748B),
+                  fontWeight: FontWeight.w500,
+                )
+              ),
+              const SizedBox(height: 2),
+              RichText(
+                text: TextSpan(
+                  children: [
+                    TextSpan(
+                      text: 'RM$price', 
+                      style: GoogleFonts.outfit(
+                        fontSize: 22, 
+                        fontWeight: FontWeight.w700, 
+                        color: const Color(0xFF0F172A)
+                      )
+                    ),
+                    if (widget.provider['priceType'] != 'one-time')
+                      TextSpan(
+                        text: '/hr', 
+                        style: GoogleFonts.outfit(
+                          fontSize: 14, 
+                          fontWeight: FontWeight.w500, 
+                          color: const Color(0xFF64748B)
+                        )
+                      ),
+                  ],
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(width: 24),
           // Book Now Button
           Expanded(
             child: SizedBox(
@@ -820,10 +1021,18 @@ class _ServiceDetailsScreenState extends State<ServiceDetailsScreen> {
                 style: ElevatedButton.styleFrom(
                   backgroundColor: const Color(0xFFFF6B00),
                   foregroundColor: Colors.white,
-                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
                   elevation: 0,
+                  shadowColor: const Color(0xFFFF6B00).withValues(alpha: 0.3),
                 ),
-                child: Text('Book Now', style: GoogleFonts.outfit(fontSize: 16, fontWeight: FontWeight.w600)),
+                child: Text(
+                  'Book Now', 
+                  style: GoogleFonts.outfit(
+                    fontSize: 16, 
+                    fontWeight: FontWeight.w700,
+                    letterSpacing: 0.5
+                  )
+                ),
               ),
             ),
           ),

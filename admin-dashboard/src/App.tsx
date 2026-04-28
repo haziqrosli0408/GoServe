@@ -156,6 +156,23 @@ interface Booking {
   selectedAddOns?: { name: string; price: string | number }[];
 }
 
+interface Report {
+  id: string;
+  orderId: string;
+  bookingId: string;
+  serviceName: string;
+  customerId: string;
+  customerCustomId?: string;
+  customerName: string;
+  customerProfileUrl?: string;
+  providerId: string;
+  providerCustomId?: string;
+  providerName: string;
+  issue: string;
+  status: 'pending' | 'resolved';
+  timestamp: any;
+}
+
 interface VerificationRequest {
   id: string;
   name: string;
@@ -179,6 +196,7 @@ function App() {
   const [reviews, setReviews] = useState<Review[]>([]);
   const [bookings, setBookings] = useState<Booking[]>([]);
   const [verifications, setVerifications] = useState<VerificationRequest[]>([]);
+  const [reports, setReports] = useState<Report[]>([]);
 
   const users = useMemo(() => {
     const userMap = new Map<string, AppUser>();
@@ -233,8 +251,11 @@ function App() {
         .map(d => ({ id: d.id, ...d.data() } as any))
       );
     });
+    const rptsUnsub = onSnapshot(query(collection(db, 'reports'), orderBy('timestamp', 'desc')), (s) => {
+      setReports(s.docs.map(d => ({ id: d.id, ...d.data() } as any)));
+    });
 
-    return () => { uUnsub(); pUnsub(); sUnsub(); rUnsub(); bUnsub(); vUnsub(); };
+    return () => { uUnsub(); pUnsub(); sUnsub(); rUnsub(); bUnsub(); vUnsub(); rptsUnsub(); };
   }, [user]);
 
   if (loading) return (
@@ -262,6 +283,7 @@ function App() {
           <NavItem icon={<Briefcase size={20} />} label="Services" active={activeTab === 'services'} collapsed={!sidebarOpen} onClick={() => setActiveTab('services')} />
           <NavItem icon={<Calendar size={20} />} label="Bookings" active={activeTab === 'bookings'} collapsed={!sidebarOpen} onClick={() => setActiveTab('bookings')} />
           <NavItem icon={<Star size={20} />} label="Reviews" active={activeTab === 'reviews'} collapsed={!sidebarOpen} onClick={() => setActiveTab('reviews')} />
+          <NavItem icon={<FileText size={20} />} label="Reports" active={activeTab === 'reports'} collapsed={!sidebarOpen} onClick={() => setActiveTab('reports')} />
         </nav>
 
         <div className="p-4 border-t border-gray-100 mt-auto">
@@ -303,7 +325,7 @@ function App() {
           <TabContent
             activeTab={activeTab}
             setActiveTab={setActiveTab}
-            data={{ users, services, reviews, bookings, verifications }}
+            data={{ users, services, reviews, bookings, verifications, reports }}
           />
         </section>
       </main>
@@ -334,6 +356,7 @@ function TabContent({ activeTab, data, setActiveTab }: any) {
     case 'services': return <ServicesPage services={data.services} users={data.users} bookings={data.bookings} reviews={data.reviews} />;
     case 'bookings': return <BookingsPage bookings={data.bookings} users={data.users} services={data.services} />;
     case 'verification': return <VerificationPage requests={data.verifications} />;
+    case 'reports': return <ReportsPage reports={data.reports} />;
     default: return <DashboardPage data={data} />;
   }
 }
@@ -2202,6 +2225,146 @@ function ServicesPage({ services, users, bookings, reviews }: { services: Servic
           </div>
         </div>
       )}
+    </div>
+  );
+}
+
+function ReportsPage({ reports }: { reports: Report[] }) {
+  const [loadingId, setLoadingId] = useState<string | null>(null);
+
+  const handleResolve = async (id: string) => {
+    setLoadingId(id);
+    try {
+      await updateDoc(doc(db, 'reports', id), { status: 'resolved' });
+    } catch (e: any) {
+      alert(`Failed to resolve: ${e.message}`);
+    } finally {
+      setLoadingId(null);
+    }
+  };
+
+  const handleDelete = async (id: string) => {
+    if (!window.confirm('Are you sure you want to delete this report?')) return;
+    try {
+      await updateDoc(doc(db, 'reports', id), { status: 'deleted' }); // or deleteDoc
+      // Actually let's just delete it
+      const { deleteDoc } = await import('firebase/firestore');
+      await deleteDoc(doc(db, 'reports', id));
+    } catch (e: any) {
+      alert(`Failed to delete: ${e.message}`);
+    }
+  };
+
+  return (
+    <div className="space-y-6">
+      <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
+        <div>
+          <h1 className="text-lg font-bold text-gray-900 uppercase">Customer Reports</h1>
+          <p className="text-gray-500 text-sm font-medium">Tracking and resolving platform issues ({reports.length})</p>
+        </div>
+      </div>
+
+      <div className="grid grid-cols-1 gap-4">
+        {reports.length === 0 ? (
+          <div className="py-20 bg-white rounded-xl border border-dashed border-gray-200 flex flex-col items-center justify-center text-gray-400">
+            <Check size={48} className="mb-4 opacity-20" />
+            <p className="font-medium">No pending reports</p>
+            <p className="text-xs">Great job! All customer issues are cleared.</p>
+          </div>
+        ) : reports.map((rpt) => (
+              <div key={rpt.id} className="bg-white rounded-xl border border-gray-100 shadow-sm overflow-hidden p-6">
+                <div className="flex flex-col md:flex-row justify-between gap-8">
+                  <div className="flex-1 space-y-5">
+                    <div className="flex items-start justify-between">
+                      <div className="flex items-center gap-4">
+                        <div className="relative">
+                          {rpt.customerProfileUrl ? (
+                            <img src={rpt.customerProfileUrl} alt={rpt.customerName} className="w-12 h-12 rounded-full object-cover border-2 border-orange-100 shadow-sm" />
+                          ) : (
+                            <div className="w-12 h-12 bg-orange-100 text-orange-600 rounded-full flex items-center justify-center font-black text-lg">
+                              {rpt.customerName?.[0]?.toUpperCase()}
+                            </div>
+                          )}
+                          <div className="absolute -bottom-1 -right-1 w-5 h-5 bg-white rounded-full flex items-center justify-center shadow-sm">
+                            <Users size={12} className="text-orange-500" />
+                          </div>
+                        </div>
+                        <div>
+                          <h3 className="font-black text-gray-900 leading-tight text-lg">{rpt.customerName}</h3>
+                          <p className="text-[10px] text-gray-400 font-bold uppercase tracking-widest mt-0.5">ID: {rpt.customerCustomId || 'CU-PENDING'}</p>
+                        </div>
+                      </div>
+                      <span className={`px-3 py-1.5 rounded-full text-[10px] font-black border uppercase tracking-widest ${
+                        rpt.status === 'resolved' 
+                        ? 'bg-emerald-50 text-emerald-600 border-emerald-100' 
+                        : 'bg-amber-50 text-amber-600 border-amber-100 animate-pulse'
+                      }`}>
+                        {rpt.status}
+                      </span>
+                    </div>
+
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                      <div className="p-3 bg-gray-50 rounded-lg border border-gray-100">
+                        <p className="text-[9px] font-black text-gray-400 uppercase tracking-tighter mb-1">Booking Info</p>
+                        <p className="text-sm font-black text-gray-800">{rpt.serviceName}</p>
+                        <p className="text-[11px] font-bold text-orange-600 uppercase mt-0.5">Order ID: {rpt.orderId}</p>
+                      </div>
+                      <div className="p-3 bg-gray-50 rounded-lg border border-gray-100">
+                        <p className="text-[9px] font-black text-gray-400 uppercase tracking-tighter mb-1">Assigned Provider</p>
+                        <p className="text-sm font-black text-gray-800">{rpt.providerName}</p>
+                        <p className="text-[11px] font-bold text-gray-500 uppercase mt-0.5">ID: {rpt.providerCustomId || 'PR-PENDING'}</p>
+                      </div>
+                    </div>
+
+                    <div className="bg-gray-50/50 p-5 rounded-xl border border-gray-100 relative">
+                      <div className="absolute top-4 right-4">
+                        <FileText size={16} className="text-gray-200" />
+                      </div>
+                      <p className="text-[10px] font-black text-gray-400 uppercase tracking-widest mb-3">Report Details</p>
+                      <p className="text-sm text-gray-700 leading-relaxed font-medium italic">"{rpt.issue}"</p>
+                    </div>
+
+                    <div className="flex items-center gap-6 text-[10px] font-bold text-gray-400 uppercase tracking-widest pt-2">
+                      <div className="flex items-center gap-1.5">
+                        <Clock size={14} className="text-gray-300" />
+                        {rpt.timestamp?.seconds ? new Date(rpt.timestamp.seconds * 1000).toLocaleString() : 'Just now'}
+                      </div>
+                      <div className="flex items-center gap-1.5">
+                        <Bookmark size={14} className="text-gray-300" />
+                        Report ID: {rpt.id.substring(0, 8)}
+                      </div>
+                    </div>
+                  </div>
+
+                  <div className="flex md:flex-col justify-end gap-3 shrink-0 pt-2">
+                {rpt.status !== 'resolved' && (
+                  <button
+                    onClick={() => handleResolve(rpt.id)}
+                    disabled={loadingId === rpt.id}
+                    className="px-6 py-2.5 bg-emerald-500 text-white rounded-lg font-bold text-xs shadow-lg shadow-emerald-100 hover:bg-emerald-600 transition-all flex items-center justify-center gap-2"
+                  >
+                    {loadingId === rpt.id ? (
+                      <div className="animate-spin h-4 w-4 border-2 border-white border-t-transparent rounded-full" />
+                    ) : (
+                      <>
+                        <Check size={16} />
+                        Mark Resolved
+                      </>
+                    )}
+                  </button>
+                )}
+                <button
+                  onClick={() => handleDelete(rpt.id)}
+                  className="px-6 py-2.5 bg-white border border-red-100 text-red-500 rounded-lg font-bold text-xs hover:bg-red-50 transition-all flex items-center justify-center gap-2"
+                >
+                  <Trash2 size={16} />
+                  Delete
+                </button>
+              </div>
+            </div>
+          </div>
+        ))}
+      </div>
     </div>
   );
 }

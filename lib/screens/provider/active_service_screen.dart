@@ -532,30 +532,31 @@ class _ActiveServiceScreenState extends State<ActiveServiceScreen> {
     return Container(
       padding: const EdgeInsets.all(24),
       decoration: BoxDecoration(
-        color: const Color(0xFF1E293B),
+        color: Colors.white,
         borderRadius: BorderRadius.circular(24),
+        border: Border.all(color: Colors.grey.shade200),
       ),
       child: Column(
         children: [
-          _priceRow('Total Price', 'RM ${totalPrice.toStringAsFixed(2)}', Colors.white70),
+          _priceRow('Total Price', 'RM ${totalPrice.toStringAsFixed(2)}', const Color(0xFF64748B), valueColor: const Color(0xFF1E293B)),
           const SizedBox(height: 8),
-          _priceRow('Platform Fee (15%)', '- RM ${platformFee.toStringAsFixed(2)}', Colors.white70),
+          _priceRow('Platform Fee (15%)', '- RM ${platformFee.toStringAsFixed(2)}', const Color(0xFF64748B), valueColor: Colors.red.shade500),
           Padding(
             padding: const EdgeInsets.symmetric(vertical: 12),
-            child: Divider(color: Colors.white.withValues(alpha: 0.1)),
+            child: Divider(color: Colors.grey.shade200),
           ),
-          _priceRow('Your Earnings', 'RM ${netEarnings.toStringAsFixed(2)}', Colors.white, isBold: true),
+          _priceRow('Your Earnings', 'RM ${netEarnings.toStringAsFixed(2)}', const Color(0xFF1E293B), valueColor: const Color(0xFF4F46E5), isBold: true),
         ],
       ),
     );
   }
 
-  Widget _priceRow(String label, String value, Color color, {bool isBold = false}) {
+  Widget _priceRow(String label, String value, Color labelColor, {Color? valueColor, bool isBold = false}) {
     return Row(
       mainAxisAlignment: MainAxisAlignment.spaceBetween,
       children: [
-        Text(label, style: GoogleFonts.outfit(color: color, fontSize: 14)),
-        Text(value, style: GoogleFonts.outfit(color: color, fontSize: 16, fontWeight: isBold ? FontWeight.bold : FontWeight.normal)),
+        Text(label, style: GoogleFonts.outfit(color: labelColor, fontSize: 14)),
+        Text(value, style: GoogleFonts.outfit(color: valueColor ?? labelColor, fontSize: 16, fontWeight: isBold ? FontWeight.bold : FontWeight.normal)),
       ],
     );
   }

@@ -11,6 +11,11 @@ class CustomerHome extends StatefulWidget {
   final int initialIndex;
   const CustomerHome({super.key, this.initialIndex = 0});
 
+  static void setIndex(BuildContext context, int index) {
+    final state = context.findAncestorStateOfType<_CustomerHomeState>();
+    state?.updateIndex(index);
+  }
+
   @override
   State<CustomerHome> createState() => _CustomerHomeState();
 }
@@ -19,6 +24,12 @@ class _CustomerHomeState extends State<CustomerHome>
     with SingleTickerProviderStateMixin, WidgetsBindingObserver {
   late int _index;
   bool _showStatusBarCover = false;
+
+  void updateIndex(int index) {
+    setState(() {
+      _index = index;
+    });
+  }
 
   @override
   void initState() {

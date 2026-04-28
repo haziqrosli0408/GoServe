@@ -2,17 +2,21 @@ import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
+import '../dashboards/customer_home.dart';
 import 'search_page.dart';
 import 'service_details.dart';
 import 'categories_screen.dart';
 import 'subcategory_providers_screen.dart';
 import 'category_detail_screen.dart';
+import 'top_rated_screen.dart';
 import '../misc/notifications_screen.dart';
 import '../../utils/categories_data.dart';
 import 'package:animated_text_kit/animated_text_kit.dart';
 import 'dart:async';
 import 'package:geolocator/geolocator.dart';
 import 'package:geocoding/geocoding.dart';
+import '../../services/ai_recommendation_service.dart';
+import '../../widgets/skeleton_box.dart';
 
 class HomeScreen extends StatefulWidget {
   const HomeScreen({super.key});
@@ -27,13 +31,15 @@ class _HomeScreenState extends State<HomeScreen> {
   final TextEditingController _searchController = TextEditingController();
 
   int _currentBannerPage = 0;
-  // Use a large initial page for infinite scroll
-  final PageController _bannerController = PageController(viewportFraction: 0.91, initialPage: 300);
+  // PageController for non-infinite, left-aligned banner
+  final PageController _bannerController = PageController(viewportFraction: 0.85, initialPage: 0);
   Timer? _bannerTimer;
 
   Map<String, dynamic>? _userData;
   List<Map<String, dynamic>> _servicesList = [];
+  List<Map<String, dynamic>> _aiRecommendedServices = [];
   bool _isLoadingServices = true;
+  bool _isLoadingRecommendations = false;
   String _currentLocation = "Detecting...";
   final Set<String> _savedServiceIds = {};
 
@@ -44,20 +50,8 @@ class _HomeScreenState extends State<HomeScreen> {
   @override
   void initState() {
     super.initState();
-    _fetchUserData();
-    _fetchServices();
-    _determinePosition();
-
-    _bannerTimer = Timer.periodic(const Duration(seconds: 4), (Timer timer) {
-      if (_bannerController.hasClients) {
-        int nextPage = _bannerController.page!.round() + 1;
-        _bannerController.animateToPage(
-          nextPage,
-          duration: const Duration(milliseconds: 600),
-          curve: Curves.easeInOut,
-        );
-      }
-    });
+    _loadData();
+    // Auto-scroll removed per user request
   }
 
   @override
@@ -66,6 +60,41 @@ class _HomeScreenState extends State<HomeScreen> {
     _bannerController.dispose();
     _searchController.dispose();
     super.dispose();
+  }
+
+  Future<void> _loadData() async {
+    setState(() => _isLoadingServices = true);
+    await Future.wait([
+      _fetchUserData(),
+      _fetchServices(),
+      _determinePosition(),
+    ]);
+    if (mounted) setState(() => _isLoadingServices = false);
+    _generateAIRecommendations();
+  }
+
+  Future<void> _generateAIRecommendations() async {
+    if (_userData == null || _servicesList.isEmpty) return;
+    
+    final List<dynamic> userPreferences = _userData!['services'] ?? [];
+    if (userPreferences.isEmpty) return;
+
+    if (mounted) setState(() => _isLoadingRecommendations = true);
+
+    final prefsList = userPreferences.map((e) => e.toString()).toList();
+    
+    final aiRecs = await AiRecommendationService.getRecommendations(
+      userPreferences: prefsList,
+      userLocation: _currentLocation,
+      allServices: _servicesList,
+    );
+
+    if (mounted) {
+      setState(() {
+        _aiRecommendedServices = aiRecs;
+        _isLoadingRecommendations = false;
+      });
+    }
   }
 
   Future<void> _determinePosition() async {
@@ -172,11 +201,10 @@ class _HomeScreenState extends State<HomeScreen> {
       if (mounted) {
         setState(() {
           _servicesList = snapshot.docs.map((doc) => doc.data()).toList();
-          _isLoadingServices = false;
         });
       }
     } catch (e) {
-      if (mounted) setState(() => _isLoadingServices = false);
+      debugPrint("Error fetching services: $e");
     }
   }
 
@@ -213,7 +241,19 @@ class _HomeScreenState extends State<HomeScreen> {
     }).toList();
   }
 
+  List<Map<String, dynamic>> get _topRatedServices {
+    final list = List<Map<String, dynamic>>.from(_servicesList);
+    list.sort((a, b) {
+      final rA = (a['averageRating'] ?? 0).toDouble();
+      final rB = (b['averageRating'] ?? 0).toDouble();
+      return rB.compareTo(rA); // Highest rating first
+    });
+    return list;
+  }
+
   List<Map<String, dynamic>> get recommendedServices {
+    if (_aiRecommendedServices.isNotEmpty) return _aiRecommendedServices;
+
     if (_userData == null || _userData!['services'] == null) return [];
     final List<dynamic> userPreferences = _userData!['services'] ?? [];
     
@@ -260,8 +300,6 @@ class _HomeScreenState extends State<HomeScreen> {
               child: Column(
                 children: [
                   _buildHeader(),
-                  const SizedBox(height: 12),
-                  _buildBanner(),
                   const SizedBox(height: 16),
                 ],
               ),
@@ -282,12 +320,21 @@ class _HomeScreenState extends State<HomeScreen> {
               );
             }),
             const SizedBox(height: 16),
-            _buildCategoriesGrid(),
-            const SizedBox(height: 8),
+            _buildCategoriesRow(),
+            const SizedBox(height: 32),
+            _buildBanner(),
+            const SizedBox(height: 24),
             _buildRecommendationSection(),
+            const SizedBox(height: 24),
+            _buildSectionHeader('Top Rated', 'See All', () {
+              Navigator.push(
+                context,
+                MaterialPageRoute(
+                  builder: (context) => const TopRatedScreen(),
+                ),
+              );
+            }),
             const SizedBox(height: 8),
-            _buildSectionHeader('Top Rated', 'See All', () {}),
-            const SizedBox(height: 16),
             _buildServicesList(),
             const SizedBox(height: 24),
           ],
@@ -298,13 +345,14 @@ class _HomeScreenState extends State<HomeScreen> {
 
   Widget _buildHeader() {
     String address = _currentLocation;
-    
-    // If not detected yet or user has a stored profile address, we could prioritize that.
-    // But per user request, we focus on real location.
     if (_currentLocation == "Detecting..." && _userData != null) {
       address = _userData!['address'] ?? 'Detecting...';
       if (address.isEmpty) address = 'Detecting...';
     }
+
+    String name = _userData?['name'] ?? _userData?['fullName'] ?? 'User';
+    String firstName = name.split(' ')[0];
+    String profileImageUrl = _userData?['profileUrl'] ?? _userData?['profileImageUrl'] ?? '';
 
     return SizedBox(
       width: double.infinity,
@@ -317,35 +365,77 @@ class _HomeScreenState extends State<HomeScreen> {
               mainAxisAlignment: MainAxisAlignment.spaceBetween,
               children: [
                 Expanded(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
+                  child: Row(
                     children: [
-                      Text(
-                        'Location',
-                        style: GoogleFonts.outfit(
-                          color: Colors.black,
-                          fontWeight: FontWeight.w300,
-                          fontSize: 14,
+                      // User Profile Picture
+                      GestureDetector(
+                        onTap: () {
+                          CustomerHome.setIndex(context, 3);
+                        },
+                        child: Container(
+                          decoration: BoxDecoration(
+                            shape: BoxShape.circle,
+                            border: Border.all(color: Colors.white, width: 2),
+                            boxShadow: [
+                              BoxShadow(
+                                color: Colors.black.withValues(alpha: 0.1),
+                                blurRadius: 8,
+                                offset: const Offset(0, 2),
+                              ),
+                            ],
+                          ),
+                          child: CircleAvatar(
+                            radius: 22,
+                            backgroundColor: Colors.white.withValues(alpha: 0.8),
+                            backgroundImage: profileImageUrl.isNotEmpty ? NetworkImage(profileImageUrl) : null,
+                            child: profileImageUrl.isEmpty 
+                              ? Text(
+                                  firstName.isNotEmpty ? firstName[0].toUpperCase() : 'U',
+                                  style: GoogleFonts.outfit(
+                                    color: const Color(0xFFFF6B00),
+                                    fontWeight: FontWeight.bold,
+                                  ),
+                                ) 
+                              : null,
+                          ),
                         ),
                       ),
-                      const SizedBox(height: 4),
-                      Row(
-                        children: [
-                          const Icon(Icons.location_on, color: Color(0xFFFF6B00), size: 18),
-                          const SizedBox(width: 4),
-                          Expanded(
-                            child: Text(
-                              address,
+                      const SizedBox(width: 12),
+                      
+                      // Greeting and Location
+                      Expanded(
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Text(
+                              'Hi, $firstName',
                               style: GoogleFonts.outfit(
                                 color: Colors.black,
+                                fontWeight: FontWeight.w400, // Unbolded
                                 fontSize: 16,
-                                fontWeight: FontWeight.w600,
                               ),
-                              maxLines: 1,
-                              overflow: TextOverflow.ellipsis,
                             ),
-                          ),
-                        ],
+                            const SizedBox(height: 2),
+                            Row(
+                              children: [
+                                const Icon(Icons.location_on, color: Color(0xFFFF6B00), size: 16),
+                                const SizedBox(width: 4),
+                                Expanded(
+                                  child: Text(
+                                    address,
+                                    style: GoogleFonts.outfit(
+                                      color: Colors.black, // Darker (solid)
+                                      fontSize: 16,
+                                      fontWeight: FontWeight.w600,
+                                    ),
+                                    maxLines: 1,
+                                    overflow: TextOverflow.ellipsis,
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ],
+                        ),
                       ),
                     ],
                   ),
@@ -438,62 +528,27 @@ class _HomeScreenState extends State<HomeScreen> {
   Widget _buildBanner() {
     return Column(
       children: [
-        SizedBox(
-          height: 210, // Increased height to prevent bottom overflow
-          width: double.infinity,
-          child: PageView.builder(
-            controller: _bannerController,
-            clipBehavior: Clip.none,
-            onPageChanged: (int page) {
-              setState(() {
-                _currentBannerPage = page % 3;
-              });
-            },
-            itemCount: 999, // Infinite scroll
-            itemBuilder: (context, index) {
-              final realIndex = index % 3;
-              return AnimatedBuilder(
-                animation: _bannerController,
-                builder: (context, child) {
-                  double value = 1.0;
-                  if (_bannerController.position.hasContentDimensions) {
-                    value = _bannerController.page! - index;
-                    value = (1 - (value.abs() * 0.04)).clamp(0.0, 1.0);
-                  } else {
-                    // Initial load fallback: index 300 is the first displayed card
-                    value = index == 300 ? 1.0 : 0.92;
-                  }
-
-                  return Center(
-                    child: Transform.scale(
-                      scale: value,
-                      child: Padding(
-                        padding: const EdgeInsets.symmetric(horizontal: 0), // Removed gap for perfect alignment
-                        child: _getBannerCardByIndex(realIndex),
-                      ),
-                    ),
-                  );
-                },
-              );
-            },
-          ),
-        ),
-        const SizedBox(height: 12),
-        Row(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: List.generate(
-            3,
-            (index) => AnimatedContainer(
-              duration: const Duration(milliseconds: 300),
-              margin: const EdgeInsets.symmetric(horizontal: 4),
-              width: _currentBannerPage == index ? 24 : 8,
-              height: 8,
-              decoration: BoxDecoration(
-                color: _currentBannerPage == index
-                    ? const Color(0xFFFF6B00)
-                    : Colors.grey.shade300,
-                borderRadius: BorderRadius.circular(4),
-              ),
+        Padding(
+          padding: const EdgeInsets.only(left: 18), // Aligns first card with categories
+          child: SizedBox(
+            height: 165,
+            width: double.infinity,
+            child: PageView.builder(
+              controller: _bannerController,
+              clipBehavior: Clip.none,
+              padEnds: false, // Align first card to the left of the container
+              onPageChanged: (int page) {
+                setState(() {
+                  _currentBannerPage = page;
+                });
+              },
+              itemCount: 3,
+              itemBuilder: (context, index) {
+                return Padding(
+                  padding: const EdgeInsets.only(right: 12), // Consistent gap and size
+                  child: _getBannerCardByIndex(index),
+                );
+              },
             ),
           ),
         ),
@@ -504,110 +559,94 @@ class _HomeScreenState extends State<HomeScreen> {
   Widget _getBannerCardByIndex(int index) {
     if (index == 0) {
       return _buildBannerCard(
-        bgColors: const [Color(0xFF1A1A2E), Color(0xFF16213E)],
-        glowColor: const Color(0xFFFF6B00),
+        bgColor: const Color(0xFFFFD700), // Yellow
+        textColor: const Color(0xFF1E293B),
+        glowColor: const Color(0xFFB8860B),
         badgeText: '✦ Top Rated Pros',
-        title: 'Book your\nservice now!',
+        title: 'Book your service now!',
         btnLabel: 'Book Now →',
-        btnColors: const [Color(0xFFFF8C42), Color(0xFFFF6B00)],
-        imageUrl: 'https://images.unsplash.com/photo-1621905251189-08b45d6a269e?q=80&w=800&auto=format&fit=crop',
+        btnColors: const [Colors.white, Color(0xFFF1F5F9)],
+        btnTextColor: const Color(0xFF1E293B),
+        assetPath: 'assets/images/firstpromotion.png',
       );
     } else if (index == 1) {
       return _buildBannerCard(
-        bgColors: const [Color(0xFF0F3460), Color(0xFF1A5276)],
-        glowColor: const Color(0xFF00B4DB),
+        bgColor: const Color(0xFFFF6B00), // Orange
+        textColor: Colors.white,
+        glowColor: const Color(0xFFFFD700),
         badgeText: '🕐 Quick & Easy',
-        title: 'Find trusted\npros near you!',
+        title: 'Find trusted pros near you!',
         btnLabel: 'Explore →',
-        btnColors: const [Color(0xFF0083B0), Color(0xFF00B4DB)],
-        imageUrl: 'https://images.unsplash.com/photo-1581578731548-c64695cc6952?q=80&w=800&auto=format&fit=crop',
+        btnColors: const [Colors.white, Color(0xFFF1F5F9)],
+        btnTextColor: const Color(0xFFFF6B00),
+        assetPath: 'assets/images/secondpromotion.tiff',
+        imageScale: 1.4, // Even bigger to match user request
       );
     } else {
       return _buildBannerCard(
-        bgColors: const [Color(0xFF2D1B69), Color(0xFF11998E)],
-        glowColor: const Color(0xFF11998E),
+        bgColor: const Color(0xFF64748B), // Grey
+        textColor: Colors.white,
+        glowColor: const Color(0xFF94A3B8),
         badgeText: '🎁 Exclusive Offer',
-        title: 'Refer a friend,\nearn rewards!',
+        title: 'Refer a friend, earn rewards!',
         btnLabel: 'Share Now →',
-        btnColors: const [Color(0xFF38EF7D), Color(0xFF11998E)],
-        imageUrl: 'https://images.unsplash.com/photo-1522071820081-009f0129c71c?q=80&w=800&auto=format&fit=crop',
+        btnColors: const [Colors.white, Color(0xFFF1F5F9)],
+        btnTextColor: const Color(0xFF64748B),
+        assetPath: 'assets/images/thirdpromotion.png',
+        imageScale: 0.9, // Slightly smaller for better balance
       );
     }
   }
 
   Widget _buildBannerCard({
-    required List<Color> bgColors,
+    required Color bgColor,
+    required Color textColor,
     required Color glowColor,
     required String badgeText,
     required String title,
     required String btnLabel,
     required List<Color> btnColors,
-    required String imageUrl,
+    Color btnTextColor = Colors.white,
+    required String assetPath,
+    double imageScale = 1.0,
   }) {
     return Container(
       clipBehavior: Clip.antiAlias,
       decoration: BoxDecoration(
-        borderRadius: BorderRadius.circular(24),
-        gradient: LinearGradient(
-          colors: bgColors,
-          begin: Alignment.topLeft,
-          end: Alignment.bottomRight,
-        ),
+        color: bgColor,
+        borderRadius: BorderRadius.circular(16), // Matched with Card2
       ),
       child: Stack(
         children: [
-          // Decorative circle glows
-          Positioned(
-            left: -30,
-            top: -40,
-            child: Container(
-              width: 160,
-              height: 160,
-              decoration: BoxDecoration(
-                shape: BoxShape.circle,
-                color: glowColor.withValues(alpha: 0.12),
-              ),
-            ),
-          ),
-          Positioned(
-            left: 10,
-            bottom: -20,
-            child: Container(
-              width: 80,
-              height: 80,
-              decoration: BoxDecoration(
-                shape: BoxShape.circle,
-                color: glowColor.withValues(alpha: 0.07),
-              ),
-            ),
-          ),
-
           // Content Row
           Row(
+            crossAxisAlignment: CrossAxisAlignment.end,
             children: [
               // Left: Text content
               Expanded(
-                flex: 3,
+                flex: 4,
                 child: Padding(
-                  padding: const EdgeInsets.fromLTRB(22, 18, 10, 18),
+                  padding: const EdgeInsets.fromLTRB(18, 10, 8, 10), // Reduced vertical padding
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     mainAxisAlignment: MainAxisAlignment.spaceBetween,
                     children: [
                       // Badge
                       Container(
-                        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
                         decoration: BoxDecoration(
-                          color: glowColor.withValues(alpha: 0.2),
+                          color: textColor.withValues(alpha: 0.1),
                           borderRadius: BorderRadius.circular(20),
-                          border: Border.all(color: glowColor.withValues(alpha: 0.4)),
+                          border: Border.all(color: textColor.withValues(alpha: 0.2)),
                         ),
                         child: Text(
                           badgeText,
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
                           style: GoogleFonts.outfit(
-                            fontSize: 10,
+                            fontSize: 9,
                             fontWeight: FontWeight.w600,
-                            color: glowColor,
+                            color: textColor,
                           ),
                         ),
                       ),
@@ -615,11 +654,13 @@ class _HomeScreenState extends State<HomeScreen> {
                       // Title
                       Text(
                         title,
+                        maxLines: 2,
+                        overflow: TextOverflow.ellipsis,
                         style: GoogleFonts.outfit(
-                          fontSize: 22,
-                          fontWeight: FontWeight.w600,
-                          color: Colors.white,
-                          height: 1.15,
+                          fontSize: 14,
+                          fontWeight: FontWeight.bold,
+                          color: textColor,
+                          height: 1.1,
                         ),
                       ),
 
@@ -641,7 +682,7 @@ class _HomeScreenState extends State<HomeScreen> {
                           );
                         },
                         child: Container(
-                          padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 10),
+                          padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 6),
                           decoration: BoxDecoration(
                             gradient: LinearGradient(
                               colors: btnColors,
@@ -649,20 +690,13 @@ class _HomeScreenState extends State<HomeScreen> {
                               end: Alignment.bottomRight,
                             ),
                             borderRadius: BorderRadius.circular(30),
-                            boxShadow: [
-                              BoxShadow(
-                                color: glowColor.withValues(alpha: 0.5),
-                                blurRadius: 12,
-                                offset: const Offset(0, 4),
-                              ),
-                            ],
                           ),
                           child: Text(
                             btnLabel,
                             style: GoogleFonts.outfit(
-                              fontWeight: FontWeight.w600,
-                              fontSize: 13,
-                              color: Colors.white,
+                              fontWeight: FontWeight.w700,
+                              fontSize: 10,
+                              color: btnTextColor,
                             ),
                           ),
                         ),
@@ -671,31 +705,22 @@ class _HomeScreenState extends State<HomeScreen> {
                   ),
                 ),
               ),
-
-              // Right: Image with gradient bleed
-              Expanded(
-                flex: 2,
-                child: ClipRRect(
-                  borderRadius: const BorderRadius.only(
-                    topRight: Radius.circular(24),
-                    bottomRight: Radius.circular(24),
-                  ),
-                  child: ShaderMask(
-                    shaderCallback: (rect) => LinearGradient(
-                      begin: Alignment.centerLeft,
-                      end: Alignment.centerRight,
-                      colors: [bgColors.last, Colors.transparent],
-                      stops: const [0, 0.15],
-                    ).createShader(rect),
-                    blendMode: BlendMode.dstOut,
-                    child: Image.network(
-                      imageUrl,
-                      height: double.infinity,
-                      fit: BoxFit.cover,
+              
+              // Right: Image
+              if (assetPath.isNotEmpty)
+                Expanded(
+                  flex: 6, // Increased flex for a much bigger image
+                  child: Transform.scale(
+                    scale: imageScale,
+                    alignment: Alignment.bottomCenter,
+                    child: Image.asset(
+                      assetPath,
+                      fit: BoxFit.fitHeight, // Fills the entire card height
+                      alignment: Alignment.bottomRight,
+                      errorBuilder: (context, error, stackTrace) => const SizedBox(),
                     ),
                   ),
                 ),
-              ),
             ],
           ),
         ],
@@ -703,28 +728,21 @@ class _HomeScreenState extends State<HomeScreen> {
     );
   }
 
-  Widget _buildCategoriesGrid() {
-    return Padding(
-      padding: const EdgeInsets.symmetric(horizontal: 18), // Kept screen gap
-      child: GridView.builder(
-        shrinkWrap: true,
-        physics: const NeverScrollableScrollPhysics(),
-        padding: EdgeInsets.zero,
-        gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
-          crossAxisCount: 3,
-          mainAxisSpacing: 10, // Reduced from 16
-          crossAxisSpacing: 10, // Reduced from 16
-          mainAxisExtent: 115, // Slightly increased to fill the space
-        ),
-        itemCount: 6, // Show only 6 cards
+  Widget _buildCategoriesRow() {
+    return SizedBox(
+      height: 100, // Slightly bigger for tighter gaps
+      child: ListView.builder(
+        scrollDirection: Axis.horizontal,
+        padding: const EdgeInsets.symmetric(horizontal: 18),
+        itemCount: _categories.length,
         itemBuilder: (context, index) {
           final cat = _categories[index];
           final String name = cat['name']?.toString() ?? 'Category';
           final bool isAsset = cat['isAsset'] == true;
           final String assetPath = cat['assetPath']?.toString() ?? '';
           final IconData icon = cat['icon'] as IconData? ?? Icons.category_outlined;
-          final Color bgColor = cat['color'] is Color ? cat['color'] as Color : const Color(0xFFF1F5F9);
-          final Color iconColor = cat['iconColor'] is Color ? cat['iconColor'] as Color : const Color(0xFF475569);
+          final Color bgColor = Colors.grey.shade100; // Slightly darker grey for better contrast
+          final Color iconColor = const Color(0xFF475569);
 
           return GestureDetector(
             onTap: () {
@@ -753,12 +771,12 @@ class _HomeScreenState extends State<HomeScreen> {
               }
             },
             child: Container(
-              width: double.infinity,
-              height: double.infinity,
-              padding: const EdgeInsets.all(12),
+              width: 100, // Slightly bigger for tighter gaps
+              margin: const EdgeInsets.only(right: 8), // Reduced gap
+              padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 10),
               decoration: BoxDecoration(
                 color: bgColor,
-                borderRadius: BorderRadius.circular(14), // Sharper curve
+                borderRadius: BorderRadius.circular(14),
               ),
               child: Column(
                 mainAxisAlignment: MainAxisAlignment.center,
@@ -766,31 +784,31 @@ class _HomeScreenState extends State<HomeScreen> {
                   isAsset
                       ? Image.asset(
                           assetPath,
-                          width: 52, // Increased from 40
-                          height: 52, // Increased from 40
+                          width: 44, // Reduced from 52
+                          height: 44, // Reduced from 52
                           fit: BoxFit.contain,
                           errorBuilder: (context, error, stackTrace) => Icon(
                             icon,
                             color: iconColor,
-                            size: 44, // Increased from 36
+                            size: 36, // Reduced from 44
                           ),
                         )
                       : Icon(
                           icon,
                           color: iconColor,
-                          size: 44, // Increased from 36
+                          size: 36, // Reduced from 44
                         ),
                   const SizedBox(height: 6),
                   Text(
                     name,
                     textAlign: TextAlign.center,
                     style: GoogleFonts.outfit(
-                      fontSize: 11,
+                      fontSize: 10, // Reduced from 11
                       fontWeight: FontWeight.bold,
                       color: const Color(0xFF1E293B),
                       height: 1.1,
                     ),
-                    maxLines: 2, // Allow 2 lines for 3-column grid
+                    maxLines: 2,
                     overflow: TextOverflow.ellipsis,
                   ),
                 ],
@@ -804,6 +822,29 @@ class _HomeScreenState extends State<HomeScreen> {
 
 
   Widget _buildRecommendationSection() {
+    if (_isLoadingRecommendations) {
+      return Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          _buildSectionHeader('Recommendation', '', () {}),
+          const SizedBox(height: 16),
+          SizedBox(
+            height: 280,
+            child: ListView.builder(
+              scrollDirection: Axis.horizontal,
+              padding: const EdgeInsets.symmetric(horizontal: 20),
+              itemCount: 3,
+              itemBuilder: (context, index) => Container(
+                width: 170,
+                margin: const EdgeInsets.only(right: 18),
+                child: const SkeletonBox(width: 170, height: 260, borderRadiusValue: 16),
+              ),
+            ),
+          ),
+        ],
+      );
+    }
+
     final list = recommendedServices.isNotEmpty ? recommendedServices : _servicesList.take(5).toList();
     
     if (list.isEmpty) return const SizedBox.shrink();
@@ -811,10 +852,10 @@ class _HomeScreenState extends State<HomeScreen> {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        _buildSectionHeader('Recommendation', 'See All', () {}),
+        _buildSectionHeader('Recommendation', '', () {}),
         const SizedBox(height: 16),
         SizedBox(
-          height: 280, 
+          height: 290, // Reduced from 310 to match shorter cards
           child: ListView.builder(
             scrollDirection: Axis.horizontal,
             padding: const EdgeInsets.symmetric(horizontal: 20),
@@ -831,7 +872,8 @@ class _HomeScreenState extends State<HomeScreen> {
     String title = s['title'] ?? 'Elite Home Service';
     String providerName = s['providerName'] ?? 'Pro Provider';
     String price = s['price']?.toString() ?? '25';
-    String rating = '4.9';
+    double ratingValue = (s['averageRating'] ?? 0).toDouble();
+    String rating = ratingValue == 0 ? "New" : ratingValue.toStringAsFixed(1);
     String providerProfileUrl = s['providerProfileUrl'] ?? ''; 
     String servicePhotoUrl = s['servicePhotoUrl'] ?? ''; 
 
@@ -840,34 +882,43 @@ class _HomeScreenState extends State<HomeScreen> {
         Navigator.push(context, MaterialPageRoute(builder: (context) => ServiceDetailsScreen(provider: s)));
       },
       child: Container(
-        width: 170, 
+        width: 240, // Increased width as requested
         margin: const EdgeInsets.only(right: 18), 
+        padding: const EdgeInsets.fromLTRB(8, 8, 8, 2), // Minimized bottom gap
+        decoration: BoxDecoration(
+          color: Colors.white,
+          borderRadius: BorderRadius.circular(16),
+          border: Border.all(color: Colors.grey.shade200, width: 1.5), 
+        ),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           mainAxisSize: MainAxisSize.min, 
           children: [
             // Image
             ClipRRect(
-              borderRadius: BorderRadius.circular(16),
+              borderRadius: const BorderRadius.vertical(top: Radius.circular(12)), // Square bottom
               child: Image.network(
                 servicePhotoUrl.isNotEmpty ? servicePhotoUrl : 'https://images.unsplash.com/photo-1581578731548-c64695cc6952?q=80&w=800&auto=format&fit=crop',
-                height: 160, 
-                width: 170, 
+                height: 155, 
+                width: double.infinity, 
                 fit: BoxFit.cover,
                 loadingBuilder: (context, child, loadingProgress) {
                   if (loadingProgress == null) return child;
-                  return const SkeletonBox(width: 170, height: 160, borderRadiusValue: 16);
+                  return const SkeletonBox(
+                    width: double.infinity, 
+                    height: 155, 
+                    borderRadiusValue: 12,
+                  );
                 },
                 errorBuilder: (_, __, ___) => Image.network(
                   'https://images.unsplash.com/photo-1581578731548-c64695cc6952?q=80&w=800&auto=format&fit=crop', 
-                  height: 160, 
-                  width: 170, 
+                  height: 155, 
+                  width: double.infinity, 
                   fit: BoxFit.cover
                 ),
               ),
             ),
-            const SizedBox(height: 10), 
-            // Row 1: Title and Favorite Icon
+            const SizedBox(height: 6), // Reduced from 10
             SizedBox(
               height: 42, 
               child: Row(
@@ -899,7 +950,7 @@ class _HomeScreenState extends State<HomeScreen> {
                 ],
               ),
             ),
-            const SizedBox(height: 6), 
+            const SizedBox(height: 2), // Reduced from 6
 
             // Row 2: Price and Rating
             Row(
@@ -944,7 +995,7 @@ class _HomeScreenState extends State<HomeScreen> {
                 ),
               ],
             ),
-            const SizedBox(height: 8), 
+            const SizedBox(height: 6), // Reduced from 8
 
             // Row 3: Provider Profile and Name
             Row(
@@ -1035,7 +1086,7 @@ class _HomeScreenState extends State<HomeScreen> {
     return Padding(
       padding: const EdgeInsets.symmetric(horizontal: 24),
       child: Column(
-        children: _filteredServices.take(5).map((s) => _buildServiceCardList(s)).toList(),
+        children: _topRatedServices.take(4).map((s) => _buildServiceCardList(s)).toList(),
       ),
     );
   }
@@ -1044,9 +1095,11 @@ class _HomeScreenState extends State<HomeScreen> {
     String serviceId = s['serviceId'] ?? '';
     String title = s['title'] ?? 'Elite Service';
     String providerName = s['providerName'] ?? 'Elite Pro';
-    String price = s['price']?.toString() ?? '85';
-    String rating = '4.8'; 
-    String reviews = '195'; 
+    String price = s['price']?.toString() ?? '0';
+    double ratingValue = (s['averageRating'] ?? 0).toDouble();
+    int reviewsCount = s['reviewCount'] ?? 0;
+    String rating = ratingValue == 0 ? "New" : ratingValue.toStringAsFixed(1);
+    String reviews = reviewsCount.toString(); 
     String providerProfileUrl = s['providerProfileUrl'] ?? '';
     String servicePhotoUrl = s['servicePhotoUrl'] ?? '';
 
@@ -1321,75 +1374,4 @@ class _HomeScreenState extends State<HomeScreen> {
   }
 }
 
-class SkeletonBox extends StatefulWidget {
-  final double width;
-  final double height;
-  final double borderRadiusValue;
-  final bool isCircle;
 
-  const SkeletonBox({
-    super.key,
-    required this.width,
-    required this.height,
-    this.borderRadiusValue = 8,
-    this.isCircle = false,
-  });
-
-  @override
-  State<SkeletonBox> createState() => _SkeletonBoxState();
-}
-
-class _SkeletonBoxState extends State<SkeletonBox> with SingleTickerProviderStateMixin {
-  late AnimationController _controller;
-  late Animation<double> _animation;
-
-  @override
-  void initState() {
-    super.initState();
-    _controller = AnimationController(
-      vsync: this,
-      duration: const Duration(milliseconds: 1500),
-    )..repeat();
-
-    _animation = Tween<double>(begin: -2.0, end: 2.0).animate(
-      CurvedAnimation(parent: _controller, curve: Curves.easeInOutSine),
-    );
-  }
-
-  @override
-  void dispose() {
-    _controller.dispose();
-    super.dispose();
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    return AnimatedBuilder(
-      animation: _animation,
-      builder: (context, child) {
-        return Container(
-          width: widget.width,
-          height: widget.height,
-          decoration: BoxDecoration(
-            shape: widget.isCircle ? BoxShape.circle : BoxShape.rectangle,
-            borderRadius: widget.isCircle ? null : BorderRadius.circular(widget.borderRadiusValue),
-            gradient: LinearGradient(
-              begin: Alignment.topLeft,
-              end: Alignment.bottomRight,
-              stops: [
-                (0.1 + (_animation.value - 1.0).clamp(0.0, 0.6)).toDouble(),
-                (0.3 + (_animation.value - 1.0).clamp(0.0, 0.6)).toDouble(),
-                (0.5 + (_animation.value - 1.0).clamp(0.0, 0.6)).toDouble(),
-              ],
-              colors: [
-                Colors.grey[200]!,
-                Colors.grey[100]!,
-                Colors.grey[200]!,
-              ],
-            ),
-          ),
-        );
-      },
-    );
-  }
-}

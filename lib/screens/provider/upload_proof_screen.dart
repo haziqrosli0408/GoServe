@@ -100,7 +100,7 @@ class _UploadProofScreenState extends State<UploadProofScreen> {
         elevation: 0,
         centerTitle: true,
         title: Text(
-          'Upload Proof',
+          'Upload your work',
           style: GoogleFonts.outfit(color: const Color(0xFF1E293B), fontWeight: FontWeight.bold, fontSize: 18),
         ),
       ),

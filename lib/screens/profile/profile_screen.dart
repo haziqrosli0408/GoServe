@@ -5,7 +5,10 @@ import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_storage/firebase_storage.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:google_fonts/google_fonts.dart';
+import 'addresses_screen.dart';
+import 'payments_screen.dart';
 import '../services/saved_services_screen.dart';
+import '../../widgets/skeleton_box.dart';
 
 class ProfileScreen extends StatefulWidget {
   final Color themeColor;
@@ -78,6 +81,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
       if (role == 'customer') {
         FirebaseFirestore.instance.collection('reviews')
             .where('userId', isEqualTo: user!.uid)
+            .where('status', isEqualTo: 'Approved')
             .get()
             .then((snapshot) {
           if (mounted) {
@@ -90,6 +94,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
         // Calculate Real Rating for Provider
         FirebaseFirestore.instance.collection('reviews')
             .where('providerId', isEqualTo: user!.uid)
+            .where('status', isEqualTo: 'Approved')
             .get()
             .then((snapshot) {
           if (snapshot.docs.isNotEmpty && mounted) {
@@ -130,7 +135,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
     return Scaffold(
       backgroundColor: Colors.white,
       body: userData == null
-          ? const Center(child: CircularProgressIndicator())
+          ? _buildSkeletonLoader()
           : CustomScrollView(
               slivers: [
                 // 🔹 HEADER WITH TITLE & CURVED SHEET
@@ -290,14 +295,16 @@ class _ProfileScreenState extends State<ProfileScreen> {
                                   label: 'Bookings',
                                   themeColor: widget.themeColor),
                             ),
-                            const SizedBox(width: 12),
-                            Expanded(
-                              child: _ProfileStat(
-                                  icon: Icons.star_outline_rounded,
-                                  value: rating.toStringAsFixed(1),
-                                  label: 'Rating',
-                                  themeColor: widget.themeColor),
-                            ),
+                            if (role == 'provider') ...[
+                              const SizedBox(width: 12),
+                              Expanded(
+                                child: _ProfileStat(
+                                    icon: Icons.star_outline_rounded,
+                                    value: rating.toStringAsFixed(1),
+                                    label: 'Rating',
+                                    themeColor: widget.themeColor),
+                              ),
+                            ],
                             const SizedBox(width: 12),
                             Expanded(
                               child: _ProfileStat(
@@ -331,12 +338,20 @@ class _ProfileScreenState extends State<ProfileScreen> {
                           color: widget.themeColor,
                           title: 'Addresses',
                           subtitle: 'Manage delivery addresses',
+                          onTap: () => Navigator.push(
+                            context,
+                            MaterialPageRoute(builder: (context) => const AddressesScreen()),
+                          ),
                         ),
                         _settingTile(
                           icon: Icons.credit_card,
                           color: widget.themeColor,
                           title: 'Payments',
                           subtitle: 'Manage cards & history',
+                          onTap: () => Navigator.push(
+                            context,
+                            MaterialPageRoute(builder: (context) => const PaymentsScreen()),
+                          ),
                         ),
                       ]),
                       const SizedBox(height: 12),
@@ -491,6 +506,64 @@ class _ProfileScreenState extends State<ProfileScreen> {
             ],
           ),
         ),
+      ),
+    );
+  }
+
+  Widget _buildSkeletonLoader() {
+    return SingleChildScrollView(
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          // Header Skeleton
+          Stack(
+            children: [
+              SkeletonBox(width: double.infinity, height: 280, color: widget.themeColor.withValues(alpha: 0.1)),
+              Positioned(
+                bottom: 0,
+                left: 20,
+                child: Container(
+                  decoration: BoxDecoration(shape: BoxShape.circle, border: Border.all(color: Colors.white, width: 4)),
+                  child: const SkeletonBox(width: 120, height: 120, isCircle: true),
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 20),
+          Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 20),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                const SkeletonBox(width: 200, height: 24),
+                const SizedBox(height: 8),
+                const SkeletonBox(width: 150, height: 16),
+                const SizedBox(height: 32),
+                Row(
+                  children: [
+                    Expanded(child: SkeletonBox(width: double.infinity, height: 80, borderRadiusValue: 16)),
+                    const SizedBox(width: 12),
+                    Expanded(child: SkeletonBox(width: double.infinity, height: 80, borderRadiusValue: 16)),
+                    const SizedBox(width: 12),
+                    Expanded(child: SkeletonBox(width: double.infinity, height: 80, borderRadiusValue: 16)),
+                  ],
+                ),
+                const SizedBox(height: 32),
+                const SkeletonBox(width: 120, height: 18),
+                const SizedBox(height: 16),
+                ListView.builder(
+                  shrinkWrap: true,
+                  physics: const NeverScrollableScrollPhysics(),
+                  itemCount: 3,
+                  itemBuilder: (_, __) => Padding(
+                    padding: const EdgeInsets.only(bottom: 12),
+                    child: SkeletonBox(width: double.infinity, height: 50, borderRadiusValue: 12),
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ],
       ),
     );
   }

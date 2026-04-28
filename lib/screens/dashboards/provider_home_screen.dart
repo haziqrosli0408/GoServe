@@ -149,6 +149,7 @@ class _ProviderHomeScreenState extends State<ProviderHomeScreen> {
     FirebaseFirestore.instance
         .collection('reviews')
         .where('providerId', isEqualTo: user!.uid)
+        .where('status', isEqualTo: 'Approved')
         .get()
         .then((snapshot) {
       if (snapshot.docs.isNotEmpty && mounted) {

@@ -71,8 +71,8 @@ class _CategoriesScreenState extends State<CategoriesScreen> {
                       final bool isAsset = cat['isAsset'] == true;
                       final String assetPath = cat['assetPath']?.toString() ?? '';
                       final IconData icon = cat['icon'] as IconData? ?? Icons.category_outlined;
-                      final Color bgColor = cat['color'] is Color ? cat['color'] as Color : const Color(0xFFF1F5F9);
-                      final Color iconColor = cat['iconColor'] is Color ? cat['iconColor'] as Color : const Color(0xFF475569);
+                      final Color bgColor = Colors.grey.shade100; // Matched with Home page grey
+                      final Color iconColor = const Color(0xFF475569);
 
                       return GestureDetector(
                         onTap: () {

@@ -81,9 +81,10 @@ class _SingleChatScreenState extends State<SingleChatScreen> {
     }
     
     if (doc.exists && mounted) {
+      final data = doc.data()!;
       setState(() {
-        otherUserName = doc.data()?['name'];
-        otherUserPhoto = doc.data()?['profileUrl'];
+        otherUserName = data['name'] ?? data['providerName'] ?? data['displayName'];
+        otherUserPhoto = data['profileUrl'] ?? data['providerProfileUrl'] ?? data['photoUrl'];
       });
       // Sync into chat metadata
       _syncMetadata();
@@ -92,9 +93,10 @@ class _SingleChatScreenState extends State<SingleChatScreen> {
 
   Future<void> _syncMetadata() async {
     if (currentUser == null) return;
-    final String providerId = widget.provider['id'] ?? widget.provider['providerId'] ?? '';
-    final String providerName = widget.provider['name'] ?? widget.provider['providerName'] ?? 'Provider';
+    final String providerId = widget.provider['providerId'] ?? widget.provider['id'] ?? '';
+    if (providerId.isEmpty) return;
 
+    final String providerName = otherUserName ?? widget.provider['providerName'] ?? widget.provider['name'] ?? 'Provider';
     final String serviceTitle = widget.provider['title'] ?? widget.provider['serviceName'] ?? widget.provider['category'] ?? 'Service';
 
     await FirebaseFirestore.instance.collection('chats').doc(chatId).set({
@@ -107,8 +109,8 @@ class _SingleChatScreenState extends State<SingleChatScreen> {
         },
         providerId: {
           'name': providerName,
-          'profileUrl': widget.provider['profileUrl'] ?? widget.provider['providerProfileUrl'] ?? '',
-          'serviceName': widget.provider['title'] ?? widget.provider['category'] ?? widget.provider['serviceName'] ?? '',
+          'profileUrl': otherUserPhoto ?? widget.provider['profileUrl'] ?? widget.provider['providerProfileUrl'] ?? '',
+          'serviceName': serviceTitle,
         }
       }
     }, SetOptions(merge: true));
@@ -138,7 +140,10 @@ class _SingleChatScreenState extends State<SingleChatScreen> {
     if (text.isEmpty || currentUser == null) return;
 
     final String providerId = widget.provider['providerId'] ?? widget.provider['id'] ?? '';
-    final String providerName = widget.provider['providerName'] ?? widget.provider['name'] ?? 'Provider';
+    if (providerId.isEmpty) return;
+
+    final String providerName = otherUserName ?? widget.provider['providerName'] ?? widget.provider['name'] ?? 'Provider';
+    final String serviceTitle = widget.provider['title'] ?? widget.provider['serviceName'] ?? widget.provider['category'] ?? 'Service';
 
     messageController.clear();
 
@@ -150,17 +155,15 @@ class _SingleChatScreenState extends State<SingleChatScreen> {
       'senderId': currentUser!.uid,
       'receiverId': providerId,
       'text': text,
-      'isRead': false, // 🆕 Initial state: Unread
+      'isRead': false, 
       'timestamp': FieldValue.serverTimestamp(),
     });
-
-    final String serviceTitle = widget.provider['title'] ?? widget.provider['serviceName'] ?? widget.provider['category'] ?? 'Service';
 
     // Update main chat doc for summary/sorting
     await FirebaseFirestore.instance.collection('chats').doc(chatId).set({
       'lastMessage': text,
       'lastTimestamp': FieldValue.serverTimestamp(),
-      'participants': [currentUser!.uid, providerId],
+      'participants': FieldValue.arrayUnion([currentUser!.uid, providerId]),
       'serviceTitle': serviceTitle,
       'users': {
         currentUser!.uid: {
@@ -169,14 +172,14 @@ class _SingleChatScreenState extends State<SingleChatScreen> {
         },
         providerId: {
           'name': providerName,
-          'profileUrl': widget.provider['providerProfileUrl'] ?? widget.provider['profileUrl'] ?? '',
-          'serviceName': widget.provider['title'] ?? widget.provider['category'] ?? widget.provider['serviceName'] ?? (widget.provider['services'] is List && (widget.provider['services'] as List).isNotEmpty ? widget.provider['services'][0] : ''),
+          'profileUrl': otherUserPhoto ?? widget.provider['providerProfileUrl'] ?? widget.provider['profileUrl'] ?? '',
+          'serviceName': serviceTitle,
         }
       },
       'unreadCount': {
         providerId: FieldValue.increment(1),
       },
-      'deletedBy': [], // Show back for everyone as requested
+      'deletedBy': [], 
       'archivedBy': [],
     }, SetOptions(merge: true));
 

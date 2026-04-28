@@ -231,7 +231,8 @@ class _SubcategoryProvidersScreenState extends State<SubcategoryProvidersScreen>
     String name = p['providerName'] ?? p['name'] ?? 'Provider';
     String title = p['title'] ?? widget.title; 
     String price = p['price']?.toString() ?? '85';
-    String rating = '4.9';
+    double ratingValue = (p['averageRating'] ?? 0).toDouble();
+    String rating = ratingValue == 0 ? "New" : ratingValue.toStringAsFixed(1);
     String profileUrl = p['providerProfileUrl'] ?? p['profileUrl'] ?? '';
     String servicePhotoUrl = p['servicePhotoUrl'] ?? '';
 

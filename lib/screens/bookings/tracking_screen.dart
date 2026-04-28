@@ -71,8 +71,8 @@ class _TrackingScreenState extends State<TrackingScreen> {
           String currentStatus = 'Confirmed';
 
           if (snapshot.hasData && snapshot.data!.exists) {
-            final data = snapshot.data!.data() as Map<String, dynamic>;
-            final currentStatus = data['status'] ?? 'Pending';
+            data = snapshot.data!.data() as Map<String, dynamic>;
+            currentStatus = data['status'] ?? 'Pending';
 
             // 🔹 AUTO-NAVIGATE ONLY IF FINALIZED BY CUSTOMER or if it really is Completed
             if (currentStatus == 'Completed') {
@@ -80,7 +80,7 @@ class _TrackingScreenState extends State<TrackingScreen> {
                  Navigator.pushReplacement(
                   context,
                   MaterialPageRoute(
-                    builder: (context) => ServiceCompletedScreen(bookingData: data),
+                    builder: (context) => ServiceCompletedScreen(bookingData: data!),
                   ),
                 );
               });
@@ -407,106 +407,112 @@ class _TrackingScreenState extends State<TrackingScreen> {
           ),
         ],
       ),
-      child: Row(
-        children: [
-          Stack(
+      child: FutureBuilder<DocumentSnapshot>(
+        future: FirebaseFirestore.instance.collection('providers').doc(providerId).get(),
+        builder: (context, snapshot) {
+          String rating = '0.0';
+          String reviews = '0';
+          String? phone;
+          
+          if (snapshot.hasData && snapshot.data!.exists) {
+            final pData = snapshot.data!.data() as Map<String, dynamic>;
+            rating = (pData['rating'] ?? 0.0).toStringAsFixed(1);
+            reviews = (pData['reviews'] ?? 0).toString();
+            phone = pData['phone'];
+          }
+
+          return Row(
             children: [
-              CircleAvatar(
-                radius: 32,
-                backgroundColor: const Color(0xFFF1F5F9),
-                backgroundImage: photoUrl.isNotEmpty ? NetworkImage(photoUrl) : null,
-                child: photoUrl.isEmpty 
-                  ? Text(name.isNotEmpty ? name[0].toUpperCase() : 'P', style: GoogleFonts.outfit(color: const Color(0xFF1F212C), fontSize: 18, fontWeight: FontWeight.w600)) 
-                  : null,
-              ),
-              Positioned(
-                right: 0,
-                bottom: 2,
-                child: Container(
-                  width: 14,
-                  height: 14,
-                  decoration: BoxDecoration(
-                    color: const Color(0xFF4ADE80), // Vibrant Green
-                    shape: BoxShape.circle,
-                    border: Border.all(color: Colors.white, width: 2.5),
+              Stack(
+                children: [
+                  CircleAvatar(
+                    radius: 32,
+                    backgroundColor: const Color(0xFFF1F5F9),
+                    backgroundImage: photoUrl.isNotEmpty ? NetworkImage(photoUrl) : null,
+                    child: photoUrl.isEmpty 
+                      ? Text(name.isNotEmpty ? name[0].toUpperCase() : 'P', style: GoogleFonts.outfit(color: const Color(0xFF1F212C), fontSize: 18, fontWeight: FontWeight.w600)) 
+                      : null,
                   ),
-                ),
-              ),
-            ],
-          ),
-          const SizedBox(width: 16),
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                Text(
-                  name,
-                  style: GoogleFonts.outfit(
-                    fontSize: 18,
-                    fontWeight: FontWeight.w600,
-                    color: const Color(0xFF1E212C),
-                  ),
-                ),
-                const SizedBox(height: 4),
-                Row(
-                  children: [
-                    const Icon(Icons.star, color: Colors.amber, size: 16),
-                    const SizedBox(width: 4),
-                    Text(
-                      '4.9',
-                      style: GoogleFonts.outfit(
-                        fontSize: 13,
-                        fontWeight: FontWeight.w600,
-                        color: const Color(0xFF1E293B),
+                  Positioned(
+                    right: 0,
+                    bottom: 2,
+                    child: Container(
+                      width: 14,
+                      height: 14,
+                      decoration: BoxDecoration(
+                        color: const Color(0xFF4ADE80), // Vibrant Green
+                        shape: BoxShape.circle,
+                        border: Border.all(color: Colors.white, width: 2.5),
                       ),
                     ),
-                    const SizedBox(width: 4),
+                  ),
+                ],
+              ),
+              const SizedBox(width: 16),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
                     Text(
-                      '(128 reviews)',
+                      name,
                       style: GoogleFonts.outfit(
-                        fontSize: 13,
-                        color: Colors.grey.shade400,
+                        fontSize: 18,
+                        fontWeight: FontWeight.w600,
+                        color: const Color(0xFF1E212C),
                       ),
+                    ),
+                    const SizedBox(height: 4),
+                    Row(
+                      children: [
+                        const Icon(Icons.star, color: Colors.amber, size: 16),
+                        const SizedBox(width: 4),
+                        Text(
+                          rating,
+                          style: GoogleFonts.outfit(
+                            fontSize: 13,
+                            fontWeight: FontWeight.w600,
+                            color: const Color(0xFF1E293B),
+                          ),
+                        ),
+                        const SizedBox(width: 4),
+                        Text(
+                          '($reviews reviews)',
+                          style: GoogleFonts.outfit(
+                            fontSize: 13,
+                            color: Colors.grey.shade400,
+                          ),
+                        ),
+                      ],
                     ),
                   ],
                 ),
-              ],
-            ),
-          ),
-          FutureBuilder<DocumentSnapshot>(
-            future: FirebaseFirestore.instance.collection('providers').doc(providerId).get(),
-            builder: (context, snapshot) {
-              String? phone;
-              if (snapshot.hasData && snapshot.data!.exists) {
-                final pData = snapshot.data!.data() as Map<String, dynamic>?;
-                phone = pData?['phone'];
-              }
-              return GestureDetector(
+              ),
+              GestureDetector(
                 onTap: () => _makeCall(phone ?? data?['providerPhone'] ?? widget.bookingData['providerPhone'] ?? '011-23456789'),
                 child: _actionIcon(Icons.phone_rounded),
-              );
-            }
-          ),
-          const SizedBox(width: 12),
-          GestureDetector(
-            onTap: () {
-              Navigator.push(
-                context,
-                MaterialPageRoute(
-                  builder: (context) => SingleChatScreen(
-                    provider: {
-                      'providerId': providerId,
-                      'providerName': name,
-                      'providerProfileUrl': photoUrl,
-                    },
-                  ),
-                ),
-              );
-            },
-            child: _actionIcon(Icons.chat_bubble_rounded),
-          ),
-        ],
+              ),
+              const SizedBox(width: 12),
+              GestureDetector(
+                onTap: () {
+                  Navigator.push(
+                    context,
+                    MaterialPageRoute(
+                      builder: (context) => SingleChatScreen(
+                        provider: {
+                          'providerId': providerId,
+                          'providerName': name,
+                          'providerProfileUrl': photoUrl,
+                        },
+                      ),
+                    ),
+                  );
+                },
+                child: _actionIcon(Icons.chat_bubble_rounded),
+              ),
+            ],
+          );
+        }
       ),
     );
   }
@@ -687,9 +693,9 @@ class _TrackingScreenState extends State<TrackingScreen> {
   Widget _buildServiceStatus(String currentStatus) {
     // Phase logic
     bool bookingConfirmed = currentStatus != 'Pending';
-    bool onTheWay = ['On the way', 'Arrived', 'In progress', 'Completed'].contains(currentStatus);
-    bool arrived = ['Arrived', 'In progress', 'Completed'].contains(currentStatus);
-    bool inProgress = ['In progress', 'Completed'].contains(currentStatus);
+    bool onTheWay = ['On the way', 'Arrived', 'In progress', 'Awaiting Confirmation', 'Completed'].contains(currentStatus);
+    bool arrived = ['Arrived', 'In progress', 'Awaiting Confirmation', 'Completed'].contains(currentStatus);
+    bool inProgress = ['In progress', 'Awaiting Confirmation', 'Completed'].contains(currentStatus);
     bool completed = currentStatus == 'Completed';
 
     return Container(
@@ -718,8 +724,8 @@ class _TrackingScreenState extends State<TrackingScreen> {
             'Booking Confirmed', 
             bookingConfirmed ? 'Your pro is confirmed' : 'Waiting for provider...', 
             currentStatus == 'Confirmed' ? 'Happening now' : '', 
-            isCompleted: bookingConfirmed, 
-            isActive: currentStatus == 'Pending',
+            isCompleted: bookingConfirmed && currentStatus != 'Confirmed' && currentStatus != 'Pending', 
+            isActive: currentStatus == 'Confirmed',
             isLast: false,
           ),
           _statusTimelineItem(
@@ -749,9 +755,9 @@ class _TrackingScreenState extends State<TrackingScreen> {
           _statusTimelineItem(
             'Completed', 
             'Service finished', 
-            currentStatus == 'Completed' ? 'Done' : '', 
+            currentStatus == 'Awaiting Confirmation' ? 'Pending Approval' : (currentStatus == 'Completed' ? 'Done' : ''), 
             isCompleted: completed,
-            isActive: false, 
+            isActive: currentStatus == 'Awaiting Confirmation', 
             isLast: true,
           ),
         ],

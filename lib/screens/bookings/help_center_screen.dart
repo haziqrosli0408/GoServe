@@ -1,5 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
+import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:firebase_auth/firebase_auth.dart';
 
 class HelpCenterScreen extends StatefulWidget {
   final Map<String, dynamic> bookingData;
@@ -161,11 +163,80 @@ class _HelpCenterScreenState extends State<HelpCenterScreen> {
           SizedBox(
             width: double.infinity,
             child: ElevatedButton(
-              onPressed: () {
-                ScaffoldMessenger.of(context).showSnackBar(
-                  const SnackBar(content: Text('Report submitted. We will contact you shortly.')),
+              onPressed: () async {
+                final String reportText = _reportController.text.trim();
+                if (reportText.isEmpty) {
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    const SnackBar(content: Text('Please describe your problem first.')),
+                  );
+                  return;
+                }
+
+                // Show loading
+                showDialog(
+                  context: context,
+                  barrierDismissible: false,
+                  builder: (context) => const Center(child: CircularProgressIndicator()),
                 );
-                _reportController.clear();
+
+                try {
+                  final currentUser = FirebaseAuth.instance.currentUser;
+                  String customerName = widget.bookingData['customerName'] ?? 'Anonymous';
+                  String customerProfileUrl = '';
+                  String customerCustomId = 'CU-PENDING';
+                  
+                  if (currentUser != null) {
+                    final userDoc = await FirebaseFirestore.instance.collection('users').doc(currentUser.uid).get();
+                    if (userDoc.exists) {
+                      final userData = userDoc.data() as Map<String, dynamic>;
+                      customerName = userData['name'] ?? customerName;
+                      customerProfileUrl = userData['profileUrl'] ?? '';
+                      customerCustomId = userData['customId'] ?? customerCustomId;
+                    }
+                  }
+
+                  // Fetch Provider Custom ID
+                  String providerCustomId = 'PR-PENDING';
+                  final String providerId = widget.bookingData['providerId'] ?? '';
+                  if (providerId.isNotEmpty) {
+                    var providerDoc = await FirebaseFirestore.instance.collection('providers').doc(providerId).get();
+                    if (!providerDoc.exists) {
+                      providerDoc = await FirebaseFirestore.instance.collection('users').doc(providerId).get();
+                    }
+                    if (providerDoc.exists) {
+                      providerCustomId = (providerDoc.data() as Map<String, dynamic>)['customId'] ?? providerCustomId;
+                    }
+                  }
+
+                  await FirebaseFirestore.instance.collection('reports').add({
+                    'orderId': widget.bookingData['orderId'] ?? 'GS-00000',
+                    'bookingId': widget.bookingData['bookingId'] ?? widget.bookingData['id'] ?? 'N/A',
+                    'serviceName': widget.bookingData['serviceName'] ?? 'Unknown',
+                    'customerId': currentUser?.uid ?? '',
+                    'customerCustomId': customerCustomId,
+                    'customerName': customerName,
+                    'customerProfileUrl': customerProfileUrl,
+                    'providerId': providerId,
+                    'providerCustomId': providerCustomId,
+                    'providerName': widget.bookingData['providerName'] ?? 'N/A',
+                    'issue': reportText,
+                    'status': 'pending',
+                    'timestamp': FieldValue.serverTimestamp(),
+                  });
+
+                  if (mounted) {
+                    Navigator.pop(context); // Close loading
+                    _showSuccessDialog();
+                    _reportController.clear();
+                  }
+                } catch (e) {
+                  if (mounted) {
+                    Navigator.pop(context);
+                    ScaffoldMessenger.of(context).showSnackBar(
+                      const SnackBar(content: Text('Failed to submit report. Please try again.')),
+                    );
+                  }
+                }
               },
               style: ElevatedButton.styleFrom(
                 backgroundColor: primaryOrange,
@@ -181,6 +252,73 @@ class _HelpCenterScreenState extends State<HelpCenterScreen> {
             ),
           ),
         ],
+      ),
+    );
+  }
+
+  void _showSuccessDialog() {
+    showDialog(
+      context: context,
+      builder: (context) => Dialog(
+        backgroundColor: Colors.white,
+        surfaceTintColor: Colors.white,
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(24)),
+        child: Padding(
+          padding: const EdgeInsets.all(32),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Container(
+                padding: const EdgeInsets.all(20),
+                decoration: BoxDecoration(
+                  color: const Color(0xFFE8F5E9),
+                  shape: BoxShape.circle,
+                ),
+                child: const Icon(Icons.check_circle_rounded, color: Colors.green, size: 48),
+              ),
+              const SizedBox(height: 24),
+              Text(
+                'Report Sent!',
+                style: GoogleFonts.outfit(
+                  fontSize: 22,
+                  fontWeight: FontWeight.w700,
+                  color: const Color(0xFF1E293B),
+                ),
+              ),
+              const SizedBox(height: 12),
+              Text(
+                'Thank you for your feedback. Our support team has received your report and will look into it immediately.',
+                textAlign: TextAlign.center,
+                style: GoogleFonts.outfit(
+                  fontSize: 14,
+                  color: const Color(0xFF64748B),
+                  height: 1.5,
+                ),
+              ),
+              const SizedBox(height: 32),
+              SizedBox(
+                width: double.infinity,
+                child: ElevatedButton(
+                  onPressed: () {
+                    Navigator.pop(context); // Close dialog
+                    Navigator.pop(context); // Go back from help center
+                  },
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: primaryOrange,
+                    foregroundColor: Colors.white,
+                    elevation: 0,
+                    padding: const EdgeInsets.symmetric(vertical: 16),
+                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                  ),
+                  child: Text(
+                    'Back',
+                    style: GoogleFonts.outfit(fontWeight: FontWeight.w600),
+                  ),
+                ),
+              ),
+            ],
+          ),
+        ),
       ),
     );
   }

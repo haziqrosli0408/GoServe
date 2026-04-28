@@ -4,6 +4,7 @@ import 'package:firebase_auth/firebase_auth.dart';
 import 'package:intl/intl.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'single_chat_screen.dart';
+import '../../widgets/skeleton_box.dart';
 
 class ChatScreen extends StatefulWidget {
   final Color themeColor;
@@ -103,12 +104,15 @@ class _ChatScreenState extends State<ChatScreen> {
                   ],
                 ),
               )
-          : Text(
-              isSelectionMode ? '${selectedChatIds.length} Selected' : 'Messages',
-              style: GoogleFonts.outfit(
-                fontWeight: FontWeight.bold, 
-                color: Colors.black,
-                fontSize: 24,
+          : Padding(
+              padding: const EdgeInsets.only(left: 8),
+              child: Text(
+                isSelectionMode ? '${selectedChatIds.length} Selected' : 'Messages',
+                style: GoogleFonts.outfit(
+                  fontWeight: FontWeight.bold, 
+                  color: Colors.black,
+                  fontSize: 20,
+                ),
               ),
             ),
         actions: [
@@ -169,7 +173,33 @@ class _ChatScreenState extends State<ChatScreen> {
                   );
                 }
                 if (snapshot.connectionState == ConnectionState.waiting) {
-                  return const Center(child: CircularProgressIndicator());
+                  return ListView.builder(
+                    padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+                    itemCount: 8,
+                    itemBuilder: (context, index) => Container(
+                      padding: const EdgeInsets.symmetric(vertical: 20, horizontal: 8),
+                      child: Row(
+                        children: [
+                          const SkeletonBox(width: 56, height: 56, isCircle: true),
+                          const SizedBox(width: 14),
+                          Expanded(
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                const SkeletonBox(width: 100, height: 12),
+                                const SizedBox(height: 6),
+                                const SkeletonBox(width: 150, height: 16),
+                                const SizedBox(height: 6),
+                                const SkeletonBox(width: 200, height: 14),
+                              ],
+                            ),
+                          ),
+                          const SizedBox(width: 8),
+                          const SkeletonBox(width: 40, height: 12),
+                        ],
+                      ),
+                    ),
+                  );
                 }
                 
                 final docs = snapshot.data!.docs.where((doc) {
@@ -265,12 +295,26 @@ class _ChatScreenState extends State<ChatScreen> {
                         final chatDoc = docs[index];
                         final chatData = chatDoc.data() as Map<String, dynamic>;
                         final String chatId = chatDoc.id;
+                        final bool isSelected = selectedChatIds.contains(chatId);
 
                         // Get the other user's data
-                        final String otherUserId = (chatData['participants'] as List)
+                        String otherUserId = (chatData['participants'] as List)
                             .firstWhere((id) => id != currentUser.uid, orElse: () => '');
                         
-                        final Map<String, dynamic>? otherUserData = chatData['users']?[otherUserId] as Map<String, dynamic>?;
+                        Map<String, dynamic>? otherUserData = chatData['users']?[otherUserId] as Map<String, dynamic>?;
+
+                        // 🔹 FALLBACK: If lookup by otherUserId fails, find ANY other user in the metadata map
+                        if (otherUserData == null || otherUserData['name'] == 'User') {
+                          final usersMap = chatData['users'] as Map<String, dynamic>?;
+                          if (usersMap != null) {
+                            final otherKey = usersMap.keys.firstWhere((k) => k != currentUser.uid, orElse: () => '');
+                            if (otherKey.isNotEmpty) {
+                              otherUserData = usersMap[otherKey];
+                              otherUserId = otherKey; // Update ID for consistent ChatListItem fetching
+                            }
+                          }
+                        }
+
                         final String otherName = otherUserData?['name'] ?? 'User';
                         final String otherPhoto = otherUserData?['profileUrl'] ?? '';
                         
@@ -307,8 +351,7 @@ class _ChatScreenState extends State<ChatScreen> {
                         
                         final int unreadCount = (chatData['unreadCount']?[currentUser.uid] ?? 0) as int;
 
-                        return _buildChatItem(
-                          context,
+                        return ChatListItem(
                           chatId: chatId,
                           name: otherName,
                           photo: otherPhoto,
@@ -317,6 +360,45 @@ class _ChatScreenState extends State<ChatScreen> {
                           time: timeStr,
                           unreadCount: unreadCount,
                           otherUserId: otherUserId,
+                          isSelected: isSelected,
+                          isSelectionMode: isSelectionMode,
+                          themeColor: widget.themeColor,
+                          onTap: () {
+                            if (isSelectionMode) {
+                              setState(() {
+                                if (isSelected) {
+                                  selectedChatIds.remove(chatId);
+                                } else {
+                                  selectedChatIds.add(chatId);
+                                }
+                              });
+                            } else {
+                              Navigator.push(
+                                context,
+                                MaterialPageRoute(
+                                  builder: (context) => SingleChatScreen(
+                                    chatId: chatId,
+                                    themeColor: widget.themeColor,
+                                    provider: {
+                                      'id': otherUserId,
+                                      'name': otherName,
+                                      'profileUrl': otherPhoto,
+                                      'serviceName': serviceName,
+                                      'title': serviceName,
+                                    },
+                                  ),
+                                ),
+                              );
+                            }
+                          },
+                          onLongPress: () {
+                            if (!isSelectionMode) {
+                              setState(() {
+                                isSelectionMode = true;
+                                selectedChatIds.add(chatId);
+                              });
+                            }
+                          },
                         );
                       },
                     ),
@@ -373,63 +455,159 @@ class _ChatScreenState extends State<ChatScreen> {
       ),
     );
   }
+}
 
-  Widget _buildChatItem(
-    BuildContext context, {
-    required String chatId,
-    required String name,
-    required String photo,
-    required String service,
-    required String lastMessage,
-    required String time,
-    required int unreadCount,
-    required String otherUserId,
-  }) {
-    final bool isSelected = selectedChatIds.contains(chatId);
+class ChatListItem extends StatefulWidget {
+  final String chatId;
+  final String name;
+  final String photo;
+  final String service;
+  final String lastMessage;
+  final String time;
+  final int unreadCount;
+  final String otherUserId;
+  final bool isSelected;
+  final bool isSelectionMode;
+  final Color themeColor;
+  final VoidCallback onTap;
+  final VoidCallback onLongPress;
+
+  const ChatListItem({
+    super.key,
+    required this.chatId,
+    required this.name,
+    required this.photo,
+    required this.service,
+    required this.lastMessage,
+    required this.time,
+    required this.unreadCount,
+    required this.otherUserId,
+    required this.isSelected,
+    required this.isSelectionMode,
+    required this.themeColor,
+    required this.onTap,
+    required this.onLongPress,
+  });
+
+  @override
+  State<ChatListItem> createState() => _ChatListItemState();
+}
+
+class _ChatListItemState extends State<ChatListItem> {
+  String? _fetchedName;
+  String? _fetchedPhoto;
+  bool _isFetching = false;
+
+  @override
+  void initState() {
+    super.initState();
+    // Aggressively fetch if data looks like a placeholder
+    if (widget.name == 'User' || widget.name.isEmpty || widget.photo.isEmpty) {
+      _fetchUserData();
+    }
+  }
+
+  Future<void> _fetchUserData() async {
+    if (_isFetching || widget.otherUserId.isEmpty) return;
+    setState(() => _isFetching = true);
+
+    try {
+      debugPrint("🔍 Fetching missing chat metadata for user: ${widget.otherUserId}");
+      
+      // Try users collection
+      var doc = await FirebaseFirestore.instance.collection('users').doc(widget.otherUserId).get();
+      if (!doc.exists) {
+        // Try providers collection
+        doc = await FirebaseFirestore.instance.collection('providers').doc(widget.otherUserId).get();
+      }
+
+      if (doc.exists && mounted) {
+        final data = doc.data()!;
+        final newName = data['name'] ?? data['providerName'] ?? data['displayName'] ?? 'User';
+        final newPhoto = data['profileUrl'] ?? data['providerProfileUrl'] ?? data['photoUrl'] ?? '';
+        
+        debugPrint("✅ Found user data: $newName");
+        
+        setState(() {
+          _fetchedName = newName;
+          _fetchedPhoto = newPhoto;
+          _isFetching = false;
+        });
+
+        // Sync back to chat document to fix it permanently
+        await FirebaseFirestore.instance.collection('chats').doc(widget.chatId).set({
+          'users': {
+            widget.otherUserId: {
+              'name': newName,
+              'profileUrl': newPhoto,
+            }
+          }
+        }, SetOptions(merge: true));
+      } else {
+        // 🔹 FALLBACK: Check if this ID is actually a Service ID
+        debugPrint("🔄 ID not found in users/providers. Checking services collection: ${widget.otherUserId}");
+        final serviceDoc = await FirebaseFirestore.instance.collection('services').doc(widget.otherUserId).get();
+        
+        if (serviceDoc.exists) {
+          final sData = serviceDoc.data()!;
+          final realProviderId = sData['providerId'] ?? sData['userId'] ?? sData['provider_id'] ?? sData['ownerId'];
+          
+          if (realProviderId != null && realProviderId is String) {
+            debugPrint("📍 Found Service! Real Provider ID: $realProviderId. Re-fetching...");
+            
+            var pDoc = await FirebaseFirestore.instance.collection('providers').doc(realProviderId).get();
+            if (!pDoc.exists) {
+              pDoc = await FirebaseFirestore.instance.collection('users').doc(realProviderId).get();
+            }
+
+            if (pDoc.exists && mounted) {
+              final pData = pDoc.data()!;
+              final pName = pData['name'] ?? pData['providerName'] ?? pData['displayName'] ?? 'Provider';
+              final pPhoto = pData['profileUrl'] ?? pData['providerProfileUrl'] ?? pData['photoUrl'] ?? '';
+
+              setState(() {
+                _fetchedName = pName;
+                _fetchedPhoto = pPhoto;
+                _isFetching = false;
+              });
+
+              // Sync back using the ORIGINAL ID key (the one used in participants)
+              await FirebaseFirestore.instance.collection('chats').doc(widget.chatId).set({
+                'users': {
+                  widget.otherUserId: {
+                    'name': pName,
+                    'profileUrl': pPhoto,
+                  }
+                }
+              }, SetOptions(merge: true));
+              return;
+            }
+          }
+        }
+        
+        debugPrint("❌ User document not found in any collection: ${widget.otherUserId}");
+        if (mounted) setState(() => _isFetching = false);
+      }
+    } catch (e) {
+      debugPrint("⚠️ Error fetching user data for chat: $e");
+      if (mounted) setState(() => _isFetching = false);
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final displayName = _fetchedName ?? widget.name;
+    final displayPhoto = _fetchedPhoto ?? widget.photo;
 
     return GestureDetector(
-      onTap: () {
-        if (isSelectionMode) {
-          setState(() {
-            if (isSelected) {
-              selectedChatIds.remove(chatId);
-            } else {
-              selectedChatIds.add(chatId);
-            }
-          });
-        } else {
-          Navigator.push(
-            context,
-            MaterialPageRoute(
-              builder: (context) => SingleChatScreen(
-                chatId: chatId,
-                themeColor: widget.themeColor,
-                provider: {
-                  'id': otherUserId,
-                  'name': name,
-                  'profileUrl': photo,
-                  'serviceName': service,
-                  'title': service,
-                },
-              ),
-            ),
-          );
-        }
-      },
-      onLongPress: () {
-        if (!isSelectionMode) {
-          setState(() {
-            isSelectionMode = true;
-            selectedChatIds.add(chatId);
-          });
-        }
-      },
+      onTap: widget.onTap,
+      onLongPress: widget.onLongPress,
       child: Container(
         padding: const EdgeInsets.symmetric(vertical: 20, horizontal: 8),
-        color: isSelected ? widget.themeColor.withValues(alpha: 0.05) : Colors.transparent,
+        color: widget.isSelected ? widget.themeColor.withValues(alpha: 0.05) : Colors.transparent,
         child: Row(
           children: [
-            if (isSelectionMode) ...[
+            if (widget.isSelectionMode) ...[
               Container(
                 width: 24,
                 height: 24,
@@ -437,20 +615,20 @@ class _ChatScreenState extends State<ChatScreen> {
                 decoration: BoxDecoration(
                   shape: BoxShape.circle,
                   border: Border.all(
-                    color: isSelected ? widget.themeColor : Colors.grey.shade300,
+                    color: widget.isSelected ? widget.themeColor : Colors.grey.shade300,
                     width: 2,
                   ),
-                  color: isSelected ? widget.themeColor : Colors.transparent,
+                  color: widget.isSelected ? widget.themeColor : Colors.transparent,
                 ),
-                child: isSelected ? const Icon(Icons.check, size: 16, color: Colors.white) : null,
+                child: widget.isSelected ? const Icon(Icons.check, size: 16, color: Colors.white) : null,
               ),
             ],
             CircleAvatar(
               radius: 28,
               backgroundColor: const Color(0xFFF1F5F9),
-              backgroundImage: photo.isNotEmpty ? NetworkImage(photo) : null,
-              child: photo.isEmpty 
-                ? Text(name.isNotEmpty ? name[0].toUpperCase() : 'U', 
+              backgroundImage: displayPhoto.isNotEmpty ? NetworkImage(displayPhoto) : null,
+              child: displayPhoto.isEmpty 
+                ? Text(displayName.isNotEmpty ? displayName[0].toUpperCase() : 'U', 
                     style: GoogleFonts.outfit(fontWeight: FontWeight.bold, color: Colors.black54)) 
                 : null,
             ),
@@ -459,9 +637,9 @@ class _ChatScreenState extends State<ChatScreen> {
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  if (service.isNotEmpty) ...[
+                  if (widget.service.isNotEmpty) ...[
                     Text(
-                      service,
+                      widget.service,
                       style: GoogleFonts.outfit(
                         color: widget.themeColor.withValues(alpha: 0.8), 
                         fontSize: 12,
@@ -471,7 +649,7 @@ class _ChatScreenState extends State<ChatScreen> {
                     const SizedBox(height: 2),
                   ],
                   Text(
-                    name,
+                    displayName,
                     style: GoogleFonts.outfit(
                       fontWeight: FontWeight.bold, 
                       fontSize: 16,
@@ -480,13 +658,13 @@ class _ChatScreenState extends State<ChatScreen> {
                   ),
                   const SizedBox(height: 4),
                   Text(
-                    lastMessage,
+                    widget.lastMessage,
                     maxLines: 1,
                     overflow: TextOverflow.ellipsis,
                     style: GoogleFonts.outfit(
-                      color: unreadCount > 0 ? Colors.black87 : Colors.black45, 
+                      color: widget.unreadCount > 0 ? Colors.black87 : Colors.black45, 
                       fontSize: 13,
-                      fontWeight: unreadCount > 0 ? FontWeight.w500 : FontWeight.normal,
+                      fontWeight: widget.unreadCount > 0 ? FontWeight.w500 : FontWeight.normal,
                     ),
                   ),
                 ],
@@ -497,10 +675,10 @@ class _ChatScreenState extends State<ChatScreen> {
               crossAxisAlignment: CrossAxisAlignment.end,
               children: [
                 Text(
-                  time,
+                  widget.time,
                   style: GoogleFonts.outfit(color: Colors.black45, fontSize: 12),
                 ),
-                if (unreadCount > 0) ...[
+                if (widget.unreadCount > 0) ...[
                   const SizedBox(height: 6),
                   Container(
                     padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 2),
@@ -510,7 +688,7 @@ class _ChatScreenState extends State<ChatScreen> {
                     ),
                     constraints: const BoxConstraints(minWidth: 20),
                     child: Text(
-                      unreadCount > 99 ? '99+' : unreadCount.toString(),
+                      widget.unreadCount > 99 ? '99+' : widget.unreadCount.toString(),
                       style: const TextStyle(
                         color: Colors.white, 
                         fontSize: 10, 

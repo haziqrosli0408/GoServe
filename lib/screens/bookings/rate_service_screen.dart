@@ -50,6 +50,7 @@ class _RateServiceScreenState extends State<RateServiceScreen> {
     final String serviceName = widget.bookingData['serviceName'] ?? 'Kitchen Sink Repair';
     final String providerName = widget.bookingData['providerName'] ?? 'Alex J.';
     final String date = widget.bookingData['date'] ?? 'Oct 24, 2023';
+    final String photoUrl = widget.bookingData['providerProfileUrl'] ?? widget.bookingData['profileUrl'] ?? '';
 
     return Scaffold(
       backgroundColor: Colors.white,
@@ -70,54 +71,54 @@ class _RateServiceScreenState extends State<RateServiceScreen> {
         ),
       ),
       body: SingleChildScrollView(
-        padding: const EdgeInsets.symmetric(horizontal: 24),
+        padding: const EdgeInsets.symmetric(horizontal: 20),
         child: Column(
           children: [
-            const SizedBox(height: 10),
-            _buildSummaryCard(serviceName, providerName, date),
-            const SizedBox(height: 32),
+            const SizedBox(height: 8),
+            _buildSummaryCard(serviceName, providerName, date, photoUrl),
+            const SizedBox(height: 20),
             Text(
               'How was your experience?',
               style: GoogleFonts.outfit(
-                fontSize: 22,
+                fontSize: 18,
                 fontWeight: FontWeight.w600,
                 color: const Color(0xFF1F212C),
               ),
             ),
-            const SizedBox(height: 8),
+            const SizedBox(height: 4),
             Text(
               'Your feedback helps $providerName and our community maintain high standards.',
               textAlign: TextAlign.center,
               style: GoogleFonts.outfit(
-                fontSize: 14,
+                fontSize: 12,
                 color: Colors.grey.shade600,
-                height: 1.5,
+                height: 1.3,
               ),
             ),
-            const SizedBox(height: 24),
+            const SizedBox(height: 16),
             _buildStarRating(),
-            const SizedBox(height: 24),
+            const SizedBox(height: 16),
             _buildTags(),
-            const SizedBox(height: 32),
+            const SizedBox(height: 20),
             _buildReviewInput(providerName),
-            const SizedBox(height: 32),
+            const SizedBox(height: 20),
             _buildPhotoSection(),
-            const SizedBox(height: 48),
+            const SizedBox(height: 24),
             _buildSubmitButton(),
-            const SizedBox(height: 40),
+            const SizedBox(height: 24),
           ],
         ),
       ),
     );
   }
 
-  Widget _buildSummaryCard(String serviceName, String providerName, String date) {
+  Widget _buildSummaryCard(String serviceName, String providerName, String date, String photoUrl) {
     return Container(
       width: double.infinity,
-      padding: const EdgeInsets.symmetric(vertical: 32, horizontal: 20),
+      padding: const EdgeInsets.symmetric(vertical: 20, horizontal: 16),
       decoration: BoxDecoration(
         color: const Color(0xFFF8F9FB),
-        borderRadius: BorderRadius.circular(40),
+        borderRadius: BorderRadius.circular(30),
       ),
       child: Column(
         children: [
@@ -125,26 +126,37 @@ class _RateServiceScreenState extends State<RateServiceScreen> {
             alignment: Alignment.bottomRight,
             children: [
               Container(
-                width: 100,
-                height: 100,
+                width: 64,
+                height: 64,
                 decoration: BoxDecoration(
-                  borderRadius: BorderRadius.circular(30),
-                  image: const DecorationImage(
-                    image: NetworkImage('https://images.unsplash.com/photo-1540569014015-19a7ee504e3a?q=80&w=200&auto=format&fit=crop'),
-                    fit: BoxFit.cover,
-                  ),
+                  color: const Color(0xFFE2E8F0),
+                  borderRadius: BorderRadius.circular(20),
+                  image: photoUrl.isNotEmpty 
+                    ? DecorationImage(
+                        image: NetworkImage(photoUrl),
+                        fit: BoxFit.cover,
+                      )
+                    : null,
                 ),
+                child: photoUrl.isEmpty 
+                  ? Center(
+                      child: Text(
+                        providerName.isNotEmpty ? providerName[0].toUpperCase() : 'P',
+                        style: GoogleFonts.outfit(color: const Color(0xFF1F212C), fontSize: 24, fontWeight: FontWeight.w600),
+                      ),
+                    )
+                  : null,
               ),
               Container(
-                padding: const EdgeInsets.all(4),
+                padding: const EdgeInsets.all(3),
                 decoration: const BoxDecoration(color: Color(0xFFFF6B00), shape: BoxShape.circle),
-                child: const Icon(Icons.shield, color: Colors.white, size: 14),
+                child: const Icon(Icons.shield, color: Colors.white, size: 10),
               ),
             ],
           ),
-          const SizedBox(height: 20),
+          const SizedBox(height: 12),
           Container(
-            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 6),
+            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 4),
             decoration: BoxDecoration(
               color: const Color(0xFFFDF0E6),
               borderRadius: BorderRadius.circular(20),
@@ -154,19 +166,19 @@ class _RateServiceScreenState extends State<RateServiceScreen> {
               style: GoogleFonts.outfit(
                 color: const Color(0xFFFF6B00),
                 fontWeight: FontWeight.w600,
-                fontSize: 10,
+                fontSize: 9,
               ),
             ),
           ),
-          const SizedBox(height: 16),
+          const SizedBox(height: 12),
           Text(
             serviceName,
-            style: GoogleFonts.outfit(fontSize: 24, fontWeight: FontWeight.w600, color: const Color(0xFF1F212C)),
+            style: GoogleFonts.outfit(fontSize: 18, fontWeight: FontWeight.w600, color: const Color(0xFF1F212C)),
           ),
-          const SizedBox(height: 6),
+          const SizedBox(height: 4),
           RichText(
             text: TextSpan(
-              style: GoogleFonts.outfit(fontSize: 15, color: Colors.grey.shade600),
+              style: GoogleFonts.outfit(fontSize: 13, color: Colors.grey.shade600),
               children: [
                 const TextSpan(text: 'Performed by '),
                 TextSpan(
@@ -176,12 +188,12 @@ class _RateServiceScreenState extends State<RateServiceScreen> {
               ],
             ),
           ),
-          const SizedBox(height: 20),
+          const SizedBox(height: 12),
           Row(
             mainAxisAlignment: MainAxisAlignment.center,
             children: [
               _infoChip(Icons.calendar_today, date),
-              const SizedBox(width: 12),
+              const SizedBox(width: 8),
               _infoChip(Icons.access_time, '45 mins'),
             ],
           ),
@@ -192,7 +204,7 @@ class _RateServiceScreenState extends State<RateServiceScreen> {
 
   Widget _infoChip(IconData icon, String label) {
     return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
+      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
       decoration: BoxDecoration(
         color: Colors.white,
         borderRadius: BorderRadius.circular(15),
@@ -200,11 +212,11 @@ class _RateServiceScreenState extends State<RateServiceScreen> {
       child: Row(
         mainAxisSize: MainAxisSize.min,
         children: [
-          Icon(icon, size: 14, color: Colors.grey.shade600),
-          const SizedBox(width: 8),
+          Icon(icon, size: 12, color: Colors.grey.shade600),
+          const SizedBox(width: 6),
           Text(
             label,
-            style: GoogleFonts.outfit(fontSize: 12, fontWeight: FontWeight.w600, color: Colors.grey.shade700),
+            style: GoogleFonts.outfit(fontSize: 11, fontWeight: FontWeight.w600, color: Colors.grey.shade700),
           ),
         ],
       ),
@@ -221,7 +233,7 @@ class _RateServiceScreenState extends State<RateServiceScreen> {
             padding: const EdgeInsets.symmetric(horizontal: 4),
             child: Icon(
               index < _rating ? Icons.star_rounded : Icons.star_rounded,
-              size: 48,
+              size: 36,
               color: index < _rating ? const Color(0xFFFF6B00) : Colors.grey.shade200,
             ),
           ),
@@ -249,7 +261,7 @@ class _RateServiceScreenState extends State<RateServiceScreen> {
           },
           child: AnimatedContainer(
             duration: const Duration(milliseconds: 200),
-            padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
+            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
             decoration: BoxDecoration(
               color: isSelected ? const Color(0xFFFF6B00) : const Color(0xFFF1F1F1),
               borderRadius: BorderRadius.circular(15),
@@ -259,7 +271,7 @@ class _RateServiceScreenState extends State<RateServiceScreen> {
               style: GoogleFonts.outfit(
                 color: isSelected ? Colors.white : Colors.grey.shade700,
                 fontWeight: FontWeight.w600,
-                fontSize: 13,
+                fontSize: 12,
               ),
             ),
           ),
@@ -274,25 +286,25 @@ class _RateServiceScreenState extends State<RateServiceScreen> {
       children: [
         Text(
           'Write a Review (Optional)',
-          style: GoogleFonts.outfit(fontSize: 13, fontWeight: FontWeight.w600, color: Colors.grey.shade600),
+          style: GoogleFonts.outfit(fontSize: 12, fontWeight: FontWeight.w600, color: Colors.grey.shade600),
         ),
-        const SizedBox(height: 12),
+        const SizedBox(height: 8),
         Container(
-          padding: const EdgeInsets.all(20),
+          padding: const EdgeInsets.all(12),
           decoration: BoxDecoration(
             color: const Color(0xFFF8F9FB),
-            borderRadius: BorderRadius.circular(25),
+            borderRadius: BorderRadius.circular(20),
           ),
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.end,
             children: [
               TextField(
                 controller: _reviewController,
-                maxLines: 4,
+                maxLines: 3,
                 onChanged: (value) => setState(() {}),
                 decoration: InputDecoration(
-                  hintText: 'Describe your experience with $providerName and the quality of the repair...',
-                  hintStyle: GoogleFonts.outfit(color: Colors.grey.shade400, fontSize: 15),
+                  hintText: 'Describe your experience with $providerName...',
+                  hintStyle: GoogleFonts.outfit(color: Colors.grey.shade400, fontSize: 13),
                   border: InputBorder.none,
                 ),
               ),
@@ -316,25 +328,25 @@ class _RateServiceScreenState extends State<RateServiceScreen> {
           GestureDetector(
             onTap: _pickImage,
             child: Container(
-              width: 140,
-              height: 100,
+              width: 100,
+              height: 70,
               decoration: BoxDecoration(
                 color: Colors.white,
-                borderRadius: BorderRadius.circular(25),
+                borderRadius: BorderRadius.circular(15),
                 border: Border.all(color: Colors.grey.shade200, style: BorderStyle.solid),
               ),
               child: Column(
                 mainAxisAlignment: MainAxisAlignment.center,
                 children: [
-                  Icon(Icons.camera_alt_outlined, color: Colors.grey.shade600),
-                  const SizedBox(height: 8),
+                  Icon(Icons.camera_alt_outlined, color: Colors.grey.shade600, size: 20),
+                  const SizedBox(height: 4),
                   Text(
                     'ADD PHOTO',
                     style: GoogleFonts.outfit(
-                      fontSize: 10,
+                      fontSize: 9,
                       fontWeight: FontWeight.w600,
                       color: Colors.grey.shade600,
-                      letterSpacing: 1,
+                      letterSpacing: 0.5,
                     ),
                   ),
                 ],
@@ -350,11 +362,11 @@ class _RateServiceScreenState extends State<RateServiceScreen> {
                 clipBehavior: Clip.none,
                 children: [
                   ClipRRect(
-                    borderRadius: BorderRadius.circular(25),
+                    borderRadius: BorderRadius.circular(15),
                     child: Image.file(
                       _selectedImages[index],
-                      height: 100,
-                      width: 140,
+                      height: 70,
+                      width: 100,
                       fit: BoxFit.cover,
                     ),
                   ),
@@ -421,6 +433,7 @@ class _RateServiceScreenState extends State<RateServiceScreen> {
         'comment': _reviewController.text.trim(),
         'tags': _selectedTags,
         'images': imageUrls,
+        'status': 'Pending', // Matches Admin Dashboard capitalized convention
         'createdAt': FieldValue.serverTimestamp(),
       };
 
@@ -458,18 +471,10 @@ class _RateServiceScreenState extends State<RateServiceScreen> {
       onTap: _isSubmitting ? null : _submitReview,
       child: Container(
         width: double.infinity,
-        height: 60,
+        height: 50,
         decoration: BoxDecoration(
           color: _isSubmitting ? Colors.grey : const Color(0xFFFF6B00),
           borderRadius: BorderRadius.circular(30),
-          boxShadow: [
-            if (!_isSubmitting)
-              BoxShadow(
-                color: const Color(0xFFFF6B00).withValues(alpha: 0.3),
-                blurRadius: 20,
-                offset: const Offset(0, 10),
-              ),
-          ],
         ),
         child: Center(
           child: _isSubmitting 
