@@ -1,6 +1,7 @@
 import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
+import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:image_picker/image_picker.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
@@ -36,10 +37,12 @@ class AddServiceScreen extends StatefulWidget {
   static Map<String, dynamic> _convertToRuntimeMap(Map<String, dynamic> firestoreData) {
     final Map<String, dynamic> runtimeData = Map.from(firestoreData);
     if (firestoreData['mainImagePath'] != null) {
-      runtimeData['mainImage'] = File(firestoreData['mainImagePath']);
+      runtimeData['mainImage'] = kIsWeb ? XFile(firestoreData['mainImagePath']) : File(firestoreData['mainImagePath']);
     }
     if (firestoreData['galleryImagePaths'] != null) {
-      runtimeData['galleryImages'] = (firestoreData['galleryImagePaths'] as List).map((path) => File(path)).toList();
+      runtimeData['galleryImages'] = (firestoreData['galleryImagePaths'] as List)
+          .map((path) => kIsWeb ? XFile(path) : File(path))
+          .toList();
     }
     return runtimeData;
   }
@@ -67,8 +70,8 @@ class _AddServiceScreenState extends State<AddServiceScreen> {
   String? draftId;
   
   // States
-  File? _mainImage;
-  final List<File> _galleryImages = [];
+  dynamic _mainImage; // Can be File or XFile
+  final List<dynamic> _galleryImages = []; // Can be List<File> or List<XFile>
   String? _networkMainImage; // For already uploaded images
   final List<String> _networkGalleryImages = []; // For already uploaded images
   final List<String> _serviceDetails = [];
@@ -120,7 +123,7 @@ class _AddServiceScreenState extends State<AddServiceScreen> {
         _networkGalleryImages.clear();
         _networkGalleryImages.addAll(List<String>.from(widget.initialDraftData!['galleryUrls']));
       } else if (widget.initialDraftData!['galleryImagePaths'] != null) {
-        _galleryImages.addAll(List<File>.from(draft['galleryImages']));
+        _galleryImages.addAll(draft['galleryImages']);
       }
       if (draft['details'] != null) {
         _serviceDetails.addAll(List<String>.from(draft['details']));
@@ -181,7 +184,7 @@ class _AddServiceScreenState extends State<AddServiceScreen> {
       maxHeight: 800,
     );
     if (image != null) {
-      setState(() => _mainImage = File(image.path));
+      setState(() => _mainImage = kIsWeb ? image : File(image.path));
     }
   }
 
@@ -196,7 +199,7 @@ class _AddServiceScreenState extends State<AddServiceScreen> {
       setState(() {
         for (var image in images) {
           if (_galleryImages.length < 6) {
-            _galleryImages.add(File(image.path));
+            _galleryImages.add(kIsWeb ? image : File(image.path));
           }
         }
       });
@@ -760,7 +763,12 @@ class _AddServiceScreenState extends State<AddServiceScreen> {
           borderRadius: BorderRadius.circular(8),
           border: Border.all(color: Colors.grey.shade200),
           image: _mainImage != null 
-            ? DecorationImage(image: FileImage(_mainImage!), fit: BoxFit.cover) 
+            ? DecorationImage(
+                image: kIsWeb 
+                  ? NetworkImage((_mainImage as XFile).path) 
+                  : FileImage(_mainImage as File), 
+                fit: BoxFit.cover
+              ) 
             : null,
         ),
         child: _mainImage == null ? Column(
@@ -811,7 +819,12 @@ class _AddServiceScreenState extends State<AddServiceScreen> {
             Container(
               decoration: BoxDecoration(
                 borderRadius: BorderRadius.circular(8),
-                image: DecorationImage(image: FileImage(_galleryImages[index]), fit: BoxFit.cover),
+                image: DecorationImage(
+                  image: kIsWeb 
+                    ? NetworkImage((_galleryImages[index] as XFile).path) 
+                    : FileImage(_galleryImages[index] as File), 
+                  fit: BoxFit.cover
+                ),
               ),
             ),
             Positioned(
@@ -1039,14 +1052,21 @@ class _AddServiceScreenState extends State<AddServiceScreen> {
     );
   }
 
-  Future<String?> _uploadImage(File? file, String serviceId, String type) async {
+  Future<String?> _uploadImage(dynamic file, String serviceId, String type) async {
     if (file == null) return null;
     try {
-      final fileName = path_pkg.basename(file.path);
+      final String fileName = kIsWeb ? (file as XFile).name : path_pkg.basename((file as File).path);
       final destination = 'services/$serviceId/$type/${DateTime.now().millisecondsSinceEpoch}_$fileName';
       final ref = FirebaseStorage.instance.ref(destination);
       debugPrint('Uploading $type image to $destination...');
-      final uploadTask = await ref.putFile(file);
+      
+      TaskSnapshot uploadTask;
+      if (kIsWeb) {
+        uploadTask = await ref.putData(await (file as XFile).readAsBytes());
+      } else {
+        uploadTask = await ref.putFile(file as File);
+      }
+      
       final downloadUrl = await uploadTask.ref.getDownloadURL();
       debugPrint('Upload success: $downloadUrl');
       return downloadUrl;
@@ -1089,17 +1109,25 @@ class _AddServiceScreenState extends State<AddServiceScreen> {
       final String providerAddress = providerData['address'] ?? 'Kuala Lumpur, Malaysia';
       final String providerProfileUrl = providerData['profileUrl'] ?? '';
 
-      // Geocode providerAddress to LatLng
-      double providerLat = 0.0;
-      double providerLng = 0.0;
-      try {
-        List<Location> locations = await locationFromAddress(providerAddress);
-        if (locations.isNotEmpty) {
-          providerLat = locations.first.latitude;
-          providerLng = locations.first.longitude;
+      // Geocode providerAddress to LatLng (Priority: Profile Coordinates > Geocoding)
+      double providerLat = (providerData['latitude'] is num) ? (providerData['latitude'] as num).toDouble() : 0.0;
+      double providerLng = (providerData['longitude'] is num) ? (providerData['longitude'] as num).toDouble() : 0.0;
+      
+      // If profile has no coordinates, try geocoding (Mobile only)
+      if (providerLat == 0.0 && providerLng == 0.0) {
+        if (!kIsWeb) {
+          try {
+            List<Location> locations = await locationFromAddress(providerAddress);
+            if (locations.isNotEmpty) {
+              providerLat = locations.first.latitude;
+              providerLng = locations.first.longitude;
+            }
+          } catch (e) {
+            debugPrint('Error geocoding provider address: $e');
+          }
+        } else {
+          debugPrint('Geocoding is skipped on Web (not supported by geocoding package)');
         }
-      } catch (e) {
-        debugPrint('Error geocoding provider address: $e');
       }
 
       // 🔹 2. Create Service ID (if new)

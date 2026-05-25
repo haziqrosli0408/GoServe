@@ -3,6 +3,7 @@ import 'package:google_fonts/google_fonts.dart';
 import 'package:intl/intl.dart';
 import 'package:geolocator/geolocator.dart';
 import 'package:geocoding/geocoding.dart';
+import 'package:cloud_firestore/cloud_firestore.dart';
 import 'payment_page.dart';
 
 class BookingPage extends StatefulWidget {
@@ -14,6 +15,7 @@ class BookingPage extends StatefulWidget {
   final String? providerId;
   final List<dynamic>? addOns;
   final String serviceId;
+  final String? providerProfileUrl;
 
   const BookingPage({
     super.key,
@@ -25,6 +27,7 @@ class BookingPage extends StatefulWidget {
     this.providerId,
     this.addOns,
     required this.serviceId,
+    this.providerProfileUrl,
   });
 
   @override
@@ -34,8 +37,22 @@ class BookingPage extends StatefulWidget {
 class _BookingPageState extends State<BookingPage> {
   int step = 1;
   DateTime selectedDate = DateTime.now();
-  String? selectedTime = "09:30 AM";
+  String? selectedTime;
   bool isGettingLocation = false;
+  bool _isLoadingAvailability = true;
+
+  // Availability loaded from Firestore: "yyyy-MM-dd" → List<String>
+  Map<String, List<String>> _serviceAvailability = {};
+
+  List<String> get _slotsForSelectedDate {
+    final key = DateFormat('yyyy-MM-dd').format(selectedDate);
+    return _serviceAvailability[key] ?? [];
+  }
+
+  bool _hasAvailability(DateTime d) {
+    final key = DateFormat('yyyy-MM-dd').format(d);
+    return (_serviceAvailability[key] ?? []).isNotEmpty;
+  }
 
   // Price Logic
   double get basePriceValue => double.tryParse(widget.price.replaceAll('RM', '').split('/')[0]) ?? 85.0;
@@ -72,6 +89,39 @@ class _BookingPageState extends State<BookingPage> {
 
   final Color primaryGreen = const Color(0xFFFF6B00);
   final Color bgCream = Colors.white;
+
+  @override
+  void initState() {
+    super.initState();
+    _loadAvailability();
+  }
+
+  Future<void> _loadAvailability() async {
+    try {
+      final doc = await FirebaseFirestore.instance
+          .collection('services')
+          .doc(widget.serviceId)
+          .get();
+      if (doc.exists) {
+        final rawMap =
+            doc.data()?['availability'] as Map<String, dynamic>? ?? {};
+        final parsed = <String, List<String>>{};
+        rawMap.forEach((date, slots) {
+          parsed[date] = List<String>.from(slots as List);
+        });
+        if (mounted) {
+          setState(() {
+            _serviceAvailability = parsed;
+            // If provider set availability, reset default time
+            selectedTime = null;
+          });
+        }
+      }
+    } catch (e) {
+      debugPrint('Error loading availability: $e');
+    }
+    if (mounted) setState(() => _isLoadingAvailability = false);
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -215,6 +265,20 @@ class _BookingPageState extends State<BookingPage> {
 
 
   Widget _buildScheduleStep() {
+    final bool hasProviderAvailability = _serviceAvailability.isNotEmpty;
+    final slots = _slotsForSelectedDate;
+    final morningSlots = slots.where((s) => s.contains('AM')).toList()..sort();
+    final afternoonSlots = slots.where((s) {
+      if (!s.contains('PM')) return false;
+      final h = int.tryParse(s.split(':')[0]) ?? 0;
+      return h >= 1 && h < 6;
+    }).toList()..sort();
+    final eveningSlots = slots.where((s) {
+      if (!s.contains('PM')) return false;
+      final h = int.tryParse(s.split(':')[0]) ?? 0;
+      return h >= 6;
+    }).toList()..sort();
+
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
@@ -236,29 +300,61 @@ class _BookingPageState extends State<BookingPage> {
         Container(
           padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
           decoration: BoxDecoration(color: Colors.white, borderRadius: BorderRadius.circular(12), boxShadow: [BoxShadow(color: Colors.black.withValues(alpha: 0.02), blurRadius: 10, offset: const Offset(0, 4))]),
-          child: _buildCalendar(),
+          child: _buildCalendar(hasProviderAvailability),
         ),
         const SizedBox(height: 48),
-        Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Text('Available Times', style: GoogleFonts.outfit(fontSize: 18, fontWeight: FontWeight.w600, color: const Color(0xFF1E293B))),
-            const SizedBox(height: 4),
-            Text('Select one slot', style: GoogleFonts.outfit(fontSize: 14, color: const Color(0xFF64748B))),
+        if (_isLoadingAvailability)
+          const Center(child: CircularProgressIndicator())
+        else if (slots.isEmpty && hasProviderAvailability)
+          Container(
+            padding: const EdgeInsets.all(20),
+            decoration: BoxDecoration(
+              color: Colors.orange.shade50,
+              borderRadius: BorderRadius.circular(12),
+              border: Border.all(color: Colors.orange.shade100),
+            ),
+            child: Row(
+              children: [
+                Icon(Icons.event_busy_outlined, color: Colors.orange.shade400),
+                const SizedBox(width: 12),
+                Expanded(
+                  child: Text(
+                    'No time slots available for this date. Please select another date.',
+                    style: GoogleFonts.outfit(fontSize: 13, color: Colors.orange.shade700, height: 1.4),
+                  ),
+                ),
+              ],
+            ),
+          )
+        else ...[
+          Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text('Available Times', style: GoogleFonts.outfit(fontSize: 18, fontWeight: FontWeight.w600, color: const Color(0xFF1E293B))),
+              const SizedBox(height: 4),
+              Text('Select one slot', style: GoogleFonts.outfit(fontSize: 14, color: const Color(0xFF64748B))),
+            ],
+          ),
+          const SizedBox(height: 24),
+          if (hasProviderAvailability) ...[
+            if (morningSlots.isNotEmpty) ...[_timeSection('MORNING', Icons.wb_sunny_outlined, morningSlots), const SizedBox(height: 12)],
+            if (afternoonSlots.isNotEmpty) ...[_timeSection('AFTERNOON', Icons.sunny, afternoonSlots), const SizedBox(height: 12)],
+            if (eveningSlots.isNotEmpty) _timeSection('EVENING', Icons.nightlight_round, eveningSlots),
+          ] else ...[
+            // Fallback: show default slots if provider hasn't set availability
+            _timeSection('MORNING', Icons.wb_sunny_outlined, ['08:00 AM', '09:30 AM', '11:00 AM']),
+            const SizedBox(height: 12),
+            _timeSection('AFTERNOON', Icons.sunny, ['01:30 PM', '03:00 PM', '04:30 PM']),
+            const SizedBox(height: 12),
+            _timeSection('EVENING', Icons.nightlight_round, ['06:00 PM', '07:30 PM', '09:00 PM']),
           ],
-        ),
-        const SizedBox(height: 24),
-        _timeSection('MORNING', Icons.wb_sunny_outlined, ['08:00 AM', '09:30 AM', '11:00 AM']),
-        const SizedBox(height: 12),
-        _timeSection('AFTERNOON', Icons.sunny, ['01:30 PM', '03:00 PM', '04:30 PM']),
-        const SizedBox(height: 12),
-        _timeSection('EVENING', Icons.nightlight_round, ['06:00 PM', '07:30 PM', '09:00 PM']),
+        ],
         const SizedBox(height: 40),
       ],
     );
   }
 
-  Widget _buildCalendar() {
+  Widget _buildCalendar([bool hasProviderAvailability = false]) {
     final now = DateTime.now();
     final today = DateTime(now.year, now.month, now.day);
     final firstDayOfMonth = DateTime(selectedDate.year, selectedDate.month, 1);
@@ -277,12 +373,32 @@ class _BookingPageState extends State<BookingPage> {
       final isPast = date.isBefore(today);
       final isToday = date.day == today.day && date.month == today.month && date.year == today.year;
       final isSelected = selectedDate.day == d && selectedDate.month == date.month;
+      final hasSlots = hasProviderAvailability ? _hasAvailability(date) : true;
+      final isUnavailable = hasProviderAvailability && !hasSlots && !isPast;
       gridItems.add(GestureDetector(
-        onTap: isPast ? null : () => setState(() => selectedDate = date),
+        onTap: (isPast || isUnavailable) ? null : () => setState(() {
+          selectedDate = date;
+          selectedTime = null; // Reset time when date changes
+        }),
         child: Container(
           margin: const EdgeInsets.all(2),
-          decoration: BoxDecoration(color: isSelected ? primaryGreen : (isToday ? primaryGreen.withValues(alpha: 0.1) : Colors.transparent), borderRadius: BorderRadius.circular(6)),
-          child: Center(child: Text('$d', style: GoogleFonts.outfit(fontSize: 14, fontWeight: isSelected || isToday ? FontWeight.w600 : FontWeight.w500, color: isSelected ? Colors.white : (isPast ? Colors.grey.shade200 : (isToday ? primaryGreen : Colors.black87))))),
+          decoration: BoxDecoration(
+            color: isSelected ? primaryGreen : (isToday ? primaryGreen.withValues(alpha: 0.1) : Colors.transparent),
+            borderRadius: BorderRadius.circular(6)
+          ),
+          child: Center(child: Text('$d', style: GoogleFonts.outfit(
+            fontSize: 14,
+            fontWeight: isSelected || isToday ? FontWeight.w600 : FontWeight.w500,
+            color: isSelected
+                ? Colors.white
+                : isPast
+                    ? Colors.grey.shade200
+                    : isUnavailable
+                        ? Colors.grey.shade300
+                        : isToday
+                            ? primaryGreen
+                            : Colors.black87,
+          ))),
         ),
       ));
     }
@@ -819,6 +935,7 @@ class _BookingPageState extends State<BookingPage> {
                           longitude: longitude,
                           totalPrice: finalTotal,
                           serviceId: widget.serviceId,
+                          providerProfileUrl: widget.providerProfileUrl,
                         ),
                       ),
                     );

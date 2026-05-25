@@ -29,7 +29,7 @@ class _SearchPageState extends State<SearchPage> {
   // Filter States
   RangeValues _priceRange = const RangeValues(0, 500);
   double _minRating = 0.0;
-  String _pricingOption = 'By Hour';
+  String _pricingOption = 'All';
   String _selectedLocationText = 'All over Malaysia';
   double _locationRangeKm = 0; // 0 means no filter
   LatLng? _userLocation;
@@ -233,25 +233,39 @@ class _SearchPageState extends State<SearchPage> {
       double rating = 4.9; 
       if (rating < _minRating) return false;
 
-      // Pricing Option Filter (Assuming 'type' field exists, or similar)
+      // Pricing Option Filter
       if (_pricingOption != 'All') {
-        final type = (s['pricingType'] as String?) ?? 'By Hour';
+        final type = (s['priceType'] as String?) ?? 'By Hour';
         if (type != _pricingOption) return false;
       }
 
       // Location Range Filter
       if (_locationRangeKm > 0 && _userLocation != null) {
-        double providerLat = s['providerLat'] ?? 0.0;
-        double providerLng = s['providerLng'] ?? 0.0;
+        // 1. Try to find coordinates under various common field names
+        final dynamic rawLat = s['providerLat'] ?? s['latitude'] ?? s['lat'];
+        final dynamic rawLng = s['providerLng'] ?? s['longitude'] ?? s['lng'];
         
-        // If provider has no coordinates, ignore them if a distance filter is set
-        if (providerLat == 0 && providerLng == 0) return false;
+        double? pLat;
+        double? pLng;
 
-        double distanceMeters = Geolocator.distanceBetween(
-          _userLocation!.latitude, _userLocation!.longitude,
-          providerLat, providerLng,
-        );
-        if (distanceMeters > _locationRangeKm * 1000) return false;
+        // 2. Safe conversion from String, num, or null
+        if (rawLat != null && rawLng != null) {
+          pLat = (rawLat is num) ? rawLat.toDouble() : double.tryParse(rawLat.toString());
+          pLng = (rawLng is num) ? rawLng.toDouble() : double.tryParse(rawLng.toString());
+        }
+        
+        // 3. If we found valid coordinates, apply the distance filter
+        if (pLat != null && pLng != null && pLat != 0.0 && pLng != 0.0) {
+          double distanceMeters = Geolocator.distanceBetween(
+            _userLocation!.latitude, _userLocation!.longitude,
+            pLat, pLng,
+          );
+          if (distanceMeters > _locationRangeKm * 1000) return false;
+        } else {
+          // If the service has NO coordinates, we usually shouldn't hide it 
+          // unless the user specifically wants ONLY nearby items.
+          // For now, let's keep it visible so they don't think it's "broken".
+        }
       }
 
       return true;
@@ -855,7 +869,7 @@ class _SearchPageState extends State<SearchPage> {
         crossAxisCount: 2,
         mainAxisSpacing: 24,
         crossAxisSpacing: 18,
-        childAspectRatio: 0.68, // Increased (made more compact) from 0.62
+        childAspectRatio: 0.58, // Increased height to prevent overflow with fixed square images
       ),
       itemCount: results.length,
       itemBuilder: (context, index) {
@@ -870,13 +884,20 @@ class _SearchPageState extends State<SearchPage> {
     String title = s['title'] ?? 'Elite Service';
     String providerName = s['providerName'] ?? 'Pro Provider';
     String price = s['price']?.toString() ?? '85';
-    String rating = '4.9';
-    String providerProfileUrl = s['providerProfileUrl'] ?? '';
+    double ratingValue = (s['averageRating'] ?? 0).toDouble();
+    int reviewsCount = s['reviewCount'] ?? 0;
+    String rating = ratingValue == 0 ? "New" : "${ratingValue.toStringAsFixed(1)} ($reviewsCount)";
+    String providerProfileUrl = s['providerProfileUrl'] ?? s['profileUrl'] ?? '';
     String servicePhotoUrl = s['servicePhotoUrl'] ?? '';
 
     return GestureDetector(
       onTap: () {
-        Navigator.push(context, MaterialPageRoute(builder: (context) => ServiceDetailsScreen(provider: s)));
+        Navigator.push(
+          context,
+          MaterialPageRoute(
+            builder: (context) => ServiceDetailsScreen(provider: s),
+          ),
+        );
       },
       child: Container(
         color: Colors.white,
@@ -884,8 +905,8 @@ class _SearchPageState extends State<SearchPage> {
           crossAxisAlignment: CrossAxisAlignment.start,
           mainAxisSize: MainAxisSize.min,
           children: [
-            // Image
-            Expanded(
+            AspectRatio(
+              aspectRatio: 1.0, // Ensures all images are the same square size
               child: ClipRRect(
                 borderRadius: BorderRadius.circular(16),
                 child: servicePhotoUrl.isNotEmpty ? Image.network(
@@ -901,9 +922,8 @@ class _SearchPageState extends State<SearchPage> {
                 ),
               ),
             ),
-            const SizedBox(height: 8),
+            const SizedBox(height: 12),
 
-            // Row 1: Title and Bookmark Icon
             Row(
               crossAxisAlignment: CrossAxisAlignment.start,
               mainAxisAlignment: MainAxisAlignment.spaceBetween,
@@ -912,7 +932,7 @@ class _SearchPageState extends State<SearchPage> {
                   child: Text(
                     title,
                     style: GoogleFonts.outfit(
-                      fontSize: 15, 
+                      fontSize: 14,
                       fontWeight: FontWeight.w600,
                       color: const Color(0xFF1F2937),
                     ),
@@ -924,15 +944,14 @@ class _SearchPageState extends State<SearchPage> {
                   onTap: () => _toggleSaveService(serviceId),
                   child: Icon(
                     _savedServiceIds.contains(serviceId) ? Icons.bookmark : Icons.bookmark_border,
-                    size: 20, 
+                    size: 22,
                     color: _savedServiceIds.contains(serviceId) ? const Color(0xFFFF6B00) : Colors.grey.shade400,
                   ),
                 ),
               ],
             ),
-            const SizedBox(height: 6), 
+            const SizedBox(height: 8),
 
-            // Row 2: Price and Rating
             Row(
               children: [
                 RichText(
@@ -948,7 +967,7 @@ class _SearchPageState extends State<SearchPage> {
                       TextSpan(
                         text: 'RM$price/hr',
                         style: GoogleFonts.outfit(
-                          fontSize: 15, 
+                          fontSize: 14,
                           fontWeight: FontWeight.w600,
                           color: const Color(0xFFFF6B00),
                         ),
@@ -959,41 +978,40 @@ class _SearchPageState extends State<SearchPage> {
                 Text(
                   ' · ',
                   style: GoogleFonts.outfit(
-                    fontSize: 14, // Increased from 12
+                    fontSize: 14,
                     color: const Color(0xFF6B7280),
                   ),
                 ),
-                const Icon(Icons.star, color: Color(0xFFFFC107), size: 14), 
+                const Icon(Icons.star, color: Color(0xFFFFC107), size: 16),
                 const SizedBox(width: 4),
                 Text(
                   rating,
                   style: GoogleFonts.outfit(
-                    fontSize: 12, 
+                    fontSize: 14,
                     fontWeight: FontWeight.w500,
                     color: const Color(0xFF1E293B),
                   ),
                 ),
               ],
             ),
-            const SizedBox(height: 8), 
+            const SizedBox(height: 10),
 
-            // Row 3: Provider Profile and Name
             Row(
               children: [
                 CircleAvatar(
-                  radius: 10, 
+                  radius: 9,
                   backgroundColor: const Color(0xFFF1F5F9),
                   backgroundImage: providerProfileUrl.isNotEmpty ? NetworkImage(providerProfileUrl) : null,
                   child: providerProfileUrl.isEmpty 
                     ? Text(providerName.isNotEmpty ? providerName[0].toUpperCase() : 'P', style: GoogleFonts.outfit(color: const Color(0xFF1F212C), fontSize: 9, fontWeight: FontWeight.w600)) 
                     : null,
                 ),
-                const SizedBox(width: 6), 
+                const SizedBox(width: 8),
                 Expanded(
                   child: Text(
                     providerName,
                     style: GoogleFonts.outfit(
-                      fontSize: 12, 
+                      fontSize: 11,
                       fontWeight: FontWeight.w500,
                       color: const Color(0xFF4B5563),
                     ),

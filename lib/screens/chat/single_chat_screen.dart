@@ -88,6 +88,33 @@ class _SingleChatScreenState extends State<SingleChatScreen> {
       });
       // Sync into chat metadata
       _syncMetadata();
+    } else {
+      // 🔹 FALLBACK: Check if this ID is actually a Service ID (common in GoServe)
+      try {
+        final serviceDoc = await FirebaseFirestore.instance.collection('services').doc(otherId).get();
+        if (serviceDoc.exists) {
+          final sData = serviceDoc.data()!;
+          final realProviderId = sData['providerId'] ?? sData['userId'] ?? sData['provider_id'];
+          
+          if (realProviderId != null && realProviderId is String) {
+            var pDoc = await FirebaseFirestore.instance.collection('providers').doc(realProviderId).get();
+            if (!pDoc.exists) {
+              pDoc = await FirebaseFirestore.instance.collection('users').doc(realProviderId).get();
+            }
+
+            if (pDoc.exists && mounted) {
+              final pData = pDoc.data()!;
+              setState(() {
+                otherUserName = pData['name'] ?? pData['providerName'] ?? pData['displayName'];
+                otherUserPhoto = pData['profileUrl'] ?? pData['providerProfileUrl'] ?? pData['photoUrl'];
+              });
+              _syncMetadata();
+            }
+          }
+        }
+      } catch (e) {
+        debugPrint("Error resolving service participant: $e");
+      }
     }
   }
 
@@ -104,12 +131,13 @@ class _SingleChatScreenState extends State<SingleChatScreen> {
       'serviceTitle': serviceTitle,
       'users': {
         currentUser!.uid: {
-          'name': currentUserName ?? currentUser!.displayName ?? 'User',
-          'profileUrl': currentUserPhoto ?? currentUser!.photoURL ?? '',
+          if (currentUserName != null && currentUserName != 'User' && currentUserName != 'Provider') 'name': currentUserName,
+          if (currentUserPhoto != null) 'profileUrl': currentUserPhoto,
         },
         providerId: {
-          'name': providerName,
-          'profileUrl': otherUserPhoto ?? widget.provider['profileUrl'] ?? widget.provider['providerProfileUrl'] ?? '',
+          if (providerName != 'Provider' && providerName != 'User') 'name': providerName,
+          if (otherUserPhoto != null || widget.provider['profileUrl'] != null) 
+            'profileUrl': otherUserPhoto ?? widget.provider['profileUrl'] ?? widget.provider['providerProfileUrl'] ?? '',
           'serviceName': serviceTitle,
         }
       }
@@ -198,7 +226,13 @@ class _SingleChatScreenState extends State<SingleChatScreen> {
 
   @override
   Widget build(BuildContext context) {
-    final String providerName = otherUserName ?? widget.provider['providerName'] ?? widget.provider['name'] ?? 'Provider';
+    // Get the most reliable name possible
+    String passedName = widget.provider['providerName'] ?? widget.provider['name'] ?? '';
+    if (passedName == 'User' || passedName.isEmpty) {
+      passedName = widget.provider['title'] ?? widget.provider['serviceName'] ?? 'Provider';
+    }
+
+    final String providerName = otherUserName ?? passedName;
     final String providerPhoto = otherUserPhoto ?? widget.provider['providerProfileUrl'] ?? widget.provider['profileUrl'] ?? '';
 
     return Scaffold(

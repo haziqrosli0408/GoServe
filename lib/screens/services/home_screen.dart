@@ -283,60 +283,74 @@ class _HomeScreenState extends State<HomeScreen> {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            Container(
-              width: double.infinity,
-              decoration: BoxDecoration(
-                gradient: LinearGradient(
-                  begin: Alignment.topCenter,
-                  end: Alignment.bottomCenter,
-                  colors: [
-                    const Color(0xFFFF6B00).withValues(alpha: 0.15), // Lighter top
-                    const Color(0xFFFF6B00).withValues(alpha: 0.65), // Darker at search bar area
-                    Colors.white, // Fade to white
-                  ],
-                  stops: const [0.0, 0.3, 1.0],
-                ),
-              ),
-              child: Column(
-                children: [
-                  _buildHeader(),
-                  const SizedBox(height: 16),
-                ],
-              ),
-            ),
-            _buildSectionHeader('Categories', 'See All', () {
-              showModalBottomSheet(
-                context: context,
-                isScrollControlled: true,
-                backgroundColor: Colors.transparent,
-                builder: (context) => Container(
-                  height: MediaQuery.of(context).size.height * 0.75,
+            Stack(
+              children: [
+                // 1. Orange Background Header
+                Container(
+                  width: double.infinity,
+                  height: 240, // Fixed height for the orange part
                   decoration: const BoxDecoration(
-                    color: Colors.white,
-                    borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
+                    color: Color(0xFFFF6B00),
                   ),
-                  child: const CategoriesScreen(),
                 ),
-              );
-            }),
-            const SizedBox(height: 16),
-            _buildCategoriesRow(),
-            const SizedBox(height: 32),
-            _buildBanner(),
-            const SizedBox(height: 24),
-            _buildRecommendationSection(),
-            const SizedBox(height: 24),
-            _buildSectionHeader('Top Rated', 'See All', () {
-              Navigator.push(
-                context,
-                MaterialPageRoute(
-                  builder: (context) => const TopRatedScreen(),
+                // 2. Content
+                Column(
+                  children: [
+                    _buildHeader(),
+                    Transform.translate(
+                      offset: const Offset(0, -40),
+                      child: Container(
+                        width: double.infinity,
+                        decoration: const BoxDecoration(
+                          color: Colors.white,
+                          borderRadius: BorderRadius.vertical(top: Radius.circular(32)),
+                        ),
+                        child: Column(
+                          children: [
+                            const SizedBox(height: 24),
+                            _buildSearchBar(),
+                            const SizedBox(height: 24),
+                            _buildSectionHeader('Categories', 'See All', () {
+                              showModalBottomSheet(
+                                context: context,
+                                isScrollControlled: true,
+                                backgroundColor: Colors.transparent,
+                                builder: (context) => Container(
+                                  height: MediaQuery.of(context).size.height * 0.75,
+                                  decoration: const BoxDecoration(
+                                    color: Colors.white,
+                                    borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
+                                  ),
+                                  child: const CategoriesScreen(),
+                                ),
+                              );
+                            }),
+                            const SizedBox(height: 16),
+                            _buildCategoriesRow(),
+                            const SizedBox(height: 32),
+                            _buildBanner(),
+                            const SizedBox(height: 24),
+                            _buildRecommendationSection(),
+                            const SizedBox(height: 24),
+                            _buildSectionHeader('Top Rated', 'See All', () {
+                              Navigator.push(
+                                context,
+                                MaterialPageRoute(
+                                  builder: (context) => const TopRatedScreen(),
+                                ),
+                              );
+                            }),
+                            const SizedBox(height: 8),
+                            _buildServicesList(),
+                            const SizedBox(height: 24),
+                          ],
+                        ),
+                      ),
+                    ),
+                  ],
                 ),
-              );
-            }),
-            const SizedBox(height: 8),
-            _buildServicesList(),
-            const SizedBox(height: 24),
+              ],
+            ),
           ],
         ),
       ),
@@ -357,7 +371,7 @@ class _HomeScreenState extends State<HomeScreen> {
     return SizedBox(
       width: double.infinity,
       child: Padding(
-        padding: const EdgeInsets.fromLTRB(20, 60, 20, 20),
+        padding: const EdgeInsets.fromLTRB(20, 80, 20, 60),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
@@ -375,7 +389,7 @@ class _HomeScreenState extends State<HomeScreen> {
                         child: Container(
                           decoration: BoxDecoration(
                             shape: BoxShape.circle,
-                            border: Border.all(color: Colors.white, width: 2),
+                            border: Border.all(color: Colors.white, width: 0.5),
                             boxShadow: [
                               BoxShadow(
                                 color: Colors.black.withValues(alpha: 0.1),
@@ -410,7 +424,7 @@ class _HomeScreenState extends State<HomeScreen> {
                             Text(
                               'Hi, $firstName',
                               style: GoogleFonts.outfit(
-                                color: Colors.black,
+                                color: Colors.white,
                                 fontWeight: FontWeight.w400, // Unbolded
                                 fontSize: 16,
                               ),
@@ -418,13 +432,13 @@ class _HomeScreenState extends State<HomeScreen> {
                             const SizedBox(height: 2),
                             Row(
                               children: [
-                                const Icon(Icons.location_on, color: Color(0xFFFF6B00), size: 16),
+                                const Icon(Icons.location_on, color: Colors.white, size: 16),
                                 const SizedBox(width: 4),
                                 Expanded(
                                   child: Text(
                                     address,
                                     style: GoogleFonts.outfit(
-                                      color: Colors.black, // Darker (solid)
+                                      color: Colors.white, // Darker (solid)
                                       fontSize: 16,
                                       fontWeight: FontWeight.w600,
                                     ),
@@ -449,74 +463,108 @@ class _HomeScreenState extends State<HomeScreen> {
                       ),
                     );
                   },
-                  child: const Icon(
-                    Icons.notifications_outlined,
-                    color: Colors.white,
-                    size: 32,
+                  child: StreamBuilder<QuerySnapshot>(
+                    stream: FirebaseFirestore.instance
+                        .collection('bookings')
+                        .where('customerId', isEqualTo: FirebaseAuth.instance.currentUser?.uid)
+                        .where('status', whereIn: ['Confirmed', 'Accepted', 'On the way', 'Arrived', 'In progress'])
+                        .snapshots(),
+                    builder: (context, snapshot) {
+                      final hasUpdate = snapshot.hasData && snapshot.data!.docs.isNotEmpty;
+                      return Stack(
+                        clipBehavior: Clip.none,
+                        children: [
+                          const Icon(
+                            Icons.notifications_outlined,
+                            color: Colors.white,
+                            size: 32,
+                          ),
+                          if (hasUpdate)
+                            Positioned(
+                              top: 2,
+                              right: 2,
+                              child: Container(
+                                width: 10,
+                                height: 10,
+                                decoration: BoxDecoration(
+                                  color: Colors.red,
+                                  shape: BoxShape.circle,
+                                  border: Border.all(color: const Color(0xFFFF6B00), width: 1.5),
+                                ),
+                              ),
+                            ),
+                        ],
+                      );
+                    }
                   ),
                 ),
               ],
             ),
-            const SizedBox(height: 24),
-            Container(
-              height: 52,
-              decoration: BoxDecoration(
-                color: Colors.white,
-                borderRadius: BorderRadius.circular(12),
-                boxShadow: [
-                  BoxShadow(
-                    color: Colors.black.withValues(alpha: 0.05),
-                    blurRadius: 10,
-                    offset: const Offset(0, 4),
-                  ),
-                ],
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildSearchBar() {
+    return Padding(
+      padding: const EdgeInsets.symmetric(horizontal: 20),
+      child: Container(
+        height: 52,
+        decoration: BoxDecoration(
+          color: const Color(0xFFF5F5F5), // Soft grey
+          borderRadius: BorderRadius.circular(12),
+          boxShadow: [
+            BoxShadow(
+              color: Colors.black.withValues(alpha: 0.03),
+              blurRadius: 10,
+              offset: const Offset(0, 4),
+            ),
+          ],
+        ),
+        child: Stack(
+          alignment: Alignment.centerLeft,
+          children: [
+            TextField(
+              readOnly: true,
+              onTap: () {
+                Navigator.push(context, MaterialPageRoute(builder: (_) => const SearchPage()));
+              },
+              controller: _searchController,
+              decoration: InputDecoration(
+                hintText: '', // Keep empty as we use AnimatedTextKit
+                prefixIcon: const Icon(Icons.search, color: Colors.black45, size: 22),
+                border: InputBorder.none,
+                contentPadding: const EdgeInsets.symmetric(vertical: 15),
               ),
-              child: Stack(
-                alignment: Alignment.centerLeft,
-                children: [
-                  TextField(
-                    readOnly: true,
-                    onTap: () {
-                      Navigator.push(context, MaterialPageRoute(builder: (_) => const SearchPage()));
-                    },
-                    controller: _searchController,
-                    decoration: InputDecoration(
-                      hintText: '', // Keep empty as we use AnimatedTextKit
-                      prefixIcon: const Icon(Icons.search, color: Colors.black45, size: 22),
-                      border: InputBorder.none,
-                      contentPadding: const EdgeInsets.symmetric(vertical: 15),
+            ),
+            Positioned(
+              left: 48, // Consistent with prefixIcon width
+              child: IgnorePointer(
+                child: Row(
+                  children: [
+                    Text(
+                      'Find your best ',
+                      style: GoogleFonts.outfit(color: Colors.grey.shade400, fontSize: 14),
                     ),
-                  ),
-                  Positioned(
-                    left: 48, // Consistent with prefixIcon width
-                    child: IgnorePointer(
-                      child: Row(
-                        children: [
-                          Text(
-                            'Find your best ',
-                            style: GoogleFonts.outfit(color: Colors.grey.shade400, fontSize: 14),
+                    DefaultTextStyle(
+                      style: GoogleFonts.outfit(color: Colors.grey.shade400, fontSize: 14),
+                      child: AnimatedTextKit(
+                        repeatForever: true,
+                        animatedTexts: [
+                          TypewriterAnimatedText(
+                            'services...',
+                            speed: const Duration(milliseconds: 100),
                           ),
-                          DefaultTextStyle(
-                            style: GoogleFonts.outfit(color: Colors.grey.shade400, fontSize: 14),
-                            child: AnimatedTextKit(
-                              repeatForever: true,
-                              animatedTexts: [
-                                TypewriterAnimatedText(
-                                  'services...',
-                                  speed: const Duration(milliseconds: 100),
-                                ),
-                                TypewriterAnimatedText(
-                                  'service providers...',
-                                  speed: const Duration(milliseconds: 100),
-                                ),
-                              ],
-                            ),
+                          TypewriterAnimatedText(
+                            'service providers...',
+                            speed: const Duration(milliseconds: 100),
                           ),
                         ],
                       ),
                     ),
-                  ),
-                ],
+                  ],
+                ),
               ),
             ),
           ],
@@ -873,7 +921,8 @@ class _HomeScreenState extends State<HomeScreen> {
     String providerName = s['providerName'] ?? 'Pro Provider';
     String price = s['price']?.toString() ?? '25';
     double ratingValue = (s['averageRating'] ?? 0).toDouble();
-    String rating = ratingValue == 0 ? "New" : ratingValue.toStringAsFixed(1);
+    int reviewsCount = s['reviewCount'] ?? 0;
+    String rating = ratingValue == 0 ? "New" : "${ratingValue.toStringAsFixed(1)} ($reviewsCount)";
     String providerProfileUrl = s['providerProfileUrl'] ?? ''; 
     String servicePhotoUrl = s['servicePhotoUrl'] ?? ''; 
 
@@ -1098,8 +1147,7 @@ class _HomeScreenState extends State<HomeScreen> {
     String price = s['price']?.toString() ?? '0';
     double ratingValue = (s['averageRating'] ?? 0).toDouble();
     int reviewsCount = s['reviewCount'] ?? 0;
-    String rating = ratingValue == 0 ? "New" : ratingValue.toStringAsFixed(1);
-    String reviews = reviewsCount.toString(); 
+    String ratingLabel = ratingValue == 0 ? "New" : "${ratingValue.toStringAsFixed(1)} ($reviewsCount)";
     String providerProfileUrl = s['providerProfileUrl'] ?? '';
     String servicePhotoUrl = s['servicePhotoUrl'] ?? '';
 
@@ -1183,7 +1231,7 @@ class _HomeScreenState extends State<HomeScreen> {
                           const Icon(Icons.star, color: Color(0xFFFFC107), size: 15), // Increased from 14
                           const SizedBox(width: 4),
                           Text(
-                            '$rating ($reviews) · \$\$',
+                            ratingLabel,
                             style: GoogleFonts.outfit(
                               fontSize: 13, // Increased from 12
                               color: Colors.grey.shade600,

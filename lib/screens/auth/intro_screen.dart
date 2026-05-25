@@ -176,7 +176,7 @@ class _IntroScreenState extends State<IntroScreen>
                   Text(
                     title,
                     style: GoogleFonts.outfit(
-                      fontWeight: FontWeight.w600,
+                      fontWeight: FontWeight.w500,
                       fontSize: 16,
                       color: const Color(0xFF1E293B),
                     ),

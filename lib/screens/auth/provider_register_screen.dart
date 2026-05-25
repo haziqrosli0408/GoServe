@@ -10,6 +10,9 @@ import 'package:gooservee/services/google_auth_service.dart';
 import 'package:flutter/services.dart';
 import 'dart:math';
 import 'package:gooservee/utils/categories_data.dart';
+import 'package:flutter/foundation.dart';
+import 'package:http/http.dart' as http;
+import 'dart:convert';
 
 class ProviderRegisterScreen extends StatefulWidget {
   const ProviderRegisterScreen({super.key});
@@ -33,6 +36,8 @@ class _ProviderRegisterScreenState extends State<ProviderRegisterScreen> {
   final GoogleAuthService _googleAuthService = GoogleAuthService();
   bool showBankList = false;
   bool isGoogleUser = false;
+  double? _latitude;
+  double? _longitude;
 
   Future<void> _googleSignUp() async {
     setState(() => isLoading = true);
@@ -229,15 +234,47 @@ class _ProviderRegisterScreenState extends State<ProviderRegisterScreen> {
         ),
       );
       
-      List<Placemark> placemarks = await placemarkFromCoordinates(position.latitude, position.longitude);
+      String? address;
+
+      if (!kIsWeb) {
+        try {
+          List<Placemark> placemarks = await placemarkFromCoordinates(position.latitude, position.longitude);
+          if (placemarks.isNotEmpty) {
+            Placemark place = placemarks[0];
+            address = "${place.street != null && place.street!.isNotEmpty ? '${place.street}, ' : ''}${place.locality ?? ''}, ${place.administrativeArea ?? ''}, ${place.country ?? ''}";
+            address = address.replaceAll(RegExp(r'^, |, $'), '');
+          }
+        } catch (e) {
+          debugPrint("Geocoding failed: $e");
+        }
+      } else {
+        // Web Geocoding Fallback using Google Maps API
+        try {
+          // Use the API key found in web/index.html
+          const apiKey = "AIzaSyAbuq1D2c5ZgL5jGjQSCp3tFWx2S7aBl60";
+          final url = "https://maps.googleapis.com/maps/api/geocode/json?latlng=${position.latitude},${position.longitude}&key=$apiKey";
+          final response = await http.get(Uri.parse(url));
+          if (response.statusCode == 200) {
+            final data = json.decode(response.body);
+            if (data['status'] == 'OK' && data['results'].isNotEmpty) {
+              address = data['results'][0]['formatted_address'];
+            }
+          }
+        } catch (e) {
+          debugPrint("Web Geocoding failed: $e");
+        }
+      }
       
-      if (placemarks.isNotEmpty) {
-        Placemark place = placemarks[0];
-        String address = "${place.street != null && place.street!.isNotEmpty ? '${place.street}, ' : ''}${place.locality ?? ''}, ${place.administrativeArea ?? ''}, ${place.country ?? ''}";
-        addressController.text = address.replaceAll(RegExp(r'^, |, $'), '');
+      if (address != null && address.isNotEmpty) {
+        addressController.text = address;
       } else {
         addressController.text = "${position.latitude}, ${position.longitude}";
       }
+      
+      setState(() {
+        _latitude = position.latitude;
+        _longitude = position.longitude;
+      });
       
     } catch (e) {
       if (mounted) {
@@ -326,6 +363,8 @@ class _ProviderRegisterScreenState extends State<ProviderRegisterScreen> {
         "services": selectedServices,
         "role": "provider",
         "status": "Active",
+        "latitude": _latitude,
+        "longitude": _longitude,
         "createdAt": DateTime.now(),
       });
 

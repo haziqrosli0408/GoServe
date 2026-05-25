@@ -8,6 +8,8 @@ import 'package:url_launcher/url_launcher.dart';
 import '../chat/single_chat_screen.dart';
 import 'package:table_calendar/table_calendar.dart';
 import 'package:intl/intl.dart';
+import '../misc/notifications_screen.dart';
+import '../dashboards/customer_home.dart';
 
 class ProviderHomeScreen extends StatefulWidget {
   const ProviderHomeScreen({super.key});
@@ -25,7 +27,7 @@ class _ProviderHomeScreenState extends State<ProviderHomeScreen> {
   double averageRating = 0.0;
 
   // Calendar State
-  CalendarFormat _calendarFormat = CalendarFormat.month;
+  CalendarFormat _calendarFormat = CalendarFormat.week;
   DateTime _focusedDay = DateTime.now();
   DateTime? _selectedDay;
   Map<DateTime, List<dynamic>> _events = {};
@@ -180,73 +182,86 @@ class _ProviderHomeScreenState extends State<ProviderHomeScreen> {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          // Header Skeleton
-          Container(
-            color: const Color(0xFF4F46E5),
-            padding: const EdgeInsets.fromLTRB(24, 60, 24, 20),
-            child: Row(
-              children: [
-                Expanded(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      SkeletonBox(width: 100, height: 14, color: Colors.white.withValues(alpha: 0.2)),
-                      const SizedBox(height: 8),
-                      SkeletonBox(width: 150, height: 26, color: Colors.white.withValues(alpha: 0.2)),
-                    ],
+          Stack(
+            children: [
+              // Header Background
+              Container(
+                width: double.infinity,
+                height: 240,
+                color: const Color(0xFF4F46E5),
+              ),
+              Column(
+                children: [
+                  // Header Info Skeleton
+                  Padding(
+                    padding: const EdgeInsets.fromLTRB(24, 80, 24, 60),
+                    child: Row(
+                      children: [
+                        Expanded(
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              SkeletonBox(width: 100, height: 14, color: Colors.white.withValues(alpha: 0.2)),
+                              const SizedBox(height: 8),
+                              SkeletonBox(width: 150, height: 26, color: Colors.white.withValues(alpha: 0.2)),
+                            ],
+                          ),
+                        ),
+                        Container(
+                          width: 40,
+                          height: 40,
+                          decoration: BoxDecoration(
+                            color: Colors.white.withValues(alpha: 0.2),
+                            shape: BoxShape.circle,
+                          ),
+                        ),
+                      ],
+                    ),
                   ),
-                ),
-                Container(
-                  width: 40,
-                  height: 40,
-                  decoration: BoxDecoration(
-                    color: Colors.white.withValues(alpha: 0.2),
-                    shape: BoxShape.circle,
+                  // Body Sheet Skeleton
+                  Transform.translate(
+                    offset: const Offset(0, -40),
+                    child: Container(
+                      width: double.infinity,
+                      decoration: const BoxDecoration(
+                        color: Colors.white,
+                        borderRadius: BorderRadius.vertical(top: Radius.circular(32)),
+                      ),
+                      child: Column(
+                        children: [
+                          const SizedBox(height: 32),
+                          // Calendar Skeleton
+                          Padding(
+                            padding: const EdgeInsets.symmetric(horizontal: 24),
+                            child: SkeletonBox(
+                              width: double.infinity,
+                              height: 350,
+                              borderRadius: BorderRadius.circular(24),
+                            ),
+                          ),
+                          const SizedBox(height: 32),
+                          // Requests Title Skeleton
+                          const Padding(
+                            padding: EdgeInsets.symmetric(horizontal: 24),
+                            child: SkeletonBox(width: 180, height: 20),
+                          ),
+                          const SizedBox(height: 16),
+                          // Requests Box Skeleton
+                          Padding(
+                            padding: const EdgeInsets.symmetric(horizontal: 24),
+                            child: SkeletonBox(
+                              width: double.infinity,
+                              height: 120,
+                              borderRadius: BorderRadius.circular(24),
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
                   ),
-                ),
-              ],
-            ),
-          ),
-
-          // Calendar Skeleton
-          Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 20),
-            child: SkeletonBox(
-              width: double.infinity,
-              height: 350,
-              borderRadius: BorderRadius.circular(24),
-            ),
-          ),
-
-          // Requests Title Skeleton
-          const Padding(
-            padding: EdgeInsets.symmetric(horizontal: 24),
-            child: SkeletonBox(width: 180, height: 20),
-          ),
-          const SizedBox(height: 16),
-          
-          // Requests Box Skeleton
-          Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 24),
-            child: SkeletonBox(
-              width: double.infinity,
-              height: 120,
-              borderRadius: BorderRadius.circular(24),
-            ),
-          ),
-
-
-          // Stats Skeleton
-          Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 24),
-            child: Row(
-              mainAxisAlignment: MainAxisAlignment.spaceBetween,
-              children: [
-                SkeletonBox(width: (MediaQuery.of(context).size.width - 64) / 3, height: 80, borderRadius: BorderRadius.circular(16)),
-                SkeletonBox(width: (MediaQuery.of(context).size.width - 64) / 3, height: 80, borderRadius: BorderRadius.circular(16)),
-                SkeletonBox(width: (MediaQuery.of(context).size.width - 64) / 3, height: 80, borderRadius: BorderRadius.circular(16)),
-              ],
-            ),
+                ],
+              ),
+            ],
           ),
         ],
       ),
@@ -256,32 +271,59 @@ class _ProviderHomeScreenState extends State<ProviderHomeScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: Colors.grey[50],
+      backgroundColor: Colors.white,
       body: providerData == null
           ? _buildSkeletonLoader()
-          : CustomScrollView(
-              slivers: [
-                SliverToBoxAdapter(child: _buildHeader()),
-                SliverToBoxAdapter(
-                  child: Padding(
-                    padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 20),
-                    child: _buildCalendarSection(),
+          : SingleChildScrollView(
+              child: Column(
+                children: [
+                  Stack(
+                    children: [
+                      // 1. Purple Background Header
+                      Container(
+                        width: double.infinity,
+                        height: 280, // Fixed height for the purple part
+                        decoration: const BoxDecoration(
+                          color: Color(0xFF4F46E5),
+                        ),
+                      ),
+                      // 2. Content
+                      Column(
+                        children: [
+                          _buildHeader(),
+                          Transform.translate(
+                            offset: const Offset(0, -40),
+                            child: Container(
+                              width: double.infinity,
+                              decoration: const BoxDecoration(
+                                color: Colors.white,
+                                borderRadius: BorderRadius.vertical(top: Radius.circular(32)),
+                              ),
+                              child: Column(
+                                children: [
+                                  const SizedBox(height: 32),
+                                  Padding(
+                                    padding: const EdgeInsets.symmetric(horizontal: 24),
+                                    child: _buildCalendarSection(),
+                                  ),
+                                  const SizedBox(height: 24),
+                                  _buildNewRequestsSection(),
+                                  const SizedBox(height: 24),
+                                  Padding(
+                                    padding: const EdgeInsets.symmetric(horizontal: 24),
+                                    child: _buildStatsRow(),
+                                  ),
+                                  const SizedBox(height: 40),
+                                ],
+                              ),
+                            ),
+                          ),
+                        ],
+                      ),
+                    ],
                   ),
-                ),
-                SliverToBoxAdapter(
-                  child: Padding(
-                    padding: const EdgeInsets.only(top: 10),
-                    child: _buildNewRequestsSection(),
-                  ),
-                ),
-                SliverToBoxAdapter(
-                  child: Padding(
-                    padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 10),
-                    child: _buildStatsRow(),
-                  ),
-                ),
-                const SliverToBoxAdapter(child: SizedBox(height: 40)),
-              ],
+                ],
+              ),
             ),
     );
   }
@@ -289,37 +331,11 @@ class _ProviderHomeScreenState extends State<ProviderHomeScreen> {
   Widget _buildHeader() {
     return Container(
       width: double.infinity,
-      decoration: const BoxDecoration(
-        color: Color(0xFF4F46E5),
-      ),
       child: Padding(
-        padding: const EdgeInsets.fromLTRB(24, 60, 24, 20),
+        padding: const EdgeInsets.fromLTRB(24, 80, 24, 60),
         child: Row(
           children: [
-            Expanded(
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(
-                    _getGreeting(),
-                    style: GoogleFonts.outfit(
-                      color: Colors.white.withValues(alpha: 0.8),
-                      fontSize: 14,
-                      fontWeight: FontWeight.w500,
-                    ),
-                  ),
-                  const SizedBox(height: 2),
-                  Text(
-                    providerData?['name'] ?? 'Provider',
-                    style: GoogleFonts.outfit(
-                      color: Colors.white,
-                      fontSize: 26,
-                      fontWeight: FontWeight.w700,
-                    ),
-                  ),
-                ],
-              ),
-            ),
+            // Left: Profile Picture
             GestureDetector(
               onTap: () {
                 Navigator.push(
@@ -330,10 +346,10 @@ class _ProviderHomeScreenState extends State<ProviderHomeScreen> {
               child: Container(
                 decoration: BoxDecoration(
                   shape: BoxShape.circle,
-                  border: Border.all(color: Colors.white.withValues(alpha: 0.3), width: 2),
+                  border: Border.all(color: Colors.white.withValues(alpha: 0.3), width: 1),
                 ),
                 child: CircleAvatar(
-                  radius: 20,
+                  radius: 24,
                   backgroundColor: Colors.white.withValues(alpha: 0.2),
                   backgroundImage: (providerData?['profileUrl'] != null && providerData!['profileUrl'].toString().isNotEmpty)
                       ? NetworkImage(providerData!['profileUrl'])
@@ -342,12 +358,89 @@ class _ProviderHomeScreenState extends State<ProviderHomeScreen> {
                       ? Text(
                           (providerData?['name'] ?? 'P')[0].toUpperCase(),
                           style: GoogleFonts.outfit(
-                            fontSize: 14,
+                            fontSize: 16,
                             fontWeight: FontWeight.w600,
                             color: Colors.white,
                           ),
                         )
                       : null,
+                ),
+              ),
+            ),
+            const SizedBox(width: 12),
+            // Middle: Welcome Text
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    'Hi, ${providerData?['name'] ?? 'Provider'}',
+                    style: GoogleFonts.outfit(
+                      color: Colors.white,
+                      fontSize: 18,
+                      fontWeight: FontWeight.w700,
+                      letterSpacing: -0.5,
+                    ),
+                  ),
+                  const SizedBox(height: 2),
+                  Text(
+                    'Welcome to GoServe',
+                    style: GoogleFonts.outfit(
+                      color: Colors.white.withValues(alpha: 0.8),
+                      fontSize: 14,
+                      fontWeight: FontWeight.w400,
+                    ),
+                  ),
+                ],
+              ),
+            ),
+            // Right: Notification Icon
+            GestureDetector(
+              onTap: () {
+                Navigator.push(
+                  context,
+                  MaterialPageRoute(builder: (context) => const NotificationsScreen()),
+                );
+              },
+              child: Container(
+                padding: const EdgeInsets.all(8),
+                decoration: BoxDecoration(
+                  color: Colors.white.withValues(alpha: 0.15),
+                  shape: BoxShape.circle,
+                ),
+                child: StreamBuilder<QuerySnapshot>(
+                  stream: FirebaseFirestore.instance
+                      .collection('bookings')
+                      .where('providerId', isEqualTo: user?.uid)
+                      .where('status', isEqualTo: 'Pending')
+                      .snapshots(),
+                  builder: (context, snapshot) {
+                    final hasNew = snapshot.hasData && snapshot.data!.docs.isNotEmpty;
+                    return Stack(
+                      clipBehavior: Clip.none,
+                      children: [
+                        const Icon(
+                          Icons.notifications_outlined,
+                          color: Colors.white,
+                          size: 28,
+                        ),
+                        if (hasNew)
+                          Positioned(
+                            top: 2,
+                            right: 2,
+                            child: Container(
+                              width: 10,
+                              height: 10,
+                              decoration: BoxDecoration(
+                                color: Colors.red,
+                                shape: BoxShape.circle,
+                                border: Border.all(color: const Color(0xFF4F46E5), width: 1.5),
+                              ),
+                            ),
+                          ),
+                      ],
+                    );
+                  }
                 ),
               ),
             ),
@@ -485,6 +578,32 @@ class _ProviderHomeScreenState extends State<ProviderHomeScreen> {
                         ),
                       ),
                     ),
+                    const SizedBox(width: 8),
+                    GestureDetector(
+                      onTap: () {
+                        setState(() {
+                          if (_calendarFormat == CalendarFormat.week) {
+                            _calendarFormat = CalendarFormat.month;
+                          } else {
+                            _calendarFormat = CalendarFormat.week;
+                          }
+                        });
+                      },
+                      child: Container(
+                        padding: const EdgeInsets.all(4),
+                        decoration: BoxDecoration(
+                          color: Colors.grey[100],
+                          shape: BoxShape.circle,
+                        ),
+                        child: Icon(
+                          _calendarFormat == CalendarFormat.week 
+                              ? Icons.keyboard_arrow_down_rounded 
+                              : Icons.keyboard_arrow_up_rounded,
+                          color: Colors.grey[700],
+                          size: 20,
+                        ),
+                      ),
+                    ),
                   ],
                 ),
                 IconButton(
@@ -505,6 +624,7 @@ class _ProviderHomeScreenState extends State<ProviderHomeScreen> {
             calendarFormat: _calendarFormat,
             availableCalendarFormats: const {
               CalendarFormat.month: 'Month',
+              CalendarFormat.week: 'Week',
             },
             sixWeekMonthsEnforced: true,
             headerVisible: false, // Hide default header
@@ -777,10 +897,36 @@ class _ProviderHomeScreenState extends State<ProviderHomeScreen> {
                           ),
                           const Divider(height: 32, thickness: 1, color: Color(0xFFF1F5F9)),
                           Row(
+                            mainAxisAlignment: MainAxisAlignment.spaceBetween,
                             children: [
-                              _infoBadge(Icons.calendar_today_outlined, data['date'] ?? 'No date'),
-                              const SizedBox(width: 12),
-                              _infoBadge(Icons.access_time_outlined, data['time'] ?? 'No time'),
+                              Row(
+                                children: [
+                                  Icon(Icons.calendar_today_outlined, color: Colors.grey[500], size: 16),
+                                  const SizedBox(width: 8),
+                                  Text(
+                                    data['date'] ?? 'No date',
+                                    style: GoogleFonts.outfit(
+                                      color: const Color(0xFF64748B),
+                                      fontSize: 14,
+                                      fontWeight: FontWeight.w500,
+                                    ),
+                                  ),
+                                ],
+                              ),
+                              Row(
+                                children: [
+                                  Icon(Icons.access_time_outlined, color: Colors.grey[500], size: 16),
+                                  const SizedBox(width: 8),
+                                  Text(
+                                    data['time'] ?? 'No time',
+                                    style: GoogleFonts.outfit(
+                                      color: const Color(0xFF64748B),
+                                      fontSize: 14,
+                                      fontWeight: FontWeight.w500,
+                                    ),
+                                  ),
+                                ],
+                              ),
                             ],
                           ),
                           const SizedBox(height: 20),

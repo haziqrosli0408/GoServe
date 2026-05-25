@@ -110,7 +110,7 @@ exports.onBookingStatusChange = onDocumentUpdated("bookings/{bookingId}", async 
   // If status changed
   if (before.status !== after.status) {
     const customer = await getUserTokenAndEmail(after.customerId, false);
-    if (customer && customer.fcmToken) {
+    if (customer && customer.fcmToken && customer.pushNotificationsEnabled !== false) {
       await sendPushNotification(
         customer.fcmToken,
         "Booking Update",
@@ -123,7 +123,7 @@ exports.onBookingStatusChange = onDocumentUpdated("bookings/{bookingId}", async 
   // If status is "Completed", send email to provider
   if (before.status !== "Completed" && after.status === "Completed") {
     const provider = await getUserTokenAndEmail(after.providerId, true);
-    if (provider && provider.email) {
+    if (provider && provider.email && provider.emailNotificationsEnabled !== false) {
       await admin.firestore().collection("mail").add({
         to: provider.email,
         message: {
@@ -149,7 +149,7 @@ exports.onNewBookingCreated = onDocumentCreated("bookings/{bookingId}", async (e
 
   // 1. Notify Provider via Push
   const provider = await getUserTokenAndEmail(booking.providerId, true);
-  if (provider && provider.fcmToken) {
+  if (provider && provider.fcmToken && provider.pushNotificationsEnabled !== false) {
     await sendPushNotification(
       provider.fcmToken,
       "New Service Request",
@@ -160,7 +160,7 @@ exports.onNewBookingCreated = onDocumentCreated("bookings/{bookingId}", async (e
 
   // 2. Email Customer (Payment Confirmation)
   const customer = await getUserTokenAndEmail(booking.customerId, false);
-  if (customer && customer.email) {
+  if (customer && customer.email && customer.emailNotificationsEnabled !== false) {
     await admin.firestore().collection("mail").add({
       to: customer.email,
       message: {
@@ -191,7 +191,7 @@ exports.onNewChatMessage = onDocumentCreated("chats/{chatId}/messages/{msgId}", 
     receiver = await getUserTokenAndEmail(message.receiverId, true);
   }
 
-  if (receiver && receiver.fcmToken) {
+  if (receiver && receiver.fcmToken && receiver.pushNotificationsEnabled !== false) {
     // Find sender's name
     let senderName = "Someone";
     let sender = await getUserTokenAndEmail(message.senderId, false);
@@ -221,7 +221,7 @@ exports.onUpcomingServiceReminder = onSchedule("0 8 * * *", async (event) => {
   for (const doc of bookingsSnapshot.docs) {
     const booking = doc.data();
     const provider = await getUserTokenAndEmail(booking.providerId, true);
-    if (provider && provider.fcmToken) {
+    if (provider && provider.fcmToken && provider.pushNotificationsEnabled !== false) {
       await sendPushNotification(
         provider.fcmToken,
         "Upcoming Service Reminder",

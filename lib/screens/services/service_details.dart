@@ -412,7 +412,7 @@ class _ServiceDetailsScreenState extends State<ServiceDetailsScreen> {
           ),
         ],
       ),
-      bottomSheet: _buildFooter(context, name, serviceTitle, category, price, serviceImageUrl),
+      bottomSheet: _buildFooter(context, name, serviceTitle, category, price, serviceImageUrl, profileUrl),
     );
   }
 
@@ -951,7 +951,7 @@ class _ServiceDetailsScreenState extends State<ServiceDetailsScreen> {
     );
   }
 
-  Widget _buildFooter(BuildContext context, String providerName, String serviceTitle, String category, String price, String serviceImageUrl) {
+  Widget _buildFooter(BuildContext context, String providerName, String serviceTitle, String category, String price, String serviceImageUrl, String profileUrl) {
     return Container(
       padding: const EdgeInsets.fromLTRB(24, 16, 24, 32), 
       decoration: BoxDecoration(
@@ -1016,6 +1016,7 @@ class _ServiceDetailsScreenState extends State<ServiceDetailsScreen> {
                     category: category,
                     price: price,
                     addOns: widget.provider['addOns'],
+                    providerProfileUrl: profileUrl,
                   )));
                 },
                 style: ElevatedButton.styleFrom(

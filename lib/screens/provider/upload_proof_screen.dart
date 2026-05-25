@@ -1,9 +1,10 @@
-import 'dart:io';
 import 'package:flutter/material.dart';
+import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:google_fonts/google_fonts.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:firebase_storage/firebase_storage.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
+import 'dart:io' show File;
 
 class UploadProofScreen extends StatefulWidget {
   final String bookingId;
@@ -20,7 +21,7 @@ class UploadProofScreen extends StatefulWidget {
 }
 
 class _UploadProofScreenState extends State<UploadProofScreen> {
-  File? _image;
+  XFile? _pickedImage;
   bool _isUploading = false;
   bool _showSuccess = false;
 
@@ -32,7 +33,7 @@ class _UploadProofScreenState extends State<UploadProofScreen> {
         maxWidth: 1000,
       );
       if (pickedFile != null) {
-        setState(() => _image = File(pickedFile.path));
+        setState(() => _pickedImage = pickedFile);
       }
     } catch (e) {
       if (!mounted) return;
@@ -43,7 +44,7 @@ class _UploadProofScreenState extends State<UploadProofScreen> {
   }
 
   Future<void> _uploadProof() async {
-    if (_image == null) return;
+    if (_pickedImage == null) return;
 
     setState(() => _isUploading = true);
 
@@ -54,7 +55,12 @@ class _UploadProofScreenState extends State<UploadProofScreen> {
           .child('service_proofs')
           .child('${widget.bookingId}.jpg');
       
-      await storageRef.putFile(_image!);
+      if (kIsWeb) {
+        await storageRef.putData(await _pickedImage!.readAsBytes());
+      } else {
+        await storageRef.putFile(File(_pickedImage!.path));
+      }
+      
       final downloadUrl = await storageRef.getDownloadURL();
 
       // 2. Update Firestore booking
@@ -124,10 +130,12 @@ class _UploadProofScreenState extends State<UploadProofScreen> {
                     borderRadius: BorderRadius.circular(24),
                     border: Border.all(color: Colors.grey.shade100, width: 2),
                   ),
-                  child: _image != null
+                  child: _pickedImage != null
                       ? ClipRRect(
                           borderRadius: BorderRadius.circular(24),
-                          child: Image.file(_image!, fit: BoxFit.cover),
+                          child: kIsWeb 
+                              ? Image.network(_pickedImage!.path, fit: BoxFit.cover)
+                              : Image.file(File(_pickedImage!.path), fit: BoxFit.cover),
                         )
                       : Column(
                           mainAxisAlignment: MainAxisAlignment.center,
@@ -150,7 +158,7 @@ class _UploadProofScreenState extends State<UploadProofScreen> {
               width: double.infinity,
               height: 56,
               child: ElevatedButton(
-                onPressed: (_image == null || _isUploading) ? null : _uploadProof,
+                onPressed: (_pickedImage == null || _isUploading) ? null : _uploadProof,
                 style: ElevatedButton.styleFrom(
                   backgroundColor: const Color(0xFF4F46E5),
                   foregroundColor: Colors.white,

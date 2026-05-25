@@ -350,7 +350,8 @@ class _TopRatedScreenState extends State<TopRatedScreen> with TickerProviderStat
     String title = p['title'] ?? 'Service'; 
     String price = p['price']?.toString() ?? '0';
     double ratingValue = (p['averageRating'] ?? 0).toDouble();
-    String rating = ratingValue == 0 ? "New" : ratingValue.toStringAsFixed(1);
+    int reviewsCount = p['reviewCount'] ?? 0;
+    String rating = ratingValue == 0 ? "New" : "${ratingValue.toStringAsFixed(1)} ($reviewsCount)";
     String profileUrl = p['providerProfileUrl'] ?? '';
     String servicePhotoUrl = p['servicePhotoUrl'] ?? '';
 

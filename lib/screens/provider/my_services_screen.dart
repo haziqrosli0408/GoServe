@@ -3,6 +3,7 @@ import 'package:google_fonts/google_fonts.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'edit_service_screen.dart';
+import 'service_availability_sheet.dart';
 
 class MyServicesScreen extends StatefulWidget {
   const MyServicesScreen({super.key});
@@ -20,6 +21,11 @@ class _MyServicesScreenState extends State<MyServicesScreen>
   void initState() {
     super.initState();
     _tabController = TabController(length: 3, vsync: this);
+    _tabController.addListener(() {
+      if (!_tabController.indexIsChanging) {
+        setState(() {});
+      }
+    });
   }
 
   @override
@@ -93,8 +99,8 @@ class _MyServicesScreenState extends State<MyServicesScreen>
         children: [
           _buildTopFrame(),
           Expanded(
-            child: TabBarView(
-              controller: _tabController,
+            child: IndexedStack(
+              index: _tabController.index,
               children: [
                 _buildServiceList(null),
                 _buildServiceList(true),
@@ -110,24 +116,24 @@ class _MyServicesScreenState extends State<MyServicesScreen>
   Widget _buildTopFrame() {
     return Container(
       width: double.infinity,
-      decoration: BoxDecoration(
-        color: primaryIndigo,
-        borderRadius: const BorderRadius.only(
-          bottomLeft: Radius.circular(25),
-          bottomRight: Radius.circular(25),
-        ),
+      decoration: const BoxDecoration(
+        color: Color(0xFFF8FAFC),
       ),
       child: SafeArea(
         bottom: false,
         child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             const SizedBox(height: 10),
-            Text(
-              "My Services",
-              style: GoogleFonts.outfit(
-                color: Colors.white,
-                fontSize: 20,
-                fontWeight: FontWeight.bold,
+            Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 24),
+              child: Text(
+                "My Services",
+                style: GoogleFonts.outfit(
+                  color: const Color(0xFF1E293B),
+                  fontSize: 22,
+                  fontWeight: FontWeight.bold,
+                ),
               ),
             ),
             const SizedBox(height: 15),
@@ -141,12 +147,12 @@ class _MyServicesScreenState extends State<MyServicesScreen>
 
   Widget _buildTabBarContent() {
     return Padding(
-      padding: const EdgeInsets.symmetric(horizontal: 20),
+      padding: const EdgeInsets.symmetric(horizontal: 24),
       child: Container(
         padding: const EdgeInsets.all(4),
         decoration: BoxDecoration(
-          color: Colors.black.withValues(alpha: 0.08),
-          borderRadius: BorderRadius.circular(30),
+          color: const Color(0xFFE2E8F0),
+          borderRadius: BorderRadius.circular(12),
         ),
         child: TabBar(
           controller: _tabController,
@@ -154,19 +160,19 @@ class _MyServicesScreenState extends State<MyServicesScreen>
           labelPadding: EdgeInsets.zero,
           indicator: BoxDecoration(
             color: Colors.white,
-            borderRadius: BorderRadius.circular(25),
+            borderRadius: BorderRadius.circular(10),
             boxShadow: [
               BoxShadow(
-                color: Colors.black.withValues(alpha: 0.1),
-                blurRadius: 10,
-                offset: const Offset(0, 4),
+                color: Colors.black.withValues(alpha: 0.05),
+                blurRadius: 4,
+                offset: const Offset(0, 2),
               ),
             ],
           ),
           indicatorSize: TabBarIndicatorSize.tab,
           dividerColor: Colors.transparent,
           labelColor: primaryIndigo,
-          unselectedLabelColor: Colors.white.withValues(alpha: 0.8),
+          unselectedLabelColor: const Color(0xFF64748B),
           labelStyle: GoogleFonts.outfit(fontSize: 13, fontWeight: FontWeight.w600),
           unselectedLabelStyle:
               GoogleFonts.outfit(fontSize: 13, fontWeight: FontWeight.w600),
@@ -431,6 +437,28 @@ class _ServiceListContentState extends State<_ServiceListContent>
                           padding: const EdgeInsets.all(4),
                           child: Icon(
                             Icons.note_alt_outlined,
+                            size: 22,
+                            color: widget.primaryIndigo.withValues(alpha: 0.8),
+                          ),
+                        ),
+                      ),
+                      const SizedBox(width: 4),
+                      GestureDetector(
+                        onTap: () {
+                          showModalBottomSheet(
+                            context: context,
+                            isScrollControlled: true,
+                            backgroundColor: Colors.transparent,
+                            builder: (_) => ServiceAvailabilitySheet(
+                              serviceId: serviceId,
+                              serviceTitle: title,
+                            ),
+                          );
+                        },
+                        child: Padding(
+                          padding: const EdgeInsets.all(4),
+                          child: Icon(
+                            Icons.calendar_month_outlined,
                             size: 22,
                             color: widget.primaryIndigo.withValues(alpha: 0.8),
                           ),

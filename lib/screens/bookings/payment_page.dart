@@ -20,6 +20,7 @@ class PaymentPage extends StatefulWidget {
   final double? longitude;
   final double totalPrice;
   final String serviceId;
+  final String? providerProfileUrl;
 
   const PaymentPage({
     super.key,
@@ -37,6 +38,7 @@ class PaymentPage extends StatefulWidget {
     this.longitude,
     required this.totalPrice,
     required this.serviceId,
+    this.providerProfileUrl,
   });
 
   @override
@@ -528,6 +530,7 @@ class _PaymentPageState extends State<PaymentPage> {
         'selectedAddOns': widget.selectedAddOns,
         'paymentMethod': selectedMethod,
         'status': 'Pending',
+        'providerProfileUrl': widget.providerProfileUrl,
         'createdAt': FieldValue.serverTimestamp(),
       });
       

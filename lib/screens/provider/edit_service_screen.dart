@@ -1,6 +1,7 @@
 import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
+import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:image_picker/image_picker.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_storage/firebase_storage.dart';
@@ -29,8 +30,8 @@ class _EditServiceScreenState extends State<EditServiceScreen> {
   String _priceType = 'per hour';
   
   // Local Files (New uploads)
-  File? _newMainImage;
-  final List<File> _newGalleryImages = [];
+  dynamic _newMainImage; // File or XFile
+  final List<dynamic> _newGalleryImages = []; // List<File> or List<XFile>
   
   // Network URLs (Existing data)
   String? _existingMainImageUrl;
@@ -91,7 +92,7 @@ class _EditServiceScreenState extends State<EditServiceScreen> {
       maxHeight: 800,
     );
     if (image != null) {
-      setState(() => _newMainImage = File(image.path));
+      setState(() => _newMainImage = kIsWeb ? image : File(image.path));
     }
   }
 
@@ -108,7 +109,7 @@ class _EditServiceScreenState extends State<EditServiceScreen> {
       setState(() {
         for (var image in images) {
           if (_existingGalleryUrls.length + _newGalleryImages.length < 6) {
-            _newGalleryImages.add(File(image.path));
+            _newGalleryImages.add(kIsWeb ? image : File(image.path));
           }
         }
       });
@@ -116,13 +117,20 @@ class _EditServiceScreenState extends State<EditServiceScreen> {
   }
 
   // --- Firestore Logic ---
-  Future<String?> _uploadImage(File? file, String serviceId, String type) async {
+  Future<String?> _uploadImage(dynamic file, String serviceId, String type) async {
     if (file == null) return null;
     try {
-      final fileName = path_pkg.basename(file.path);
+      final String fileName = kIsWeb ? (file as XFile).name : path_pkg.basename((file as File).path);
       final destination = 'services/$serviceId/$type/${DateTime.now().millisecondsSinceEpoch}_$fileName';
       final ref = FirebaseStorage.instance.ref(destination);
-      final uploadTask = await ref.putFile(file);
+      
+      TaskSnapshot uploadTask;
+      if (kIsWeb) {
+        uploadTask = await ref.putData(await (file as XFile).readAsBytes());
+      } else {
+        uploadTask = await ref.putFile(file as File);
+      }
+      
       return await uploadTask.ref.getDownloadURL();
     } catch (e) {
       return null;
@@ -423,7 +431,7 @@ class _EditServiceScreenState extends State<EditServiceScreen> {
           image: hasImage 
             ? DecorationImage(
                 image: _newMainImage != null 
-                  ? FileImage(_newMainImage!) as ImageProvider
+                  ? (kIsWeb ? NetworkImage((_newMainImage as XFile).path) : FileImage(_newMainImage as File) as ImageProvider)
                   : NetworkImage(_existingMainImageUrl!) as ImageProvider,
                 fit: BoxFit.cover,
               )
@@ -480,7 +488,7 @@ class _EditServiceScreenState extends State<EditServiceScreen> {
         final bool isExisting = index < _existingGalleryUrls.length;
         final ImageProvider provider = isExisting
           ? NetworkImage(_existingGalleryUrls[index])
-          : FileImage(_newGalleryImages[index - _existingGalleryUrls.length]);
+          : (kIsWeb ? NetworkImage((_newGalleryImages[index - _existingGalleryUrls.length] as XFile).path) : FileImage(_newGalleryImages[index - _existingGalleryUrls.length] as File));
 
         return Stack(
           children: [

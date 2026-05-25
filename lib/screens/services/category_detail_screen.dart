@@ -127,14 +127,20 @@ class _CategoryDetailScreenState extends State<CategoryDetailScreen> with Single
       if (mounted) {
         setState(() {
           final categoryQuery = widget.categoryName.toLowerCase();
+          final subcatNames = widget.subcategories.map((sc) => sc['name'].toString().toLowerCase()).toList();
           
           _allProviders = snapshot.docs.map((doc) {
             final data = doc.data();
             data['serviceId'] = doc.id;
             return data;
           }).where((s) {
-             final category = (s['category'] as String?)?.toLowerCase() ?? '';
-             return category.contains(categoryQuery);
+             final serviceCategory = (s['category'] as String?)?.toLowerCase() ?? '';
+             
+             // Match if service category matches parent category OR any subcategory name
+             bool matchesParent = serviceCategory.contains(categoryQuery);
+             bool matchesSubcat = subcatNames.any((name) => serviceCategory.contains(name) || name.contains(serviceCategory));
+             
+             return matchesParent || matchesSubcat;
           }).toList();
           
           _filteredProviders = _allProviders;
@@ -390,7 +396,7 @@ class _CategoryDetailScreenState extends State<CategoryDetailScreen> with Single
                   crossAxisCount: 2,
                   mainAxisSpacing: 24,
                   crossAxisSpacing: 18,
-                  childAspectRatio: 0.62,
+                  childAspectRatio: 0.58,
                 ),
                 delegate: SliverChildBuilderDelegate(
                   (context, index) {
@@ -413,7 +419,8 @@ class _CategoryDetailScreenState extends State<CategoryDetailScreen> with Single
     String title = p['title'] ?? 'Service'; 
     String price = p['price']?.toString() ?? '85';
     double ratingValue = (p['averageRating'] ?? 0).toDouble();
-    String rating = ratingValue == 0 ? "New" : ratingValue.toStringAsFixed(1);
+    int reviewsCount = p['reviewCount'] ?? 0;
+    String rating = ratingValue == 0 ? "New" : "${ratingValue.toStringAsFixed(1)} ($reviewsCount)";
     String profileUrl = p['providerProfileUrl'] ?? p['profileUrl'] ?? '';
     String servicePhotoUrl = p['servicePhotoUrl'] ?? '';
 
@@ -432,7 +439,8 @@ class _CategoryDetailScreenState extends State<CategoryDetailScreen> with Single
           crossAxisAlignment: CrossAxisAlignment.start,
           mainAxisSize: MainAxisSize.min,
           children: [
-            Expanded(
+            AspectRatio(
+              aspectRatio: 1.0,
               child: ClipRRect(
                 borderRadius: BorderRadius.circular(16),
                 child: servicePhotoUrl.isNotEmpty ? Image.network(
@@ -448,7 +456,7 @@ class _CategoryDetailScreenState extends State<CategoryDetailScreen> with Single
                 ),
               ),
             ),
-            const SizedBox(height: 10),
+            const SizedBox(height: 12),
 
             Row(
               crossAxisAlignment: CrossAxisAlignment.start,
@@ -458,7 +466,7 @@ class _CategoryDetailScreenState extends State<CategoryDetailScreen> with Single
                   child: Text(
                     title,
                     style: GoogleFonts.outfit(
-                      fontSize: 16,
+                      fontSize: 14,
                       fontWeight: FontWeight.w600,
                       color: const Color(0xFF1F2937),
                     ),
@@ -493,7 +501,7 @@ class _CategoryDetailScreenState extends State<CategoryDetailScreen> with Single
                       TextSpan(
                         text: 'RM$price/hr',
                         style: GoogleFonts.outfit(
-                          fontSize: 16,
+                          fontSize: 14,
                           fontWeight: FontWeight.w600,
                           color: const Color(0xFFFF6B00),
                         ),
@@ -525,11 +533,11 @@ class _CategoryDetailScreenState extends State<CategoryDetailScreen> with Single
             Row(
               children: [
                 CircleAvatar(
-                  radius: 11,
+                  radius: 9,
                   backgroundColor: const Color(0xFFF1F5F9),
                   backgroundImage: profileUrl.isNotEmpty ? NetworkImage(profileUrl) : null,
                   child: profileUrl.isEmpty 
-                    ? Text(name.isNotEmpty ? name[0].toUpperCase() : 'P', style: GoogleFonts.outfit(color: const Color(0xFF1F212C), fontSize: 10, fontWeight: FontWeight.w600)) 
+                    ? Text(name.isNotEmpty ? name[0].toUpperCase() : 'P', style: GoogleFonts.outfit(color: const Color(0xFF1F212C), fontSize: 9, fontWeight: FontWeight.w600)) 
                     : null,
                 ),
                 const SizedBox(width: 8),
@@ -537,7 +545,7 @@ class _CategoryDetailScreenState extends State<CategoryDetailScreen> with Single
                   child: Text(
                     name,
                     style: GoogleFonts.outfit(
-                      fontSize: 13,
+                      fontSize: 11,
                       fontWeight: FontWeight.w500,
                       color: const Color(0xFF4B5563),
                     ),

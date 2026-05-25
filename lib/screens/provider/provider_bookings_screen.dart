@@ -158,8 +158,8 @@ class _ProviderBookingsScreenState extends State<ProviderBookingsScreen> {
           } catch (_) {}
 
           if (selectedFilter == 'Active') {
-            // Confirmed, On the way, Arrived, In Progress + Completed Today
-            if (['Confirmed', 'On the way', 'Arrived', 'In progress'].contains(status)) return true;
+            // Pending, Awaiting Confirmation, Confirmed, On the way, Arrived, In progress + Completed Today
+            if (['Pending', 'Awaiting Confirmation', 'Confirmed', 'On the way', 'Arrived', 'In progress'].contains(status)) return true;
             if (status == 'Completed' && isToday) return true;
             return false;
           } else {
@@ -229,11 +229,20 @@ class _ProviderBookingsScreenState extends State<ProviderBookingsScreen> {
             children: [
               Row(
                 children: [
-                  CircleAvatar(
-                    radius: 25,
-                    backgroundColor: Colors.grey[100],
-                    backgroundImage: profileUrl != null ? NetworkImage(profileUrl) : null,
-                    child: profileUrl == null ? const Icon(Icons.person, color: Colors.grey) : null,
+                  ClipOval(
+                    child: Container(
+                      width: 50,
+                      height: 50,
+                      color: Colors.grey[100],
+                      child: profileUrl != null && profileUrl.isNotEmpty
+                          ? Image.network(
+                              profileUrl,
+                              fit: BoxFit.cover,
+                              errorBuilder: (context, error, stackTrace) =>
+                                  const Icon(Icons.person, color: Colors.grey),
+                            )
+                          : const Icon(Icons.person, color: Colors.grey),
+                    ),
                   ),
                   const SizedBox(width: 12),
                   Expanded(
@@ -302,12 +311,18 @@ class _ProviderBookingsScreenState extends State<ProviderBookingsScreen> {
                                 const SizedBox(height: 4),
                                 ClipRRect(
                                   borderRadius: BorderRadius.circular(8),
-                                  child: data['serviceImage'] != null
+                                  child: data['serviceImage'] != null && data['serviceImage'].toString().isNotEmpty
                                       ? Image.network(
                                           data['serviceImage'],
                                           width: 35,
                                           height: 35,
                                           fit: BoxFit.cover,
+                                          errorBuilder: (context, error, stackTrace) => Container(
+                                            width: 35,
+                                            height: 35,
+                                            color: Colors.grey[100],
+                                            child: const Icon(Icons.cleaning_services, size: 16, color: Colors.grey),
+                                          ),
                                         )
                                       : Container(
                                           width: 35,
@@ -343,12 +358,12 @@ class _ProviderBookingsScreenState extends State<ProviderBookingsScreen> {
   }
 
   Widget _buildActionButton(String bookingId, String status, Map<String, dynamic> data, String customerName, String? profileUrl, String? customerPhone) {
-    if (status == 'Pending') {
+    if (status == 'Pending' || status == 'Awaiting Confirmation') {
       return Row(
         children: [
           Expanded(
-            child: _actionBtn('Details', Colors.white, const Color(0xFF4F46E5), () {
-              _showBookingDetails(data, customerName, profileUrl, customerPhone);
+            child: _actionBtn('Reject', Colors.white, Colors.red.shade500, () {
+              _rejectBooking(bookingId, data);
             }, isOutlined: true),
           ),
           const SizedBox(width: 12),
@@ -387,6 +402,65 @@ class _ProviderBookingsScreenState extends State<ProviderBookingsScreen> {
           ),
         ],
       );
+    } else if (status == 'Cancelled') {
+      String cancelReason = data['cancellationReason'] ?? 'No reason provided';
+      String cancelledBy = data['cancelledBy'] ?? 'customer';
+      bool byProvider = cancelledBy == 'provider';
+
+      return Container(
+        width: double.infinity,
+        padding: const EdgeInsets.symmetric(vertical: 12, horizontal: 16),
+        decoration: BoxDecoration(
+          color: Colors.red.shade50,
+          borderRadius: BorderRadius.circular(12),
+          border: Border.all(color: Colors.red.shade100),
+        ),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Row(
+              children: [
+                Icon(Icons.cancel_outlined, color: Colors.red.shade600, size: 18),
+                const SizedBox(width: 8),
+                Text(
+                  byProvider ? 'Rejected by You' : 'Cancelled by Customer',
+                  style: GoogleFonts.outfit(
+                    color: Colors.red.shade700,
+                    fontWeight: FontWeight.w600,
+                    fontSize: 14,
+                  ),
+                ),
+              ],
+            ),
+            const SizedBox(height: 4),
+            Text(
+              'Reason: $cancelReason',
+              style: GoogleFonts.outfit(
+                color: Colors.red.shade400,
+                fontSize: 12,
+              ),
+            ),
+          ],
+        ),
+      );
+    } else if (status == 'Completed') {
+      return Container(
+        padding: const EdgeInsets.symmetric(vertical: 8),
+        child: Row(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            Icon(Icons.check_circle, color: Colors.green.shade600, size: 20),
+            const SizedBox(width: 8),
+            Text(
+              'Service Completed',
+              style: GoogleFonts.outfit(
+                color: Colors.green.shade700,
+                fontWeight: FontWeight.w600,
+              ),
+            ),
+          ],
+        ),
+      );
     }
     
     return Container(
@@ -399,6 +473,72 @@ class _ProviderBookingsScreenState extends State<ProviderBookingsScreen> {
         ),
       ),
     );
+  }
+
+  void _rejectBooking(String bookingId, Map<String, dynamic> data) async {
+    // Show confirmation dialog before rejecting
+    bool? confirm = await showDialog<bool>(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: Text('Reject Booking', style: GoogleFonts.outfit(fontWeight: FontWeight.w600)),
+        content: Text('Are you sure you want to reject this booking? This action cannot be undone.', style: GoogleFonts.outfit()),
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context, false),
+            child: Text('Cancel', style: GoogleFonts.outfit(color: Colors.grey.shade600)),
+          ),
+          ElevatedButton(
+            onPressed: () => Navigator.pop(context, true),
+            style: ElevatedButton.styleFrom(
+              backgroundColor: Colors.red.shade500,
+              foregroundColor: Colors.white,
+              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+            ),
+            child: Text('Reject', style: GoogleFonts.outfit()),
+          ),
+        ],
+      ),
+    );
+
+    if (confirm != true) return;
+
+    try {
+      await FirebaseFirestore.instance.collection('bookings').doc(bookingId).update({
+        'status': 'Cancelled',
+        'cancelledAt': FieldValue.serverTimestamp(),
+        'cancelledBy': 'provider',
+        'cancellationReason': 'Provider unavailable / rejected request',
+        'refundAmount': data['totalPrice'] ?? 0.0,
+        'refundStatus': 'pending',
+      });
+
+      // Notify Customer
+      String customerId = data['customerId'] ?? '';
+      if (customerId.isNotEmpty) {
+        await FirebaseFirestore.instance.collection('notifications').add({
+          'userId': customerId,
+          'type': 'booking_rejected',
+          'title': 'Booking Rejected',
+          'body': 'Your booking for ${data['serviceName']} was rejected by the provider. You will receive a full refund.',
+          'bookingId': bookingId,
+          'read': false,
+          'createdAt': FieldValue.serverTimestamp(),
+        });
+      }
+      
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('Booking rejected')),
+        );
+      }
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Error: $e')),
+        );
+      }
+    }
   }
   void _showBookingDetails(Map<String, dynamic> data, String customerName, String? profileUrl, String? customerPhone) {
     showModalBottomSheet(
@@ -455,15 +595,20 @@ class _ProviderBookingsScreenState extends State<ProviderBookingsScreen> {
                     _buildDetailSection('CUSTOMER', [
                       Row(
                         children: [
-                          CircleAvatar(
-                            radius: 22,
-                            backgroundColor: Colors.grey[100],
-                            backgroundImage: (profileUrl != null && profileUrl.isNotEmpty)
-                                ? NetworkImage(profileUrl)
-                                : null,
-                            child: (profileUrl == null || profileUrl.isEmpty)
-                                ? const Icon(Icons.person, color: Color(0xFF4F46E5))
-                                : null,
+                          ClipOval(
+                            child: Container(
+                              width: 44,
+                              height: 44,
+                              color: Colors.grey[100],
+                              child: (profileUrl != null && profileUrl.isNotEmpty)
+                                  ? Image.network(
+                                      profileUrl,
+                                      fit: BoxFit.cover,
+                                      errorBuilder: (context, error, stackTrace) =>
+                                          const Icon(Icons.person, color: Color(0xFF4F46E5)),
+                                    )
+                                  : const Icon(Icons.person, color: Color(0xFF4F46E5)),
+                            ),
                           ),
                           const SizedBox(width: 12),
                           Expanded(
@@ -741,13 +886,6 @@ class _ProviderBookingsScreenState extends State<ProviderBookingsScreen> {
           color: bg,
           borderRadius: BorderRadius.circular(12),
           border: isOutlined ? Border.all(color: text.withValues(alpha: 0.5), width: 1.5) : null,
-          boxShadow: [
-            BoxShadow(
-              color: bg.withValues(alpha: 0.2),
-              blurRadius: 8,
-              offset: const Offset(0, 4),
-            ),
-          ],
         ),
         child: Center(
           child: Text(
@@ -758,4 +896,6 @@ class _ProviderBookingsScreenState extends State<ProviderBookingsScreen> {
       ),
     );
   }
+
+  // Removed duplicated _buildActionButton
 }

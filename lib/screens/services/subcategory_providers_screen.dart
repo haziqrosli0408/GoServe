@@ -1,7 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
-import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
+import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:geolocator/geolocator.dart';
 import 'service_details.dart';
 
 class SubcategoryProvidersScreen extends StatefulWidget {
@@ -20,8 +21,11 @@ class SubcategoryProvidersScreen extends StatefulWidget {
 
 class _SubcategoryProvidersScreenState extends State<SubcategoryProvidersScreen> {
   List<Map<String, dynamic>> _providers = [];
+  List<Map<String, dynamic>> _allProviders = []; // Keep original list for filtering
   bool _isLoading = true;
   final Set<String> _savedServiceIds = {};
+  String _selectedFilter = 'All';
+  Position? _currentPosition;
 
   @override
   void initState() {
@@ -73,31 +77,136 @@ class _SubcategoryProvidersScreenState extends State<SubcategoryProvidersScreen>
 
   Future<void> _fetchProviders() async {
     try {
-      // 🔹 Fetch from 'services' collection for real service data
       final snapshot = await FirebaseFirestore.instance
           .collection('services')
           .where('isActive', isEqualTo: true)
           .get();
 
       if (mounted) {
+        final query = widget.queryName.toLowerCase();
+        
+        final filteredList = snapshot.docs.map((doc) => doc.data()).where((s) {
+           final category = (s['category'] as String?)?.toLowerCase() ?? '';
+           final title = (s['title'] as String?)?.toLowerCase() ?? '';
+           return category.contains(query) || title.contains(query);
+        }).toList();
+
         setState(() {
-          final query = widget.queryName.toLowerCase();
-          
-          // Filter services where category or title matches the selected subcategory
-          _providers = snapshot.docs.map((doc) => doc.data()).where((s) {
-             final category = (s['category'] as String?)?.toLowerCase() ?? '';
-             final title = (s['title'] as String?)?.toLowerCase() ?? '';
-             return category.contains(query) || title.contains(query);
-          }).toList();
-          
+          _allProviders = filteredList;
+          _providers = List.from(_allProviders);
           _isLoading = false;
         });
+        
+        // After fetching, if 'Nearest' was selected or we want to pre-fetch location
+        if (_selectedFilter == 'Nearest') {
+          _handleFilterSelection('Nearest');
+        }
       }
     } catch (e) {
       if (mounted) {
         setState(() => _isLoading = false);
       }
     }
+  }
+
+  void _handleFilterSelection(String filter) async {
+    setState(() {
+      _selectedFilter = filter;
+      _isLoading = (filter == 'Nearest' && _currentPosition == null);
+    });
+
+    if (filter == 'Nearest' && _currentPosition == null) {
+      await _determinePosition();
+    }
+
+    _applySorting();
+  }
+
+  Future<void> _determinePosition() async {
+    bool serviceEnabled;
+    LocationPermission permission;
+
+    serviceEnabled = await Geolocator.isLocationServiceEnabled();
+    if (!serviceEnabled) return;
+
+    permission = await Geolocator.checkPermission();
+    if (permission == LocationPermission.denied) {
+      permission = await Geolocator.requestPermission();
+      if (permission == LocationPermission.denied) return;
+    }
+
+    if (permission == LocationPermission.deniedForever) return;
+
+    try {
+      Position position = await Geolocator.getCurrentPosition(
+        locationSettings: const LocationSettings(
+          accuracy: LocationAccuracy.high,
+          timeLimit: Duration(seconds: 5),
+        ),
+      );
+      if (mounted) {
+        setState(() {
+          _currentPosition = position;
+          _isLoading = false;
+        });
+      }
+    } catch (e) {
+      if (mounted) setState(() => _isLoading = false);
+    }
+  }
+
+  void _applySorting() {
+    List<Map<String, dynamic>> sortedList = List.from(_allProviders);
+
+    switch (_selectedFilter) {
+      case 'Highest Rated':
+        sortedList.sort((a, b) {
+          final rA = (a['averageRating'] ?? 0).toDouble();
+          final rB = (b['averageRating'] ?? 0).toDouble();
+          return rB.compareTo(rA);
+        });
+        break;
+      case 'Lowest Price':
+        sortedList.sort((a, b) {
+          final pA = double.tryParse(a['price']?.toString() ?? '0') ?? 0;
+          final pB = double.tryParse(b['price']?.toString() ?? '0') ?? 0;
+          return pA.compareTo(pB);
+        });
+        break;
+      case 'Nearest':
+        if (_currentPosition != null) {
+          sortedList.sort((a, b) {
+            final latA = (a['providerLat'] ?? 0).toDouble();
+            final lngA = (a['providerLng'] ?? 0).toDouble();
+            final latB = (b['providerLat'] ?? 0).toDouble();
+            final lngB = (b['providerLng'] ?? 0).toDouble();
+
+            if (latA == 0 || latB == 0) return 0;
+
+            final distA = Geolocator.distanceBetween(
+              _currentPosition!.latitude,
+              _currentPosition!.longitude,
+              latA,
+              lngA,
+            );
+            final distB = Geolocator.distanceBetween(
+              _currentPosition!.latitude,
+              _currentPosition!.longitude,
+              latB,
+              lngB,
+            );
+            return distA.compareTo(distB);
+          });
+        }
+        break;
+      default:
+        // 'All' - no specific sorting beyond default
+        break;
+    }
+
+    setState(() {
+      _providers = sortedList;
+    });
   }
 
   @override
@@ -130,7 +239,7 @@ class _SubcategoryProvidersScreenState extends State<SubcategoryProvidersScreen>
             padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 12),
             child: Row(
               children: [
-                _buildSortChip('All', isSelected: true),
+                _buildSortChip('All'),
                 const SizedBox(width: 8),
                 _buildSortChip('Highest Rated'),
                 const SizedBox(width: 8),
@@ -155,7 +264,7 @@ class _SubcategoryProvidersScreenState extends State<SubcategoryProvidersScreen>
                           crossAxisCount: 2,
                           mainAxisSpacing: 24,
                           crossAxisSpacing: 18,
-                          childAspectRatio: 0.62,
+                          childAspectRatio: 0.58,
                         ),
                         itemCount: _providers.length,
                         itemBuilder: (context, index) {
@@ -168,22 +277,26 @@ class _SubcategoryProvidersScreenState extends State<SubcategoryProvidersScreen>
     );
   }
 
-  Widget _buildSortChip(String label, {bool isSelected = false}) {
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-      decoration: BoxDecoration(
-        color: isSelected ? const Color(0xFF1E293B) : Colors.white,
-        borderRadius: BorderRadius.circular(20),
-        border: Border.all(
-          color: isSelected ? const Color(0xFF1E293B) : Colors.grey.shade300,
+  Widget _buildSortChip(String label) {
+    final bool isSelected = _selectedFilter == label;
+    return GestureDetector(
+      onTap: () => _handleFilterSelection(label),
+      child: Container(
+        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+        decoration: BoxDecoration(
+          color: isSelected ? const Color(0xFF1E293B) : Colors.white,
+          borderRadius: BorderRadius.circular(20),
+          border: Border.all(
+            color: isSelected ? const Color(0xFF1E293B) : Colors.grey.shade300,
+          ),
         ),
-      ),
-      child: Text(
-        label,
-        style: GoogleFonts.outfit(
-          fontSize: 13,
-          fontWeight: isSelected ? FontWeight.w600 : FontWeight.w500,
-          color: isSelected ? Colors.white : const Color(0xFF64748B),
+        child: Text(
+          label,
+          style: GoogleFonts.outfit(
+            fontSize: 13,
+            fontWeight: isSelected ? FontWeight.w600 : FontWeight.w500,
+            color: isSelected ? Colors.white : const Color(0xFF64748B),
+          ),
         ),
       ),
     );
@@ -232,7 +345,8 @@ class _SubcategoryProvidersScreenState extends State<SubcategoryProvidersScreen>
     String title = p['title'] ?? widget.title; 
     String price = p['price']?.toString() ?? '85';
     double ratingValue = (p['averageRating'] ?? 0).toDouble();
-    String rating = ratingValue == 0 ? "New" : ratingValue.toStringAsFixed(1);
+    int reviewsCount = p['reviewCount'] ?? 0;
+    String rating = ratingValue == 0 ? "New" : "${ratingValue.toStringAsFixed(1)} ($reviewsCount)";
     String profileUrl = p['providerProfileUrl'] ?? p['profileUrl'] ?? '';
     String servicePhotoUrl = p['servicePhotoUrl'] ?? '';
 
@@ -252,7 +366,8 @@ class _SubcategoryProvidersScreenState extends State<SubcategoryProvidersScreen>
           mainAxisSize: MainAxisSize.min,
           children: [
             // Image
-            Expanded(
+            AspectRatio(
+              aspectRatio: 1.0,
               child: ClipRRect(
                 borderRadius: BorderRadius.circular(16),
                 child: servicePhotoUrl.isNotEmpty ? Image.network(
@@ -268,7 +383,7 @@ class _SubcategoryProvidersScreenState extends State<SubcategoryProvidersScreen>
                 ),
               ),
             ),
-            const SizedBox(height: 10),
+            const SizedBox(height: 12),
 
             // Row 1: Title and Bookmark Icon
             Row(
@@ -279,7 +394,7 @@ class _SubcategoryProvidersScreenState extends State<SubcategoryProvidersScreen>
                   child: Text(
                     title,
                     style: GoogleFonts.outfit(
-                      fontSize: 16,
+                      fontSize: 14,
                       fontWeight: FontWeight.w600,
                       color: const Color(0xFF1F2937),
                     ),
@@ -315,7 +430,7 @@ class _SubcategoryProvidersScreenState extends State<SubcategoryProvidersScreen>
                       TextSpan(
                         text: 'RM$price/hr',
                         style: GoogleFonts.outfit(
-                          fontSize: 16,
+                          fontSize: 14,
                           fontWeight: FontWeight.w600,
                           color: const Color(0xFFFF6B00),
                         ),
@@ -348,11 +463,11 @@ class _SubcategoryProvidersScreenState extends State<SubcategoryProvidersScreen>
             Row(
               children: [
                 CircleAvatar(
-                  radius: 11,
+                  radius: 9,
                   backgroundColor: const Color(0xFFF1F5F9),
                   backgroundImage: profileUrl.isNotEmpty ? NetworkImage(profileUrl) : null,
                   child: profileUrl.isEmpty 
-                    ? Text(name.isNotEmpty ? name[0].toUpperCase() : 'P', style: GoogleFonts.outfit(color: const Color(0xFF1F212C), fontSize: 10, fontWeight: FontWeight.w600)) 
+                    ? Text(name.isNotEmpty ? name[0].toUpperCase() : 'P', style: GoogleFonts.outfit(color: const Color(0xFF1F212C), fontSize: 9, fontWeight: FontWeight.w600)) 
                     : null,
                 ),
                 const SizedBox(width: 8),
@@ -360,7 +475,7 @@ class _SubcategoryProvidersScreenState extends State<SubcategoryProvidersScreen>
                   child: Text(
                     name,
                     style: GoogleFonts.outfit(
-                      fontSize: 13,
+                      fontSize: 11,
                       fontWeight: FontWeight.w500,
                       color: const Color(0xFF4B5563),
                     ),

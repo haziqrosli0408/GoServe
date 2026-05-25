@@ -1,6 +1,7 @@
 import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
+import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:image_picker/image_picker.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
@@ -15,9 +16,9 @@ class VerificationScreen extends StatefulWidget {
 
 class _VerificationScreenState extends State<VerificationScreen> {
   int step = 1;
-  File? _selfie;
-  File? _icFront;
-  File? _icBack;
+  dynamic _selfie; // File or XFile
+  dynamic _icFront; // File or XFile
+  dynamic _icBack; // File or XFile
   bool _isUploading = false;
   final ImagePicker _picker = ImagePicker();
 
@@ -31,11 +32,11 @@ class _VerificationScreenState extends State<VerificationScreen> {
     if (image != null) {
       setState(() {
         if (targetStep == 1) {
-          _selfie = File(image.path);
+          _selfie = kIsWeb ? image : File(image.path);
         } else if (targetStep == 2) {
-          _icFront = File(image.path);
+          _icFront = kIsWeb ? image : File(image.path);
         } else {
-          _icBack = File(image.path);
+          _icBack = kIsWeb ? image : File(image.path);
         }
       });
     }
@@ -54,21 +55,33 @@ class _VerificationScreenState extends State<VerificationScreen> {
       final selfieRef = FirebaseStorage.instance
           .ref()
           .child('verification/${user.uid}/selfie.jpg');
-      await selfieRef.putFile(_selfie!);
+      if (kIsWeb) {
+        await selfieRef.putData(await (_selfie as XFile).readAsBytes());
+      } else {
+        await selfieRef.putFile(_selfie as File);
+      }
       final selfieUrl = await selfieRef.getDownloadURL();
 
       // 2. Upload IC Front
       final icFrontRef = FirebaseStorage.instance
           .ref()
           .child('verification/${user.uid}/ic_front.jpg');
-      await icFrontRef.putFile(_icFront!);
+      if (kIsWeb) {
+        await icFrontRef.putData(await (_icFront as XFile).readAsBytes());
+      } else {
+        await icFrontRef.putFile(_icFront as File);
+      }
       final icFrontUrl = await icFrontRef.getDownloadURL();
 
       // 3. Upload IC Back
       final icBackRef = FirebaseStorage.instance
           .ref()
           .child('verification/${user.uid}/ic_back.jpg');
-      await icBackRef.putFile(_icBack!);
+      if (kIsWeb) {
+        await icBackRef.putData(await (_icBack as XFile).readAsBytes());
+      } else {
+        await icBackRef.putFile(_icBack as File);
+      }
       final icBackUrl = await icBackRef.getDownloadURL();
 
       // 4. Update Firestore
@@ -227,7 +240,12 @@ class _VerificationScreenState extends State<VerificationScreen> {
               color: Colors.grey[50],
               shape: BoxShape.circle,
               border: Border.all(color: const Color(0xFF4F46E5).withValues(alpha: 0.2), width: 2),
-              image: _selfie != null ? DecorationImage(image: FileImage(_selfie!), fit: BoxFit.cover) : null,
+              image: _selfie != null 
+                ? DecorationImage(
+                    image: kIsWeb ? NetworkImage((_selfie as XFile).path) : FileImage(_selfie as File) as ImageProvider, 
+                    fit: BoxFit.cover
+                  ) 
+                : null,
             ),
             child: _selfie == null
                 ? Icon(Icons.face_rounded, size: 80, color: Colors.grey[300])
@@ -262,7 +280,12 @@ class _VerificationScreenState extends State<VerificationScreen> {
               color: Colors.grey[50],
               borderRadius: BorderRadius.circular(16),
               border: Border.all(color: const Color(0xFF4F46E5).withValues(alpha: 0.2), width: 2),
-              image: _icFront != null ? DecorationImage(image: FileImage(_icFront!), fit: BoxFit.cover) : null,
+              image: _icFront != null 
+                ? DecorationImage(
+                    image: kIsWeb ? NetworkImage((_icFront as XFile).path) : FileImage(_icFront as File) as ImageProvider, 
+                    fit: BoxFit.cover
+                  ) 
+                : null,
             ),
             child: _icFront == null
                 ? Column(
@@ -304,7 +327,12 @@ class _VerificationScreenState extends State<VerificationScreen> {
               color: Colors.grey[50],
               borderRadius: BorderRadius.circular(16),
               border: Border.all(color: const Color(0xFF4F46E5).withValues(alpha: 0.2), width: 2),
-              image: _icBack != null ? DecorationImage(image: FileImage(_icBack!), fit: BoxFit.cover) : null,
+              image: _icBack != null 
+                ? DecorationImage(
+                    image: kIsWeb ? NetworkImage((_icBack as XFile).path) : FileImage(_icBack as File) as ImageProvider, 
+                    fit: BoxFit.cover
+                  ) 
+                : null,
             ),
             child: _icBack == null
                 ? Column(

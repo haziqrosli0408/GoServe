@@ -4,10 +4,14 @@ import 'package:cloud_firestore/cloud_firestore.dart';
 import '../chat/single_chat_screen.dart';
 import 'help_center_screen.dart';
 import 'service_completed_screen.dart';
+import 'cancel_booking_sheet.dart';
 import 'package:url_launcher/url_launcher.dart';
 import 'dart:math' as math;
 
 import 'package:google_maps_flutter/google_maps_flutter.dart';
+import 'dart:ui' as ui;
+import 'dart:typed_data';
+import 'package:http/http.dart' as http;
 
 class TrackingScreen extends StatefulWidget {
   final Map<String, dynamic> bookingData;
@@ -22,6 +26,12 @@ class _TrackingScreenState extends State<TrackingScreen> {
   GoogleMapController? _mapController;
   final Set<Marker> _markers = {};
   final Set<Polyline> _polylines = {};
+
+  @override
+  void initState() {
+    super.initState();
+  }
+
   
   // Default center if no coordinates found
   static const LatLng _defaultCenter = LatLng(3.1390, 101.6869); // Kuala Lumpur
@@ -74,17 +84,8 @@ class _TrackingScreenState extends State<TrackingScreen> {
             data = snapshot.data!.data() as Map<String, dynamic>;
             currentStatus = data['status'] ?? 'Pending';
 
-            // 🔹 AUTO-NAVIGATE ONLY IF FINALIZED BY CUSTOMER or if it really is Completed
-            if (currentStatus == 'Completed') {
-              WidgetsBinding.instance.addPostFrameCallback((_) {
-                 Navigator.pushReplacement(
-                  context,
-                  MaterialPageRoute(
-                    builder: (context) => ServiceCompletedScreen(bookingData: data!),
-                  ),
-                );
-              });
-            }
+            // Handle Profile Picture Marker (Safely outside build)
+
             // Get customer destination coordinates
             double destLat = (widget.bookingData['latitude'] is double) 
                 ? widget.bookingData['latitude'] 
@@ -111,6 +112,7 @@ class _TrackingScreenState extends State<TrackingScreen> {
               );
             }
 
+            double distance = 0;
             if (data['providerLocation'] != null || data['latitude'] != null) {
               if (destLat != 0 && destLng != 0) {
                 // Simplified distance calculation (Haversine-like)
@@ -122,7 +124,7 @@ class _TrackingScreenState extends State<TrackingScreen> {
                     math.cos(destLat * (math.pi / 180)) * 
                     math.sin(dLon / 2) * math.sin(dLon / 2);
                 double c = 2 * math.atan2(math.sqrt(a), math.sqrt(1 - a));
-                double distance = R * c;
+                distance = R * c;
 
                 distanceText = "${distance.toStringAsFixed(1)} km";
                 // Estimate arrival time (assuming 30km/h average in city -> 2 mins per km)
@@ -146,18 +148,7 @@ class _TrackingScreenState extends State<TrackingScreen> {
               );
             }
 
-            // 2. Provider Marker (Only if status is appropriate)
-            if (['On the way', 'Arrived', 'In progress'].contains(currentStatus)) {
-              _markers.add(
-                Marker(
-                  markerId: const MarkerId('provider'),
-                  position: providerLatLng,
-                  icon: BitmapDescriptor.defaultMarkerWithHue(BitmapDescriptor.hueCyan), // Using Cyan for the 'vehicle'
-                  infoWindow: InfoWindow(title: widget.bookingData['providerName'] ?? 'Provider'),
-                  rotation: data['providerHeading']?.toDouble() ?? 0.0,
-                ),
-              );
-            }
+            // 2. Provider Marker - REMOVED for stability as requested
 
             // 3. Polyline (Path)
             if (currentStatus == 'On the way' && provLocRaw != null && destLat != 0) {
@@ -172,26 +163,42 @@ class _TrackingScreenState extends State<TrackingScreen> {
               );
             }
 
-            // 🔹 Dynamic Camera Logic:
-            if (_mapController != null) {
-              if (currentStatus == 'On the way') {
-                // Focus on both provider and destination when moving
-                LatLngBounds bounds = LatLngBounds(
-                  southwest: LatLng(
-                    math.min(providerLatLng.latitude, destLat),
-                    math.min(providerLatLng.longitude, destLng),
-                  ),
-                  northeast: LatLng(
-                    math.max(providerLatLng.latitude, destLat),
-                    math.max(providerLatLng.longitude, destLng),
+            // 🔹 Dynamic Camera & Navigation Logic (Safe Side Effects)
+            WidgetsBinding.instance.addPostFrameCallback((_) {
+              if (!mounted) return;
+
+              // 1. Navigation to completion screen
+              if (currentStatus == 'Completed') {
+                Navigator.pushReplacement(
+                  context,
+                  MaterialPageRoute(
+                    builder: (context) => ServiceCompletedScreen(bookingData: data!),
                   ),
                 );
-                _mapController!.animateCamera(CameraUpdate.newLatLngBounds(bounds, 100));
-              } else {
-                // Default: Focus only on the customer destination
-                _mapController!.animateCamera(CameraUpdate.newLatLngZoom(destLatLng, 16));
+                return;
               }
-            }
+
+              // 2. Map Camera Updates
+              if (_mapController != null) {
+                // Check if distance is realistic (e.g., < 500km) before trying to fit both
+                if (currentStatus == 'On the way' && distance < 500) {
+                  LatLngBounds bounds = LatLngBounds(
+                    southwest: LatLng(
+                      math.min(providerLatLng.latitude, destLat),
+                      math.min(providerLatLng.longitude, destLng),
+                    ),
+                    northeast: LatLng(
+                      math.max(providerLatLng.latitude, destLat),
+                      math.max(providerLatLng.longitude, destLng),
+                    ),
+                  );
+                  _mapController!.animateCamera(CameraUpdate.newLatLngBounds(bounds, 80));
+                } else {
+                  // If too far or not on the way, just focus on destination
+                  _mapController!.animateCamera(CameraUpdate.newLatLngZoom(destLatLng, 15));
+                }
+              }
+            });
             
             // If the provider location exists but no controller yet, update providerLatLng for initial camera
             if (provLocRaw == null && destLat != 0) {
@@ -199,12 +206,101 @@ class _TrackingScreenState extends State<TrackingScreen> {
             }
           }
 
-          return Stack(
-            children: [
-              Column(
+          return Scaffold(
+            backgroundColor: Colors.white,
+            appBar: AppBar(
+              backgroundColor: Colors.white,
+              elevation: 0,
+              centerTitle: true,
+              leading: IconButton(
+                icon: const Icon(Icons.arrow_back, color: Colors.black87),
+                onPressed: () => Navigator.pop(context),
+              ),
+              title: Column(
+                mainAxisSize: MainAxisSize.min,
                 children: [
-                  Expanded(
-                    flex: 4,
+                  Text(
+                    'Track Service',
+                    style: GoogleFonts.outfit(color: Colors.black87, fontWeight: FontWeight.w600, fontSize: 16),
+                  ),
+                  Text(
+                    'Order ID: ${data?['orderId'] ?? widget.bookingData['orderId'] ?? 'GS-00000'}',
+                    style: GoogleFonts.outfit(color: Colors.grey, fontSize: 11, fontWeight: FontWeight.w400),
+                  ),
+                ],
+              ),
+              actions: [
+                if (currentStatus == 'Confirmed')
+                  PopupMenuButton<String>(
+                    icon: Container(
+                      padding: const EdgeInsets.all(8),
+                      decoration: const BoxDecoration(
+                        color: Colors.white,
+                        shape: BoxShape.circle,
+                        boxShadow: [
+                          BoxShadow(color: Colors.black12, blurRadius: 4, offset: Offset(0, 2))
+                        ]
+                      ),
+                      child: const Icon(Icons.more_vert, color: Color(0xFF1E293B)),
+                    ),
+                    onSelected: (value) {
+                      if (value == 'cancel') {
+                        showModalBottomSheet(
+                          context: context,
+                          isScrollControlled: true,
+                          backgroundColor: Colors.transparent,
+                          builder: (context) => CancelBookingSheet(
+                            bookingId: widget.bookingId,
+                            bookingData: data!,
+                          ),
+                        );
+                      }
+                    },
+                    itemBuilder: (BuildContext context) => <PopupMenuEntry<String>>[
+                      PopupMenuItem<String>(
+                        value: 'cancel',
+                        child: Row(
+                          children: [
+                            Icon(Icons.cancel_outlined, color: Colors.red.shade400, size: 20),
+                            const SizedBox(width: 8),
+                            Text('Cancel Booking', style: GoogleFonts.outfit(color: Colors.red.shade500)),
+                          ],
+                        ),
+                      ),
+                    ],
+                  ),
+                IconButton(
+                  icon: const Icon(Icons.help_outline_rounded, color: Color(0xFFFF6B00)),
+                  onPressed: () {
+                    Navigator.push(
+                      context,
+                      MaterialPageRoute(
+                        builder: (context) => HelpCenterScreen(bookingData: widget.bookingData),
+                      ),
+                    );
+                  },
+                ),
+                const SizedBox(width: 8),
+              ],
+            ),
+            body: SingleChildScrollView(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  // 1. Horizontal Status
+                  _buildHorizontalStatus(currentStatus),
+                  
+                  const Divider(height: 1, color: Color(0xFFF1F5F9)),
+
+                  // 2. Map
+                  Container(
+                    height: 250,
+                    margin: const EdgeInsets.symmetric(horizontal: 20, vertical: 10),
+                    decoration: BoxDecoration(
+                      borderRadius: BorderRadius.circular(24),
+                      border: Border.all(color: const Color(0xFFF1F5F9)),
+                    ),
+                    clipBehavior: Clip.antiAlias,
                     child: GoogleMap(
                       initialCameraPosition: CameraPosition(
                         target: (widget.bookingData['latitude'] != null) 
@@ -217,113 +313,60 @@ class _TrackingScreenState extends State<TrackingScreen> {
                       ),
                       markers: _markers,
                       polylines: _polylines,
+                      circles: {
+                        if (['On the way', 'Arrived', 'In progress'].contains(currentStatus))
+                          Circle(
+                            circleId: const CircleId('provider_pulse'),
+                            center: providerLatLng,
+                            radius: 30, // meters
+                            fillColor: const Color(0xFF2196F3).withValues(alpha: 0.3),
+                            strokeColor: const Color(0xFF1976D2),
+                            strokeWidth: 2,
+                          ),
+                      },
                       onMapCreated: (controller) => _mapController = controller,
                       myLocationButtonEnabled: false,
                       zoomControlsEnabled: false,
                       mapToolbarEnabled: false,
                     ),
                   ),
-                  Expanded(
-                    flex: 6,
-                    child: Container(
-                      color: Colors.white,
-                      child: SingleChildScrollView(
-                        padding: const EdgeInsets.fromLTRB(20, 95, 20, 100),
-                        child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            _buildServiceStatus(currentStatus),
-                            const SizedBox(height: 24),
-                            _buildOrderDetailSection(data ?? widget.bookingData),
-                            const SizedBox(height: 24),
-                          ],
-                        ),
-                      ),
+
+                  // Floating Stats if on the way
+                  if (currentStatus == 'On the way')
+                    Padding(
+                      padding: const EdgeInsets.symmetric(horizontal: 20),
+                      child: _buildFloatingStats(arrivalTime, distanceText),
                     ),
+
+                  const SizedBox(height: 12),
+                  
+                  // 3. Provider Details
+                  Padding(
+                    padding: const EdgeInsets.symmetric(horizontal: 20),
+                    child: _buildProviderCard(data),
                   ),
+
+                  const SizedBox(height: 16),
+
+                  // 4. Address Details
+                  Padding(
+                    padding: const EdgeInsets.symmetric(horizontal: 20),
+                    child: _buildAddressSection(data ?? widget.bookingData),
+                  ),
+
+                  const SizedBox(height: 16),
+
+                  // 5. Order Details
+                  Padding(
+                    padding: const EdgeInsets.symmetric(horizontal: 20),
+                    child: _buildOrderDetailSection(data ?? widget.bookingData),
+                  ),
+                  
+                  const SizedBox(height: 120), // Padding for bottom actions
                 ],
               ),
-              
-              Positioned(
-                top: MediaQuery.of(context).padding.top + 10,
-                left: 20,
-                right: 20,
-                child: Row(
-                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                  children: [
-                    GestureDetector(
-                      onTap: () => Navigator.pop(context),
-                      child: Container(
-                        padding: const EdgeInsets.all(12),
-                        decoration: BoxDecoration(
-                          color: Colors.white,
-                          shape: BoxShape.circle,
-                          boxShadow: [
-                            BoxShadow(
-                              color: Colors.black.withValues(alpha: 0.1),
-                              blurRadius: 10,
-                              offset: const Offset(0, 4),
-                            ),
-                          ],
-                        ),
-                        child: const Icon(Icons.arrow_back, color: Colors.black87, size: 24),
-                      ),
-                    ),
-                    Row(
-                      children: [
-                        GestureDetector(
-                          onTap: () {
-                            Navigator.push(
-                              context,
-                              MaterialPageRoute(
-                                builder: (context) => HelpCenterScreen(bookingData: widget.bookingData),
-                              ),
-                            );
-                          },
-                          child: Container(
-                            padding: const EdgeInsets.all(12),
-                            decoration: BoxDecoration(
-                              color: Colors.white,
-                              shape: BoxShape.circle,
-                              boxShadow: [
-                                BoxShadow(
-                                  color: Colors.black.withValues(alpha: 0.1),
-                                  blurRadius: 10,
-                                  offset: const Offset(0, 4),
-                                ),
-                              ],
-                            ),
-                            child: const Icon(Icons.help_outline_rounded, color: Color(0xFFFF6B00), size: 24),
-                          ),
-                        ),
-                      ],
-                    ),
-                  ],
-                ),
-              ),
-              
-              if (currentStatus == 'On the way')
-                Positioned(
-                  top: MediaQuery.of(context).size.height * 0.31,
-                  left: 20,
-                  right: 20,
-                  child: _buildFloatingStats(arrivalTime, distanceText),
-                ),
-
-              Positioned(
-                top: MediaQuery.of(context).size.height * 0.38,
-                left: 20,
-                right: 20,
-                child: _buildProviderCard(data),
-              ),
-
-              Positioned(
-                bottom: 0,
-                left: 0,
-                right: 0,
-                child: _buildBottomActions(currentStatus),
-              ),
-            ],
+            ),
+            bottomSheet: _buildBottomActions(currentStatus),
           );
         }
       ),
@@ -399,13 +442,7 @@ class _TrackingScreenState extends State<TrackingScreen> {
       decoration: BoxDecoration(
         color: Colors.white,
         borderRadius: BorderRadius.circular(16),
-        boxShadow: [
-          BoxShadow(
-            color: Colors.black.withValues(alpha: 0.08),
-            blurRadius: 20,
-            offset: const Offset(0, 10),
-          ),
-        ],
+        border: Border.all(color: const Color(0xFFF1F5F9)),
       ),
       child: FutureBuilder<DocumentSnapshot>(
         future: FirebaseFirestore.instance.collection('providers').doc(providerId).get(),
@@ -423,30 +460,13 @@ class _TrackingScreenState extends State<TrackingScreen> {
 
           return Row(
             children: [
-              Stack(
-                children: [
-                  CircleAvatar(
-                    radius: 32,
-                    backgroundColor: const Color(0xFFF1F5F9),
-                    backgroundImage: photoUrl.isNotEmpty ? NetworkImage(photoUrl) : null,
-                    child: photoUrl.isEmpty 
-                      ? Text(name.isNotEmpty ? name[0].toUpperCase() : 'P', style: GoogleFonts.outfit(color: const Color(0xFF1F212C), fontSize: 18, fontWeight: FontWeight.w600)) 
-                      : null,
-                  ),
-                  Positioned(
-                    right: 0,
-                    bottom: 2,
-                    child: Container(
-                      width: 14,
-                      height: 14,
-                      decoration: BoxDecoration(
-                        color: const Color(0xFF4ADE80), // Vibrant Green
-                        shape: BoxShape.circle,
-                        border: Border.all(color: Colors.white, width: 2.5),
-                      ),
-                    ),
-                  ),
-                ],
+              CircleAvatar(
+                radius: 24,
+                backgroundColor: const Color(0xFFF1F5F9),
+                backgroundImage: photoUrl.isNotEmpty ? NetworkImage(photoUrl) : null,
+                child: photoUrl.isEmpty 
+                  ? Text(name.isNotEmpty ? name[0].toUpperCase() : 'P', style: GoogleFonts.outfit(color: const Color(0xFF1F212C), fontSize: 14, fontWeight: FontWeight.w600)) 
+                  : null,
               ),
               const SizedBox(width: 16),
               Expanded(
@@ -457,7 +477,7 @@ class _TrackingScreenState extends State<TrackingScreen> {
                     Text(
                       name,
                       style: GoogleFonts.outfit(
-                        fontSize: 18,
+                        fontSize: 14,
                         fontWeight: FontWeight.w600,
                         color: const Color(0xFF1E212C),
                       ),
@@ -465,12 +485,12 @@ class _TrackingScreenState extends State<TrackingScreen> {
                     const SizedBox(height: 4),
                     Row(
                       children: [
-                        const Icon(Icons.star, color: Colors.amber, size: 16),
+                        const Icon(Icons.star, color: Colors.amber, size: 14),
                         const SizedBox(width: 4),
                         Text(
                           rating,
                           style: GoogleFonts.outfit(
-                            fontSize: 13,
+                            fontSize: 12,
                             fontWeight: FontWeight.w600,
                             color: const Color(0xFF1E293B),
                           ),
@@ -479,7 +499,7 @@ class _TrackingScreenState extends State<TrackingScreen> {
                         Text(
                           '($reviews reviews)',
                           style: GoogleFonts.outfit(
-                            fontSize: 13,
+                            fontSize: 12,
                             color: Colors.grey.shade400,
                           ),
                         ),
@@ -519,13 +539,50 @@ class _TrackingScreenState extends State<TrackingScreen> {
 
   Widget _actionIcon(IconData icon, {Color? color}) {
     return Container(
-      width: 48,
-      height: 48,
+      width: 40,
+      height: 40,
       decoration: BoxDecoration(
         color: const Color(0xFFFF6B00).withValues(alpha: 0.1),
         shape: BoxShape.circle,
       ),
-      child: Icon(icon, color: color ?? const Color(0xFFFF6B00), size: 20),
+      child: Icon(icon, color: color ?? const Color(0xFFFF6B00), size: 18),
+    );
+  }
+
+  Widget _buildAddressSection(Map<String, dynamic> data) {
+    String address = data['address'] ?? widget.bookingData['address'] ?? 'No address provided';
+    
+    return Container(
+      width: double.infinity,
+      padding: const EdgeInsets.all(24),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(color: const Color(0xFFF1F5F9)),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(
+            'Service Address',
+            style: GoogleFonts.outfit(fontSize: 14, fontWeight: FontWeight.w600, color: const Color(0xFF1F212C)),
+          ),
+          const SizedBox(height: 12),
+          Row(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              const Icon(Icons.location_on_rounded, color: Color(0xFFFF6B00), size: 18),
+              const SizedBox(width: 8),
+              Expanded(
+                child: Text(
+                  address,
+                  style: GoogleFonts.outfit(fontSize: 13, color: const Color(0xFF64748B), height: 1.5),
+                ),
+              ),
+            ],
+          ),
+        ],
+      ),
     );
   }
 
@@ -560,14 +617,8 @@ class _TrackingScreenState extends State<TrackingScreen> {
       padding: const EdgeInsets.all(24),
       decoration: BoxDecoration(
         color: Colors.white,
-        borderRadius: BorderRadius.circular(32),
-        boxShadow: [
-          BoxShadow(
-            color: Colors.black.withValues(alpha: 0.04),
-            blurRadius: 20,
-            offset: const Offset(0, 8),
-          ),
-        ],
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(color: const Color(0xFFF1F5F9)),
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -608,7 +659,7 @@ class _TrackingScreenState extends State<TrackingScreen> {
           ],
           Text(
             'Order Detail',
-            style: GoogleFonts.outfit(fontSize: 16, fontWeight: FontWeight.w600, color: const Color(0xFF1F212C)),
+            style: GoogleFonts.outfit(fontSize: 14, fontWeight: FontWeight.w600, color: const Color(0xFF1F212C)),
           ),
           const SizedBox(height: 20),
           Row(
@@ -616,11 +667,11 @@ class _TrackingScreenState extends State<TrackingScreen> {
             children: [
               Text(
                 serviceName,
-                style: GoogleFonts.outfit(fontSize: 15, color: const Color(0xFF64748B)),
+                style: GoogleFonts.outfit(fontSize: 13, color: const Color(0xFF64748B)),
               ),
               Text(
                 'RM ${basePrice.toStringAsFixed(2)}',
-                style: GoogleFonts.outfit(fontSize: 15, fontWeight: FontWeight.w600, color: const Color(0xFF1F212C)),
+                style: GoogleFonts.outfit(fontSize: 13, fontWeight: FontWeight.w600, color: const Color(0xFF1F212C)),
               ),
             ],
           ),
@@ -672,11 +723,11 @@ class _TrackingScreenState extends State<TrackingScreen> {
             children: [
               Text(
                 'Total Paid',
-                style: GoogleFonts.outfit(fontSize: 16, fontWeight: FontWeight.w600, color: const Color(0xFF1F212C)),
+                style: GoogleFonts.outfit(fontSize: 15, fontWeight: FontWeight.w600, color: const Color(0xFF1F212C)),
               ),
               Text(
                 'RM ${totalPaid.toStringAsFixed(2)}',
-                style: GoogleFonts.outfit(fontSize: 20, fontWeight: FontWeight.bold, color: const Color(0xFFFF6B00)),
+                style: GoogleFonts.outfit(fontSize: 18, fontWeight: FontWeight.bold, color: const Color(0xFFFF6B00)),
               ),
             ],
           ),
@@ -690,147 +741,82 @@ class _TrackingScreenState extends State<TrackingScreen> {
     return double.tryParse(val?.toString() ?? '0') ?? 0.0;
   }
 
-  Widget _buildServiceStatus(String currentStatus) {
-    // Phase logic
-    bool bookingConfirmed = currentStatus != 'Pending';
-    bool onTheWay = ['On the way', 'Arrived', 'In progress', 'Awaiting Confirmation', 'Completed'].contains(currentStatus);
-    bool arrived = ['Arrived', 'In progress', 'Awaiting Confirmation', 'Completed'].contains(currentStatus);
-    bool inProgress = ['In progress', 'Awaiting Confirmation', 'Completed'].contains(currentStatus);
-    bool completed = currentStatus == 'Completed';
+  Widget _buildHorizontalStatus(String currentStatus) {
+    List<String> statuses = ['On the way', 'Arrived', 'In progress', 'Complete'];
+    // Map currentStatus to index
+    int currentIndex = -1;
+    if (currentStatus == 'On the way') {
+      currentIndex = 0;
+    } else if (currentStatus == 'Arrived') {
+      currentIndex = 1;
+    } else if (currentStatus == 'In progress' || currentStatus == 'Awaiting Confirmation') {
+      currentIndex = 2;
+    } else if (currentStatus == 'Completed') {
+      currentIndex = 3;
+    }
 
     return Container(
-      width: double.infinity,
-      padding: const EdgeInsets.all(24),
-      decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(32),
-        boxShadow: [
-          BoxShadow(
-            color: Colors.black.withValues(alpha: 0.06),
-            blurRadius: 20,
-            offset: const Offset(0, 10),
-          ),
-        ],
-      ),
-      child: Column(
+      padding: const EdgeInsets.fromLTRB(10, 24, 10, 16),
+      child: Row(
         crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Text(
-            'Service Status',
-            style: GoogleFonts.outfit(fontSize: 16, fontWeight: FontWeight.w600, color: const Color(0xFF1F212C)),
-          ),
-          const SizedBox(height: 24),
-          _statusTimelineItem(
-            'Booking Confirmed', 
-            bookingConfirmed ? 'Your pro is confirmed' : 'Waiting for provider...', 
-            currentStatus == 'Confirmed' ? 'Happening now' : '', 
-            isCompleted: bookingConfirmed && currentStatus != 'Confirmed' && currentStatus != 'Pending', 
-            isActive: currentStatus == 'Confirmed',
-            isLast: false,
-          ),
-          _statusTimelineItem(
-            'Professional on the way', 
-            'Pro is driving to your location', 
-            currentStatus == 'On the way' ? 'Happening now' : '', 
-            isCompleted: onTheWay && currentStatus != 'On the way',
-            isActive: currentStatus == 'On the way', 
-            isLast: false,
-          ),
-          _statusTimelineItem(
-            'Arrived', 
-            'Pro has arrived at your location', 
-            currentStatus == 'Arrived' ? 'Happening now' : '', 
-            isCompleted: arrived && currentStatus != 'Arrived',
-            isActive: currentStatus == 'Arrived',
-            isLast: false,
-          ),
-          _statusTimelineItem(
-            'Work in progress', 
-            'The magic is happening!', 
-            currentStatus == 'In progress' ? 'Happening now' : '', 
-            isCompleted: inProgress && currentStatus != 'In progress',
-            isActive: currentStatus == 'In progress',
-            isLast: false,
-          ),
-          _statusTimelineItem(
-            'Completed', 
-            'Service finished', 
-            currentStatus == 'Awaiting Confirmation' ? 'Pending Approval' : (currentStatus == 'Completed' ? 'Done' : ''), 
-            isCompleted: completed,
-            isActive: currentStatus == 'Awaiting Confirmation', 
-            isLast: true,
-          ),
-        ],
+        children: List.generate(statuses.length, (index) {
+          bool isCompleted = index < currentIndex;
+          bool isActive = index == currentIndex;
+          bool isLast = index == statuses.length - 1;
+
+          return Expanded(
+            flex: isLast ? 0 : 1,
+            child: Row(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                // Step Circle & Label
+                Column(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Container(
+                      width: 24,
+                      height: 24,
+                      decoration: BoxDecoration(
+                        color: isCompleted ? const Color(0xFFFF6B00) : (isActive ? Colors.white : Colors.grey.shade100),
+                        shape: BoxShape.circle,
+                        border: isActive ? Border.all(color: const Color(0xFFFF6B00), width: 6) : (isCompleted ? null : Border.all(color: Colors.grey.shade200)),
+                      ),
+                      child: isCompleted ? const Icon(Icons.check, color: Colors.white, size: 14) : null,
+                    ),
+                    const SizedBox(height: 8),
+                    Text(
+                      statuses[index],
+                      textAlign: TextAlign.center,
+                      maxLines: 1,
+                      overflow: TextOverflow.visible,
+                      style: GoogleFonts.outfit(
+                        fontSize: 8.5,
+                        fontWeight: isActive ? FontWeight.w700 : FontWeight.w500,
+                        color: isActive ? const Color(0xFFFF6B00) : (isCompleted ? const Color(0xFF1F212C) : Colors.grey.shade400),
+                      ),
+                    ),
+                  ],
+                ),
+                // Connecting Line
+                if (!isLast)
+                  Expanded(
+                    child: Padding(
+                      padding: const EdgeInsets.only(top: 11), // Center line with 24px circle
+                      child: AnimatedStatusLine(
+                        isCompleted: isCompleted,
+                        isActive: isActive,
+                        isHorizontal: true,
+                      ),
+                    ),
+                  ),
+              ],
+            ),
+          );
+        }),
       ),
     );
   }
 
-  Widget _statusTimelineItem(String title, String subtitle, String time, {bool isCompleted = false, bool isActive = false, bool isLast = false}) {
-    return IntrinsicHeight(
-      child: Row(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Column(
-            children: [
-              Container(
-                width: 24,
-                height: 24,
-                decoration: BoxDecoration(
-                  color: isCompleted ? const Color(0xFFFF6B00) : (isActive ? Colors.white : Colors.grey.shade200),
-                  shape: BoxShape.circle,
-                  border: isActive ? Border.all(color: const Color(0xFFFF6B00), width: 6) : null,
-                ),
-                child: isCompleted ? const Icon(Icons.check, color: Colors.white, size: 14) : null,
-              ),
-              if (!isLast)
-                Expanded(
-                  child: Container(
-                    width: 2,
-                    color: isCompleted ? const Color(0xFFFF6B00) : Colors.grey.shade200,
-                  ),
-                ),
-            ],
-          ),
-          const SizedBox(width: 16),
-          Expanded(
-            child: Padding(
-              padding: EdgeInsets.only(bottom: isLast ? 0 : 24),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(
-                    title,
-                    style: GoogleFonts.outfit(
-                      fontSize: 15, 
-                      fontWeight: FontWeight.w600, 
-                      color: isActive ? const Color(0xFFFF6B00) : (isCompleted ? const Color(0xFF1F212C) : Colors.grey.shade400)
-                    ),
-                  ),
-                  if (subtitle.isNotEmpty)
-                    Text(
-                      subtitle,
-                      style: GoogleFonts.outfit(fontSize: 13, color: isCompleted || isActive ? Colors.grey.shade600 : Colors.grey.shade300),
-                    ),
-                  if (time.isNotEmpty)
-                    Padding(
-                      padding: const EdgeInsets.only(top: 4),
-                      child: Text(
-                        time,
-                        style: GoogleFonts.outfit(
-                          fontSize: 11, 
-                          fontWeight: FontWeight.w600, 
-                          color: isActive ? Colors.deepOrange.shade800 : Colors.grey.shade400
-                        ),
-                      ),
-                    ),
-                ],
-              ),
-            ),
-          ),
-        ],
-      ),
-    );
-  }
 
   Widget _buildBottomActions(String currentStatus) {
     return Container(
@@ -838,13 +824,7 @@ class _TrackingScreenState extends State<TrackingScreen> {
       decoration: const BoxDecoration(
         color: Colors.white,
         borderRadius: BorderRadius.vertical(top: Radius.circular(30)),
-        boxShadow: [
-          BoxShadow(
-            color: Colors.black12,
-            blurRadius: 10,
-            offset: Offset(0, -5),
-          ),
-        ],
+        border: Border(top: BorderSide(color: Color(0xFFF1F5F9))),
       ),
       child: SizedBox(
         width: double.infinity,
@@ -884,4 +864,112 @@ class _TrackingScreenState extends State<TrackingScreen> {
       ),
     );
   }
+}
+
+class AnimatedStatusLine extends StatefulWidget {
+  final bool isCompleted;
+  final bool isActive;
+  final bool isHorizontal;
+  const AnimatedStatusLine({super.key, required this.isCompleted, required this.isActive, this.isHorizontal = false});
+
+  @override
+  State<AnimatedStatusLine> createState() => _AnimatedStatusLineState();
+}
+
+class _AnimatedStatusLineState extends State<AnimatedStatusLine> with SingleTickerProviderStateMixin {
+  late AnimationController _controller;
+
+  @override
+  void initState() {
+    super.initState();
+    _controller = AnimationController(
+      vsync: this,
+      duration: const Duration(seconds: 2),
+    );
+    if (widget.isActive) {
+      _controller.repeat();
+    }
+  }
+
+  @override
+  void didUpdateWidget(AnimatedStatusLine oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (widget.isActive) {
+      _controller.repeat();
+    } else {
+      _controller.stop();
+    }
+  }
+
+  @override
+  void dispose() {
+    _controller.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    if (widget.isCompleted) {
+      return Container(
+        width: widget.isHorizontal ? double.infinity : 2, 
+        height: widget.isHorizontal ? 2 : double.infinity,
+        color: const Color(0xFFFF6B00)
+      );
+    }
+    
+    if (!widget.isActive) {
+      return Container(
+        width: widget.isHorizontal ? double.infinity : 2, 
+        height: widget.isHorizontal ? 2 : double.infinity,
+        color: Colors.grey.shade200
+      );
+    }
+
+    return AnimatedBuilder(
+      animation: _controller,
+      builder: (context, child) {
+        return CustomPaint(
+          size: widget.isHorizontal ? const Size(double.infinity, 2) : const Size(2, double.infinity),
+          painter: _LinePainter(_controller.value, isHorizontal: widget.isHorizontal),
+        );
+      },
+    );
+  }
+}
+
+class _LinePainter extends CustomPainter {
+  final double progress;
+  final bool isHorizontal;
+  _LinePainter(this.progress, {this.isHorizontal = false});
+
+  @override
+  void paint(Canvas canvas, Size size) {
+    // 1. Background line (grey)
+    final bgPaint = Paint()
+      ..color = Colors.grey.shade100
+      ..strokeWidth = 2
+      ..style = PaintingStyle.stroke;
+    
+    if (isHorizontal) {
+      canvas.drawLine(Offset(0, size.height / 2), Offset(size.width, size.height / 2), bgPaint);
+    } else {
+      canvas.drawLine(Offset(0, 0), Offset(0, size.height), bgPaint);
+    }
+
+    // 2. Growing orange bar (Filling effect)
+    final orangePaint = Paint()
+      ..color = const Color(0xFFFF6B00)
+      ..strokeWidth = 2.5
+      ..strokeCap = StrokeCap.round
+      ..style = PaintingStyle.stroke;
+
+    if (isHorizontal) {
+      canvas.drawLine(Offset(0, size.height / 2), Offset(size.width * progress, size.height / 2), orangePaint);
+    } else {
+      canvas.drawLine(Offset(0, 0), Offset(0, size.height * progress), orangePaint);
+    }
+  }
+
+  @override
+  bool shouldRepaint(_LinePainter oldDelegate) => oldDelegate.progress != progress;
 }

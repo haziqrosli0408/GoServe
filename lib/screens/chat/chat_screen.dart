@@ -297,49 +297,83 @@ class _ChatScreenState extends State<ChatScreen> {
                         final String chatId = chatDoc.id;
                         final bool isSelected = selectedChatIds.contains(chatId);
 
-                        // Get the other user's data
-                        String otherUserId = (chatData['participants'] as List)
-                            .firstWhere((id) => id != currentUser.uid, orElse: () => '');
+                        // Get the other user's data (exclude current user)
+                        final List participants = (chatData['participants'] is List) 
+                            ? chatData['participants'] 
+                            : (chatData['participants'] as Map).keys.toList();
+                        
+                        String otherUserId = participants.firstWhere((id) => id != currentUser.uid, orElse: () => '');
+                        
+                        // 🔹 If there are 3 participants (Customer, Provider, Service), try to find the one that ISN'T the service
+                        if (participants.length > 2) {
+                          for (var id in participants) {
+                            if (id != currentUser.uid && !id.toString().contains('_')) {
+                              otherUserId = id;
+                              break;
+                            }
+                          }
+                        }
                         
                         Map<String, dynamic>? otherUserData = chatData['users']?[otherUserId] as Map<String, dynamic>?;
 
-                        // 🔹 FALLBACK: If lookup by otherUserId fails, find ANY other user in the metadata map
-                        if (otherUserData == null || otherUserData['name'] == 'User') {
+                        // 🔹 FALLBACK: If lookup by otherUserId fails, find ANY other user in the metadata map that has a name
+                        if (otherUserData == null || otherUserData['name'] == 'User' || otherUserData['name'] == null) {
                           final usersMap = chatData['users'] as Map<String, dynamic>?;
                           if (usersMap != null) {
-                            final otherKey = usersMap.keys.firstWhere((k) => k != currentUser.uid, orElse: () => '');
+                            final otherKey = usersMap.keys.firstWhere(
+                              (k) => k != currentUser.uid && usersMap[k]['name'] != 'User' && usersMap[k]['name'] != null, 
+                              orElse: () => usersMap.keys.firstWhere((k) => k != currentUser.uid, orElse: () => '')
+                            );
                             if (otherKey.isNotEmpty) {
                               otherUserData = usersMap[otherKey];
-                              otherUserId = otherKey; // Update ID for consistent ChatListItem fetching
+                              otherUserId = otherKey;
                             }
                           }
                         }
 
-                        final String otherName = otherUserData?['name'] ?? 'User';
-                        final String otherPhoto = otherUserData?['profileUrl'] ?? '';
-                        
                         // Robust extraction of service name
-                        String serviceName = chatData['serviceTitle'] ?? 
-                                             chatData['service_title'] ??
-                                             otherUserData?['serviceName'] ?? 
-                                             otherUserData?['service'] ?? 
-                                             '';
+                        String sTitle = (chatData['serviceTitle'] ?? '').toString();
+                        if (sTitle.isEmpty || sTitle.toLowerCase() == 'service') {
+                          sTitle = (chatData['service_title'] ?? '').toString();
+                        }
+                        if (sTitle.isEmpty || sTitle.toLowerCase() == 'service') {
+                          sTitle = (otherUserData?['serviceName'] ?? '').toString();
+                        }
+                        if (sTitle.isEmpty || sTitle.toLowerCase() == 'service') {
+                          sTitle = (otherUserData?['service'] ?? '').toString();
+                        }
                         
-                        if (serviceName.isEmpty) {
+                        String serviceName = sTitle;
+                        
+                        if (serviceName.isEmpty || serviceName.toLowerCase() == 'service') {
                           final users = chatData['users'] as Map<String, dynamic>?;
                           if (users != null) {
                             for (var user in users.values) {
-                              if (user is Map && (user['serviceName'] != null || user['service'] != null)) {
-                                serviceName = user['serviceName'] ?? user['service'] ?? '';
-                                if (serviceName.isNotEmpty) break;
+                              if (user is Map) {
+                                final candidate = (user['serviceName'] ?? user['service'] ?? '').toString();
+                                if (candidate.isNotEmpty && candidate.toLowerCase() != 'service') {
+                                  serviceName = candidate;
+                                  break;
+                                }
                               }
                             }
                           }
                         }
 
-                        if (serviceName.isEmpty) {
-                          serviceName = chatData['category'] ?? 'Service';
+                        if (serviceName.isEmpty || serviceName.toLowerCase() == 'service') {
+                          final category = (chatData['category'] ?? '').toString();
+                          serviceName = (category.isNotEmpty && category.toLowerCase() != 'service') ? category : 'Service';
                         }
+
+                        final String rawName = (otherUserData?['name'] ?? '').toString();
+                        // 🔹 Force empty if name is a placeholder to trigger the fetch in ChatListItem
+                        final String otherName = (rawName.trim().toLowerCase() == 'user' || 
+                                                rawName.trim().toLowerCase() == 'provider' || 
+                                                rawName.isEmpty || 
+                                                rawName.trim() == serviceName.trim())
+                            ? ''
+                            : rawName;
+                        final String otherPhoto = otherUserData?['profileUrl'] ?? '';
                         
                         final String lastMessage = chatData['lastMessage'] ?? 'No messages yet';
                         final Timestamp? lastTimestamp = chatData['lastTimestamp'] as Timestamp?;
@@ -502,7 +536,7 @@ class _ChatListItemState extends State<ChatListItem> {
   void initState() {
     super.initState();
     // Aggressively fetch if data looks like a placeholder
-    if (widget.name == 'User' || widget.name.isEmpty || widget.photo.isEmpty) {
+    if (widget.name == 'User' || widget.name == 'Provider' || widget.name.isEmpty || widget.photo.isEmpty || widget.name == widget.service) {
       _fetchUserData();
     }
   }
@@ -512,91 +546,87 @@ class _ChatListItemState extends State<ChatListItem> {
     setState(() => _isFetching = true);
 
     try {
-      debugPrint("🔍 Fetching missing chat metadata for user: ${widget.otherUserId}");
+      debugPrint("🔍 Resolving identity for: ${widget.otherUserId}");
       
-      // Try users collection
-      var doc = await FirebaseFirestore.instance.collection('users').doc(widget.otherUserId).get();
-      if (!doc.exists) {
-        // Try providers collection
-        doc = await FirebaseFirestore.instance.collection('providers').doc(widget.otherUserId).get();
+      String? resolvedName;
+      String? resolvedPhoto;
+
+      // 1. Try Users Collection
+      var userDoc = await FirebaseFirestore.instance.collection('users').doc(widget.otherUserId).get();
+      if (userDoc.exists) {
+        final data = userDoc.data()!;
+        final name = data['name'] ?? data['displayName'] ?? '';
+        if (name.isNotEmpty && name != 'User' && name != 'Provider') {
+          resolvedName = name;
+          resolvedPhoto = data['profileUrl'] ?? data['photoUrl'];
+        }
       }
 
-      if (doc.exists && mounted) {
-        final data = doc.data()!;
-        final newName = data['name'] ?? data['providerName'] ?? data['displayName'] ?? 'User';
-        final newPhoto = data['profileUrl'] ?? data['providerProfileUrl'] ?? data['photoUrl'] ?? '';
-        
-        debugPrint("✅ Found user data: $newName");
-        
-        setState(() {
-          _fetchedName = newName;
-          _fetchedPhoto = newPhoto;
-          _isFetching = false;
-        });
-
-        // Sync back to chat document to fix it permanently
-        await FirebaseFirestore.instance.collection('chats').doc(widget.chatId).set({
-          'users': {
-            widget.otherUserId: {
-              'name': newName,
-              'profileUrl': newPhoto,
-            }
+      // 2. Try Providers Collection (if not found or is placeholder)
+      if (resolvedName == null) {
+        var pDoc = await FirebaseFirestore.instance.collection('providers').doc(widget.otherUserId).get();
+        if (pDoc.exists) {
+          final data = pDoc.data()!;
+          final name = data['name'] ?? data['providerName'] ?? '';
+          if (name.isNotEmpty && name != 'User' && name != 'Provider') {
+            resolvedName = name;
+            resolvedPhoto = data['profileUrl'] ?? data['providerProfileUrl'];
           }
-        }, SetOptions(merge: true));
-      } else {
-        // 🔹 FALLBACK: Check if this ID is actually a Service ID
-        debugPrint("🔄 ID not found in users/providers. Checking services collection: ${widget.otherUserId}");
-        final serviceDoc = await FirebaseFirestore.instance.collection('services').doc(widget.otherUserId).get();
-        
-        if (serviceDoc.exists) {
-          final sData = serviceDoc.data()!;
-          final realProviderId = sData['providerId'] ?? sData['userId'] ?? sData['provider_id'] ?? sData['ownerId'];
+        }
+      }
+
+      // 3. Try Services Collection (if still not found, ID might be a Service ID)
+      if (resolvedName == null) {
+        var sDoc = await FirebaseFirestore.instance.collection('services').doc(widget.otherUserId).get();
+        if (sDoc.exists) {
+          final sData = sDoc.data()!;
+          final realId = sData['providerId'] ?? sData['userId'] ?? sData['provider_id'];
           
-          if (realProviderId != null && realProviderId is String) {
-            debugPrint("📍 Found Service! Real Provider ID: $realProviderId. Re-fetching...");
+          if (realId != null && realId is String) {
+            // Re-fetch using the REAL provider ID
+            var pDoc = await FirebaseFirestore.instance.collection('providers').doc(realId).get();
+            if (!pDoc.exists) pDoc = await FirebaseFirestore.instance.collection('users').doc(realId).get();
             
-            var pDoc = await FirebaseFirestore.instance.collection('providers').doc(realProviderId).get();
-            if (!pDoc.exists) {
-              pDoc = await FirebaseFirestore.instance.collection('users').doc(realProviderId).get();
-            }
-
-            if (pDoc.exists && mounted) {
-              final pData = pDoc.data()!;
-              final pName = pData['name'] ?? pData['providerName'] ?? pData['displayName'] ?? 'Provider';
-              final pPhoto = pData['profileUrl'] ?? pData['providerProfileUrl'] ?? pData['photoUrl'] ?? '';
-
-              setState(() {
-                _fetchedName = pName;
-                _fetchedPhoto = pPhoto;
-                _isFetching = false;
-              });
-
-              // Sync back using the ORIGINAL ID key (the one used in participants)
-              await FirebaseFirestore.instance.collection('chats').doc(widget.chatId).set({
-                'users': {
-                  widget.otherUserId: {
-                    'name': pName,
-                    'profileUrl': pPhoto,
-                  }
-                }
-              }, SetOptions(merge: true));
-              return;
+            if (pDoc.exists) {
+              final data = pDoc.data()!;
+              resolvedName = data['name'] ?? data['providerName'] ?? data['displayName'];
+              resolvedPhoto = data['profileUrl'] ?? data['providerProfileUrl'] ?? data['photoUrl'];
             }
           }
         }
-        
-        debugPrint("❌ User document not found in any collection: ${widget.otherUserId}");
-        if (mounted) setState(() => _isFetching = false);
+      }
+
+      if (mounted && resolvedName != null) {
+        setState(() {
+          _fetchedName = resolvedName;
+          _fetchedPhoto = resolvedPhoto;
+          _isFetching = false;
+        });
+
+        // Cache back to chat document
+        await FirebaseFirestore.instance.collection('chats').doc(widget.chatId).set({
+          'users': {
+            widget.otherUserId: {
+              'name': resolvedName,
+              if (resolvedPhoto != null) 'profileUrl': resolvedPhoto,
+            }
+          }
+        }, SetOptions(merge: true));
+      } else if (mounted) {
+        setState(() => _isFetching = false);
       }
     } catch (e) {
-      debugPrint("⚠️ Error fetching user data for chat: $e");
+      debugPrint("⚠️ Error resolving identity: $e");
       if (mounted) setState(() => _isFetching = false);
     }
   }
 
   @override
   Widget build(BuildContext context) {
-    final displayName = _fetchedName ?? widget.name;
+    // Show real name, fetched name, or a loading state if both are placeholders/empty
+    final String displayName = (_fetchedName != null && _fetchedName!.isNotEmpty && _fetchedName != 'Provider' && _fetchedName != 'User') 
+        ? _fetchedName! 
+        : (widget.name.isNotEmpty && widget.name != 'Provider' && widget.name != 'User' && widget.name != widget.service ? widget.name : 'Loading...');
     final displayPhoto = _fetchedPhoto ?? widget.photo;
 
     return GestureDetector(

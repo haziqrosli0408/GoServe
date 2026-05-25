@@ -5,10 +5,12 @@ import 'package:google_sign_in/google_sign_in.dart';
 class GoogleAuthService {
   final FirebaseAuth _auth = FirebaseAuth.instance;
   
-  // 🔹 Explicitly providing the Client ID found in your project config
-  // This prevents crashes (Lost connection to device) when native files are missing/incomplete
+  // 🔹 Platform-aware Client IDs
+  static const String _webClientId = '382033508368-tgeas4a4nne4o68tkmhachf4uue79od8.apps.googleusercontent.com';
+  static const String _iosClientId = '382033508368-am6cpgl50rolb7188l2tvf88tqgi5gcb.apps.googleusercontent.com';
+
   final GoogleSignIn _googleSignIn = GoogleSignIn(
-    clientId: '382033508368-am6cpgl50rolb7188l2tvf88tqgi5gcb.apps.googleusercontent.com',
+    clientId: kIsWeb ? _webClientId : _iosClientId,
   );
 
   Future<UserCredential?> signInWithGoogle() async {
