@@ -24,8 +24,9 @@ class _ProviderReviewsPageState extends State<ProviderReviewsPage> {
     showModalBottomSheet(
       context: context,
       isScrollControlled: true,
+      backgroundColor: Colors.white,
       shape: const RoundedRectangleBorder(
-        borderRadius: BorderRadius.vertical(top: Radius.circular(30)),
+        borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
       ),
       builder: (context) => StatefulBuilder(
         builder: (context, setModalState) {
@@ -34,12 +35,23 @@ class _ProviderReviewsPageState extends State<ProviderReviewsPage> {
               bottom: MediaQuery.of(context).viewInsets.bottom + 20,
               left: 20,
               right: 20,
-              top: 20,
+              top: 12,
             ),
             child: Column(
               mainAxisSize: MainAxisSize.min,
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
+                Center(
+                  child: Container(
+                    width: 38,
+                    height: 4,
+                    decoration: BoxDecoration(
+                      color: const Color(0xFFE2E8F0), // Slate 200
+                      borderRadius: BorderRadius.circular(10),
+                    ),
+                  ),
+                ),
+                const SizedBox(height: 16),
                 Row(
                   mainAxisAlignment: MainAxisAlignment.spaceBetween,
                   children: [
@@ -47,34 +59,61 @@ class _ProviderReviewsPageState extends State<ProviderReviewsPage> {
                       existingResponse != null ? 'Edit Response' : 'Respond to Review',
                       style: GoogleFonts.outfit(
                         fontSize: 18,
-                        fontWeight: FontWeight.w600,
+                        fontWeight: FontWeight.w700,
+                        color: const Color(0xFF1E293B),
                       ),
                     ),
                     IconButton(
-                      icon: const Icon(Icons.close),
+                      icon: const Icon(Icons.close_rounded, color: Color(0xFF94A3B8)),
                       onPressed: () => Navigator.pop(context),
+                      splashRadius: 20,
                     ),
                   ],
                 ),
-                const SizedBox(height: 10),
+                const SizedBox(height: 12),
                 Container(
-                  padding: const EdgeInsets.all(12),
+                  width: double.infinity,
+                  padding: const EdgeInsets.all(16),
                   decoration: BoxDecoration(
-                    color: Colors.grey[100],
-                    borderRadius: BorderRadius.circular(15),
+                    color: const Color(0xFFF8FAFC), // Slate 50
+                    borderRadius: BorderRadius.circular(12),
+                    border: Border.all(color: const Color(0xFFE2E8F0)), // Slate 200
                   ),
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      Text(
-                        customerName,
-                        style: GoogleFonts.outfit(fontWeight: FontWeight.w600),
+                      Row(
+                        children: [
+                          CircleAvatar(
+                            radius: 12,
+                            backgroundColor: const Color(0xFF4F46E5).withValues(alpha: 0.1),
+                            child: Text(
+                              customerName.isNotEmpty ? customerName[0].toUpperCase() : 'C',
+                              style: GoogleFonts.outfit(
+                                fontSize: 10,
+                                fontWeight: FontWeight.bold,
+                                color: const Color(0xFF4F46E5),
+                              ),
+                            ),
+                          ),
+                          const SizedBox(width: 8),
+                          Text(
+                            customerName,
+                            style: GoogleFonts.outfit(
+                              fontSize: 13,
+                              fontWeight: FontWeight.w600,
+                              color: const Color(0xFF1E293B),
+                            ),
+                          ),
+                        ],
                       ),
+                      const SizedBox(height: 8),
                       Text(
                         comment,
                         style: GoogleFonts.outfit(
                           fontSize: 13,
-                          color: Colors.black54,
+                          color: const Color(0xFF475569), // Slate 600
+                          height: 1.4,
                         ),
                       ),
                     ],
@@ -85,20 +124,34 @@ class _ProviderReviewsPageState extends State<ProviderReviewsPage> {
                   controller: _responseController,
                   maxLines: 4,
                   maxLength: 500,
+                  style: GoogleFonts.outfit(
+                    fontSize: 14,
+                    color: const Color(0xFF1E293B),
+                  ),
                   decoration: InputDecoration(
                     hintText: "Thank the customer and address their feedback...",
+                    hintStyle: GoogleFonts.outfit(
+                      fontSize: 14,
+                      color: const Color(0xFF94A3B8), // Slate 400
+                    ),
                     filled: true,
-                    fillColor: Colors.grey[50],
-                    border: OutlineInputBorder(
-                      borderRadius: BorderRadius.circular(15),
-                      borderSide: BorderSide.none,
+                    fillColor: Colors.white,
+                    counterStyle: GoogleFonts.outfit(fontSize: 11),
+                    contentPadding: const EdgeInsets.all(16),
+                    enabledBorder: OutlineInputBorder(
+                      borderRadius: BorderRadius.circular(12),
+                      borderSide: const BorderSide(color: Color(0xFFE2E8F0), width: 1.5),
+                    ),
+                    focusedBorder: OutlineInputBorder(
+                      borderRadius: BorderRadius.circular(12),
+                      borderSide: const BorderSide(color: Color(0xFF4F46E5), width: 2),
                     ),
                   ),
                 ),
-                const SizedBox(height: 10),
+                const SizedBox(height: 16),
                 SizedBox(
                   width: double.infinity,
-                  height: 50,
+                  height: 48,
                   child: ElevatedButton(
                     onPressed: _isSubmitting ? null : () async {
                       if (_responseController.text.trim().isEmpty) return;
@@ -110,14 +163,14 @@ class _ProviderReviewsPageState extends State<ProviderReviewsPage> {
                           'providerResponse': _responseController.text.trim(),
                           'respondedAt': FieldValue.serverTimestamp(),
                         });
-                        if (mounted) {
+                        if (context.mounted) {
                           Navigator.pop(context);
                           ScaffoldMessenger.of(context).showSnackBar(
                             const SnackBar(content: Text('Response saved successfully')),
                           );
                         }
                       } catch (e) {
-                        if (mounted) {
+                        if (context.mounted) {
                           ScaffoldMessenger.of(context).showSnackBar(
                             SnackBar(content: Text('Error saving response: $e')),
                           );
@@ -127,14 +180,18 @@ class _ProviderReviewsPageState extends State<ProviderReviewsPage> {
                       }
                     },
                     style: ElevatedButton.styleFrom(
-                      backgroundColor: Colors.amber[600],
-                      shape: const StadiumBorder(),
+                      backgroundColor: const Color(0xFF4F46E5),
+                      foregroundColor: Colors.white,
+                      elevation: 0,
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(12),
+                      ),
                     ),
                     child: _isSubmitting 
                         ? const SizedBox(height: 20, width: 20, child: CircularProgressIndicator(color: Colors.white, strokeWidth: 2))
                         : Text(
                             "Save Response",
-                            style: GoogleFonts.outfit(color: Colors.white, fontWeight: FontWeight.w600),
+                            style: GoogleFonts.outfit(color: Colors.white, fontWeight: FontWeight.w600, fontSize: 15),
                           ),
                   ),
                 ),
@@ -154,7 +211,7 @@ class _ProviderReviewsPageState extends State<ProviderReviewsPage> {
         leading: const BackButton(color: Colors.black),
         title: Text(
           "Reviews & Ratings",
-          style: GoogleFonts.outfit(color: Colors.black, fontWeight: FontWeight.w600),
+          style: GoogleFonts.outfit(color: Colors.black, fontWeight: FontWeight.w600, fontSize: 18),
         ),
         centerTitle: true,
         backgroundColor: Colors.white,
@@ -166,6 +223,7 @@ class _ProviderReviewsPageState extends State<ProviderReviewsPage> {
               stream: FirebaseFirestore.instance
                   .collection('reviews')
                   .where('providerId', isEqualTo: user!.uid)
+                  .where('status', isEqualTo: 'Approved')
                   .snapshots(),
               builder: (context, snapshot) {
                 if (snapshot.connectionState == ConnectionState.waiting) {
@@ -299,7 +357,7 @@ class _ProviderReviewsPageState extends State<ProviderReviewsPage> {
       padding: const EdgeInsets.all(20),
       decoration: BoxDecoration(
         gradient: LinearGradient(
-          colors: [Colors.amber.shade50, Colors.orange.shade50],
+          colors: [const Color(0xFF4F46E5).withValues(alpha: 0.05), const Color(0xFF4F46E5).withValues(alpha: 0.1)],
         ),
         borderRadius: BorderRadius.circular(20),
       ),
@@ -350,7 +408,7 @@ class _ProviderReviewsPageState extends State<ProviderReviewsPage> {
                           child: LinearProgressIndicator(
                             value: percentage,
                             backgroundColor: Colors.white,
-                            color: Colors.amber,
+                            color: const Color(0xFF4F46E5),
                             minHeight: 6,
                           ),
                         ),
@@ -449,7 +507,7 @@ class _ProviderReviewsPageState extends State<ProviderReviewsPage> {
             Container(
               padding: const EdgeInsets.all(12),
               decoration: BoxDecoration(
-                color: Colors.amber.shade50,
+                color: const Color(0xFF4F46E5).withValues(alpha: 0.05),
                 borderRadius: BorderRadius.circular(12),
               ),
               child: Column(
@@ -457,14 +515,14 @@ class _ProviderReviewsPageState extends State<ProviderReviewsPage> {
                 children: [
                   Row(
                     children: [
-                      const Icon(Icons.reply, size: 14, color: Colors.amber),
+                      const Icon(Icons.reply, size: 14, color: Color(0xFF4F46E5)),
                       const SizedBox(width: 6),
                       Text(
                         "Your Response",
                         style: GoogleFonts.outfit(
                           fontSize: 12,
                           fontWeight: FontWeight.w600,
-                          color: Colors.amber.shade700,
+                          color: const Color(0xFF4F46E5),
                         ),
                       ),
                     ],
@@ -486,16 +544,22 @@ class _ProviderReviewsPageState extends State<ProviderReviewsPage> {
               TextButton(
                 onPressed: () => _showResponseModal(reviewId, customerName, comment, response),
                 style: TextButton.styleFrom(
-                  backgroundColor: response != null ? Colors.grey[100] : Colors.amber[600],
-                  foregroundColor: response != null ? Colors.black54 : Colors.white,
-                  shape: const StadiumBorder(),
-                  padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 8),
+                  backgroundColor: response != null ? Colors.grey[100] : const Color(0xFF4F46E5),
+                  foregroundColor: response != null ? Colors.black87 : Colors.white,
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(12),
+                  ),
+                  padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 12),
                   minimumSize: Size.zero,
                   tapTargetSize: MaterialTapTargetSize.shrinkWrap,
                 ),
                 child: Text(
                   response != null ? 'Edit Response' : 'Respond',
-                  style: GoogleFonts.outfit(fontSize: 13, fontWeight: FontWeight.w600),
+                  style: GoogleFonts.outfit(
+                    fontSize: 13,
+                    color: response != null ? Colors.black87 : Colors.white,
+                    fontWeight: FontWeight.w600,
+                  ),
                 ),
               ),
             ],
@@ -541,8 +605,15 @@ class _FilterHeaderDelegate extends SliverPersistentHeaderDelegate {
               ),
               selected: isSelected,
               onSelected: (_) => onFilterChanged(filter),
-              selectedColor: Colors.amber.shade600,
-              backgroundColor: Colors.grey.shade100,
+              selectedColor: const Color(0xFF4F46E5),
+              backgroundColor: Colors.white,
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(8),
+                side: BorderSide(
+                  color: isSelected ? const Color(0xFF4F46E5) : Colors.grey.shade300,
+                  width: 1,
+                ),
+              ),
               showCheckmark: false,
             ),
           );

@@ -4,6 +4,7 @@ import 'package:intl/intl.dart';
 import 'package:geolocator/geolocator.dart';
 import 'package:geocoding/geocoding.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:firebase_auth/firebase_auth.dart';
 import 'payment_page.dart';
 
 class BookingPage extends StatefulWidget {
@@ -87,6 +88,9 @@ class _BookingPageState extends State<BookingPage> {
   String notes = '';
   String paymentMethod = 'card';
 
+  List<Map<String, dynamic>> _savedAddresses = [];
+  String? _selectedAddressId;
+
   final Color primaryGreen = const Color(0xFFFF6B00);
   final Color bgCream = Colors.white;
 
@@ -94,6 +98,30 @@ class _BookingPageState extends State<BookingPage> {
   void initState() {
     super.initState();
     _loadAvailability();
+    _fetchSavedAddresses();
+  }
+
+  Future<void> _fetchSavedAddresses() async {
+    final user = FirebaseAuth.instance.currentUser;
+    if (user == null) return;
+    try {
+      final snapshot = await FirebaseFirestore.instance
+          .collection('users')
+          .doc(user.uid)
+          .collection('addresses')
+          .orderBy('isDefault', descending: true)
+          .get();
+      if (mounted) {
+        setState(() {
+          _savedAddresses = snapshot.docs.map((doc) => {
+            ...doc.data(),
+            'id': doc.id,
+          }).toList();
+        });
+      }
+    } catch (e) {
+      debugPrint("Error fetching saved addresses: $e");
+    }
   }
 
   Future<void> _loadAvailability() async {
@@ -602,6 +630,7 @@ class _BookingPageState extends State<BookingPage> {
         ),
         
         const SizedBox(height: 32),
+        _buildSavedAddressesList(),
         Text(
           'UNIT / HOUSE NO.',
           style: GoogleFonts.outfit(fontSize: 10, fontWeight: FontWeight.w600, color: const Color(0xFF64748B), letterSpacing: 0.5),
@@ -728,6 +757,96 @@ class _BookingPageState extends State<BookingPage> {
           style: GoogleFonts.outfit(fontSize: 14, color: Colors.black87),
         ),
         const SizedBox(height: 40),
+      ],
+    );
+  }
+
+  Widget _buildSavedAddressesList() {
+    if (_savedAddresses.isEmpty) return const SizedBox();
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Text(
+          'SAVED ADDRESSES',
+          style: GoogleFonts.outfit(fontSize: 10, fontWeight: FontWeight.w600, color: const Color(0xFF64748B), letterSpacing: 0.5),
+        ),
+        const SizedBox(height: 8),
+        SizedBox(
+          height: 72,
+          child: ListView.builder(
+            scrollDirection: Axis.horizontal,
+            itemCount: _savedAddresses.length,
+            itemBuilder: (context, index) {
+              final addr = _savedAddresses[index];
+              final isSelected = _selectedAddressId == addr['id'];
+              return GestureDetector(
+                onTap: () {
+                  setState(() {
+                    _selectedAddressId = addr['id'];
+                    final addrStr = addr['address'] as String? ?? '';
+                    final parts = addrStr.split(',').map((e) => e.trim()).toList();
+                    unitNoController.text = parts.isNotEmpty ? parts[0] : '';
+                    streetNameController.text = parts.length > 1 ? parts[1] : '';
+                    postcodeController.text = parts.length > 2 ? parts[2] : '';
+                    cityController.text = parts.length > 3 ? parts.sublist(3).join(', ') : '';
+                  });
+                },
+                child: Container(
+                  margin: const EdgeInsets.only(right: 12),
+                  padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+                  width: 180,
+                  decoration: BoxDecoration(
+                    color: isSelected ? primaryGreen.withValues(alpha: 0.05) : Colors.white,
+                    borderRadius: BorderRadius.circular(12),
+                    border: Border.all(
+                      color: isSelected ? primaryGreen : Colors.grey.shade200,
+                      width: isSelected ? 1.5 : 1,
+                    ),
+                  ),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    children: [
+                      Row(
+                        children: [
+                          Icon(
+                            addr['isDefault'] == true ? Icons.home_rounded : Icons.location_on_outlined,
+                            size: 14,
+                            color: isSelected ? primaryGreen : Colors.grey.shade500,
+                          ),
+                          const SizedBox(width: 4),
+                          Expanded(
+                            child: Text(
+                              addr['label'] ?? 'Address',
+                              maxLines: 1,
+                              overflow: TextOverflow.ellipsis,
+                              style: GoogleFonts.outfit(
+                                fontSize: 13,
+                                fontWeight: FontWeight.w600,
+                                color: const Color(0xFF1E293B),
+                              ),
+                            ),
+                          ),
+                        ],
+                      ),
+                      const SizedBox(height: 4),
+                      Text(
+                        addr['address'] ?? '',
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                        style: GoogleFonts.outfit(
+                          fontSize: 11,
+                          color: Colors.grey.shade500,
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              );
+            },
+          ),
+        ),
+        const SizedBox(height: 24),
       ],
     );
   }

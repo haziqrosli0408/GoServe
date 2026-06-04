@@ -6,10 +6,10 @@ import '../profile/profile_screen.dart';
 
 import 'package:url_launcher/url_launcher.dart';
 import '../chat/single_chat_screen.dart';
-import 'package:table_calendar/table_calendar.dart';
+
 import 'package:intl/intl.dart';
 import '../misc/notifications_screen.dart';
-import '../dashboards/customer_home.dart';
+import 'provider_service_requests_page.dart';
 
 class ProviderHomeScreen extends StatefulWidget {
   const ProviderHomeScreen({super.key});
@@ -27,18 +27,23 @@ class _ProviderHomeScreenState extends State<ProviderHomeScreen> {
   double averageRating = 0.0;
 
   // Calendar State
-  CalendarFormat _calendarFormat = CalendarFormat.week;
-  DateTime _focusedDay = DateTime.now();
   DateTime? _selectedDay;
   Map<DateTime, List<dynamic>> _events = {};
+  final ScrollController _calendarScrollController = ScrollController(initialScrollOffset: 11 * 63.0);
 
   @override
   void initState() {
     super.initState();
-    _selectedDay = _focusedDay;
+    _selectedDay = DateTime.now();
     _fetchProviderData();
     _fetchProviderStats();
     _fetchCalendarEvents();
+  }
+
+  @override
+  void dispose() {
+    _calendarScrollController.dispose();
+    super.dispose();
   }
 
   Future<void> _fetchCalendarEvents() async {
@@ -55,6 +60,7 @@ class _ProviderHomeScreenState extends State<ProviderHomeScreen> {
         final Map<DateTime, List<dynamic>> newEvents = {};
         for (var doc in snapshot.docs) {
           final data = doc.data();
+          data['id'] = doc.id; // Add document ID
           final dateStr = data['date'];
           if (dateStr != null) {
             DateTime? parsedDate;
@@ -126,22 +132,23 @@ class _ProviderHomeScreenState extends State<ProviderHomeScreen> {
         double totalNetEarnings = 0;
         for (var doc in snapshot.docs) {
           final data = doc.data();
-          
-          // Get Total Price
-          final totalPriceStr = data['totalPrice'] ?? data['price'] ?? '0';
-          final cleanTotalPrice = double.tryParse(totalPriceStr.toString().replaceAll('RM', '').trim()) ?? 0.0;
-          
-          // Get Platform Fee (Charge Fee)
-          // If chargeFee is stored, use it. Otherwise calculate based on 15% markup (Total = Subtotal * 1.15)
-          double chargeFee = 0.0;
-          if (data['chargeFee'] != null) {
-            chargeFee = (data['chargeFee'] as num).toDouble();
-          } else {
-            // Fallback: Charge Fee = Total Price - (Total Price / 1.15)
-            chargeFee = cleanTotalPrice - (cleanTotalPrice / 1.15);
+          if (data['payoutStatus'] == 'transferred') {
+            // Get Total Price
+            final totalPriceStr = data['totalPrice'] ?? data['price'] ?? '0';
+            final cleanTotalPrice = double.tryParse(totalPriceStr.toString().replaceAll('RM', '').trim()) ?? 0.0;
+            
+            // Get Platform Fee (Charge Fee)
+            // If chargeFee is stored, use it. Otherwise calculate based on 15% markup (Total = Subtotal * 1.15)
+            double chargeFee = 0.0;
+            if (data['chargeFee'] != null) {
+              chargeFee = (data['chargeFee'] as num).toDouble();
+            } else {
+              // Fallback: Charge Fee = Total Price - (Total Price / 1.15)
+              chargeFee = cleanTotalPrice - (cleanTotalPrice / 1.15);
+            }
+            
+            totalNetEarnings += (cleanTotalPrice - chargeFee);
           }
-          
-          totalNetEarnings += (cleanTotalPrice - chargeFee);
         }
         setState(() => totalEarnings = totalNetEarnings);
       }
@@ -164,17 +171,6 @@ class _ProviderHomeScreenState extends State<ProviderHomeScreen> {
     });
   }
 
-
-  String _getGreeting() {
-    final hour = DateTime.now().hour;
-    if (hour < 12) {
-      return 'Good Morning,';
-    } else if (hour < 17) {
-      return 'Good Afternoon,';
-    } else {
-      return 'Good Evening,';
-    }
-  }
 
   Widget _buildSkeletonLoader() {
     return SingleChildScrollView(
@@ -271,7 +267,7 @@ class _ProviderHomeScreenState extends State<ProviderHomeScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: Colors.white,
+      backgroundColor: const Color(0xFFF8FAFC),
       body: providerData == null
           ? _buildSkeletonLoader()
           : SingleChildScrollView(
@@ -296,7 +292,7 @@ class _ProviderHomeScreenState extends State<ProviderHomeScreen> {
                             child: Container(
                               width: double.infinity,
                               decoration: const BoxDecoration(
-                                color: Colors.white,
+                                color: Color(0xFFF8FAFC),
                                 borderRadius: BorderRadius.vertical(top: Radius.circular(32)),
                               ),
                               child: Column(
@@ -306,13 +302,14 @@ class _ProviderHomeScreenState extends State<ProviderHomeScreen> {
                                     padding: const EdgeInsets.symmetric(horizontal: 24),
                                     child: _buildCalendarSection(),
                                   ),
-                                  const SizedBox(height: 24),
-                                  _buildNewRequestsSection(),
-                                  const SizedBox(height: 24),
+                                  const SizedBox(height: 16),
                                   Padding(
                                     padding: const EdgeInsets.symmetric(horizontal: 24),
-                                    child: _buildStatsRow(),
+                                    child: _buildTimelineSection(),
                                   ),
+                                  const SizedBox(height: 24),
+                                  _buildNewRequestsSection(),
+
                                   const SizedBox(height: 40),
                                 ],
                               ),
@@ -329,7 +326,7 @@ class _ProviderHomeScreenState extends State<ProviderHomeScreen> {
   }
 
   Widget _buildHeader() {
-    return Container(
+    return SizedBox(
       width: double.infinity,
       child: Padding(
         padding: const EdgeInsets.fromLTRB(24, 80, 24, 60),
@@ -450,73 +447,12 @@ class _ProviderHomeScreenState extends State<ProviderHomeScreen> {
     );
   }
 
-  Widget _buildStatsRow() {
-    return Row(
-      mainAxisAlignment: MainAxisAlignment.spaceBetween,
-      children: [
-        _statItem(
-            'RM ${totalEarnings >= 1000 ? "${(totalEarnings / 1000).toStringAsFixed(1)}k" : totalEarnings.toStringAsFixed(0)}',
-            'Earnings',
-            Icons.insights,
-            Colors.blue),
-        _statItem(totalBookings.toString(), 'Bookings', Icons.calendar_today,
-            const Color(0xFF4F46E5)),
-        _statItem(averageRating == 0 ? '0.0' : averageRating.toStringAsFixed(1),
-            'Rating', Icons.star, Colors.amber),
-      ],
-    );
-  }
 
-  Widget _statItem(String value, String label, IconData icon, Color color) {
-    return Container(
-      width: (MediaQuery.of(context).size.width - 64) / 3,
-      padding: const EdgeInsets.symmetric(vertical: 12),
-      decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(16),
-        boxShadow: [
-          BoxShadow(
-            color: Colors.black.withValues(alpha: 0.03),
-            blurRadius: 10,
-            offset: const Offset(0, 4),
-          ),
-        ],
-      ),
-      child: Column(
-        children: [
-          Container(
-            padding: const EdgeInsets.all(6),
-            decoration: BoxDecoration(
-              color: color.withValues(alpha: 0.1),
-              shape: BoxShape.circle,
-            ),
-            child: Icon(icon, color: color, size: 16),
-          ),
-          const SizedBox(height: 6),
-          Text(
-            value,
-            style: GoogleFonts.outfit(
-              fontWeight: FontWeight.w700,
-              fontSize: 15,
-              color: const Color(0xFF1E293B),
-            ),
-          ),
-          Text(
-            label,
-            style: GoogleFonts.outfit(
-              fontSize: 10,
-              color: const Color(0xFF64748B),
-              fontWeight: FontWeight.w500,
-            ),
-          ),
-        ],
-      ),
-    );
-  }
 
 
   Widget _buildCalendarSection() {
     return Container(
+      width: double.infinity,
       decoration: BoxDecoration(
         color: Colors.white,
         borderRadius: BorderRadius.circular(24),
@@ -528,199 +464,250 @@ class _ProviderHomeScreenState extends State<ProviderHomeScreen> {
           ),
         ],
       ),
+      padding: const EdgeInsets.symmetric(vertical: 20),
       child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           // 🔹 CUSTOM CALENDAR HEADER
           Padding(
-            padding: const EdgeInsets.only(top: 16, bottom: 8, left: 12, right: 12),
+            padding: const EdgeInsets.only(left: 24, right: 24, bottom: 16),
             child: Row(
               mainAxisAlignment: MainAxisAlignment.spaceBetween,
               children: [
-                IconButton(
-                  onPressed: () {
-                    setState(() {
-                      _focusedDay = DateTime(_focusedDay.year, _focusedDay.month - 1);
-                    });
-                  },
-                  icon: Icon(Icons.chevron_left_rounded, color: Colors.grey[600], size: 24),
+                Text(
+                  _selectedDay != null ? DateFormat.yMMMM().format(_selectedDay!) : DateFormat.yMMMM().format(DateTime.now()),
+                  style: GoogleFonts.outfit(
+                    fontWeight: FontWeight.w700,
+                    fontSize: 16,
+                    color: const Color(0xFF1E293B),
+                  ),
                 ),
-                Row(
-                  children: [
-                    Text(
-                      DateFormat.yMMMM().format(_focusedDay),
+                GestureDetector(
+                  onTap: () {
+                    setState(() {
+                      _selectedDay = DateTime.now();
+                    });
+                    _calendarScrollController.animateTo(
+                      11 * 63.0, 
+                      duration: const Duration(milliseconds: 300),
+                      curve: Curves.easeInOut,
+                    );
+                  },
+                  child: Container(
+                    padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                    decoration: BoxDecoration(
+                      color: const Color(0xFF4F46E5).withValues(alpha: 0.1),
+                      borderRadius: BorderRadius.circular(20),
+                    ),
+                    child: Text(
+                      "Today",
                       style: GoogleFonts.outfit(
-                        fontWeight: FontWeight.w700,
-                        fontSize: 16,
-                        color: const Color(0xFF1E293B),
+                        color: const Color(0xFF4F46E5),
+                        fontWeight: FontWeight.w600,
+                        fontSize: 12,
                       ),
                     ),
-                    const SizedBox(width: 12),
-                    GestureDetector(
-                      onTap: () {
-                        setState(() {
-                          _focusedDay = DateTime.now();
-                          _selectedDay = DateTime.now();
-                        });
-                      },
-                      child: Container(
-                        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
-                        decoration: BoxDecoration(
-                          color: const Color(0xFF4F46E5).withValues(alpha: 0.1),
-                          borderRadius: BorderRadius.circular(20),
-                        ),
-                        child: Text(
-                          "Today",
+                  ),
+                ),
+              ],
+            ),
+          ),
+          // Horizontal Date Selector
+          SizedBox(
+            height: 90,
+            child: ListView.builder(
+              controller: _calendarScrollController,
+              scrollDirection: Axis.horizontal,
+              itemCount: 90, // Start 14 days ago, show 90 days total
+              itemBuilder: (context, index) {
+                DateTime day = DateTime.now().add(Duration(days: index - 14));
+                day = DateTime(day.year, day.month, day.day); // Normalize
+                DateTime selDay = DateTime(_selectedDay!.year, _selectedDay!.month, _selectedDay!.day);
+                
+                bool isSelected = day.isAtSameMomentAs(selDay);
+                
+                return GestureDetector(
+                  onTap: () {
+                    setState(() {
+                      _selectedDay = day;
+                    });
+                  },
+                  child: Container(
+                    width: 55,
+                    margin: const EdgeInsets.symmetric(horizontal: 4),
+                    decoration: BoxDecoration(
+                      color: isSelected ? const Color(0xFF4F46E5).withValues(alpha: 0.1) : Colors.transparent,
+                      borderRadius: BorderRadius.circular(24),
+                    ),
+                    child: Column(
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      children: [
+                        Text(
+                          '${day.day}',
                           style: GoogleFonts.outfit(
-                            color: const Color(0xFF4F46E5),
+                            fontSize: 22,
                             fontWeight: FontWeight.w600,
-                            fontSize: 12,
+                            color: isSelected ? const Color(0xFF4F46E5) : const Color(0xFF1E293B),
+                          ),
+                        ),
+                        const SizedBox(height: 4),
+                        Text(
+                          DateFormat('E').format(day).substring(0, 2),
+                          style: GoogleFonts.outfit(
+                            fontSize: 13,
+                            fontWeight: FontWeight.w500,
+                            color: isSelected ? const Color(0xFF4F46E5) : Colors.grey[500],
+                          ),
+                        ),
+                        if (isSelected) ...[
+                          const SizedBox(height: 6),
+                          Container(
+                            width: 6,
+                            height: 6,
+                            decoration: const BoxDecoration(
+                              color: Color(0xFF4F46E5),
+                              shape: BoxShape.circle,
+                            ),
+                          ),
+                        ]
+                      ],
+                    ),
+                  ),
+                );
+              },
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildTimelineSection() {
+    if (_selectedDay == null) return const SizedBox();
+    
+    final dayKey = DateTime(_selectedDay!.year, _selectedDay!.month, _selectedDay!.day);
+    final events = _events[dayKey] ?? [];
+
+    if (events.isEmpty) {
+      return Padding(
+        padding: const EdgeInsets.all(24.0),
+        child: Center(
+          child: Text(
+            'No activities scheduled',
+            style: GoogleFonts.outfit(color: Colors.grey, fontSize: 14),
+          ),
+        ),
+      );
+    }
+
+    return Padding(
+      padding: const EdgeInsets.symmetric(horizontal: 0.0),
+      child: Column(
+        children: events.map((event) {
+          final timeStr = event['time'] ?? '00:00';
+          String displayTime = timeStr.toString().replaceAll(RegExp(r'[apAP][mM]|\s'), '').replaceAll(':', '.');
+          final String customerId = event['customerId'] ?? '';
+          
+          return FutureBuilder<DocumentSnapshot>(
+            future: customerId.isNotEmpty ? FirebaseFirestore.instance.collection('users').doc(customerId).get() : null,
+            builder: (context, snapshot) {
+              String customerName = event['customerName'] ?? 'Customer';
+              if (snapshot.hasData && snapshot.data?.exists == true) {
+                final userData = snapshot.data!.data() as Map<String, dynamic>?;
+                if (userData != null && userData['name'] != null) {
+                  customerName = userData['name'];
+                }
+              }
+
+              // Determine Order ID
+              String displayOrderId = event['orderId'] ?? '';
+              if (displayOrderId.isEmpty) {
+                String docId = event['id']?.toString() ?? 'N/A';
+                displayOrderId = docId.length > 8 ? docId.substring(0, 8).toUpperCase() : docId.toUpperCase();
+              }
+
+              return Padding(
+                padding: const EdgeInsets.only(bottom: 20.0),
+                child: Row(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    // Time
+                    SizedBox(
+                      width: 50,
+                      child: Padding(
+                        padding: const EdgeInsets.only(top: 14.0),
+                        child: Text(
+                          displayTime,
+                          style: GoogleFonts.outfit(
+                            fontSize: 13,
+                            color: Colors.blueGrey[300],
+                            fontWeight: FontWeight.w500,
                           ),
                         ),
                       ),
                     ),
-                    const SizedBox(width: 8),
-                    GestureDetector(
-                      onTap: () {
-                        setState(() {
-                          if (_calendarFormat == CalendarFormat.week) {
-                            _calendarFormat = CalendarFormat.month;
-                          } else {
-                            _calendarFormat = CalendarFormat.week;
-                          }
-                        });
-                      },
+                    // Card
+                    Expanded(
                       child: Container(
-                        padding: const EdgeInsets.all(4),
+                        padding: const EdgeInsets.all(16),
                         decoration: BoxDecoration(
-                          color: Colors.grey[100],
-                          shape: BoxShape.circle,
+                          color: const Color(0xFF4F46E5), // Indigo
+                          borderRadius: BorderRadius.circular(16),
                         ),
-                        child: Icon(
-                          _calendarFormat == CalendarFormat.week 
-                              ? Icons.keyboard_arrow_down_rounded 
-                              : Icons.keyboard_arrow_up_rounded,
-                          color: Colors.grey[700],
-                          size: 20,
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Text(
+                              event['serviceName'] ?? 'Booking',
+                              style: GoogleFonts.outfit(
+                                color: Colors.white,
+                                fontSize: 14,
+                                fontWeight: FontWeight.w600,
+                              ),
+                            ),
+                            const SizedBox(height: 4),
+                            Text(
+                              'Order ID: $displayOrderId',
+                              style: GoogleFonts.outfit(
+                                color: Colors.white70,
+                                fontSize: 12,
+                              ),
+                            ),
+                            const SizedBox(height: 16),
+                            Row(
+                              children: [
+                                CircleAvatar(
+                                  radius: 12,
+                                  backgroundColor: Colors.white24,
+                                  child: Text(
+                                    customerName.isNotEmpty ? customerName[0].toUpperCase() : 'C',
+                                    style: GoogleFonts.outfit(color: Colors.white, fontSize: 10, fontWeight: FontWeight.bold),
+                                  ),
+                                ),
+                                const SizedBox(width: 8),
+                                Expanded(
+                                  child: Text(
+                                    customerName,
+                                    style: GoogleFonts.outfit(
+                                      color: Colors.white,
+                                      fontSize: 13,
+                                    ),
+                                    maxLines: 1,
+                                    overflow: TextOverflow.ellipsis,
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ],
                         ),
                       ),
                     ),
                   ],
                 ),
-                IconButton(
-                  onPressed: () {
-                    setState(() {
-                      _focusedDay = DateTime(_focusedDay.year, _focusedDay.month + 1);
-                    });
-                  },
-                  icon: Icon(Icons.chevron_right_rounded, color: Colors.grey[600], size: 24),
-                ),
-              ],
-            ),
-          ),
-          TableCalendar(
-            firstDay: DateTime.utc(2025, 1, 1),
-            lastDay: DateTime.utc(2030, 12, 31),
-            focusedDay: _focusedDay,
-            calendarFormat: _calendarFormat,
-            availableCalendarFormats: const {
-              CalendarFormat.month: 'Month',
-              CalendarFormat.week: 'Week',
+              );
             },
-            sixWeekMonthsEnforced: true,
-            headerVisible: false, // Hide default header
-            onPageChanged: (focusedDay) {
-              setState(() {
-                _focusedDay = focusedDay;
-              });
-            },
-            onFormatChanged: (format) {
-              if (_calendarFormat != format) {
-                setState(() {
-                  _calendarFormat = format;
-                });
-              }
-            },
-            selectedDayPredicate: (day) => isSameDay(_selectedDay, day),
-            onDaySelected: (selectedDay, focusedDay) {
-              setState(() {
-                _selectedDay = selectedDay;
-                _focusedDay = focusedDay;
-              });
-            },
-            eventLoader: (day) {
-              final dayKey = DateTime(day.year, day.month, day.day);
-              return _events[dayKey] ?? [];
-            },
-            calendarStyle: CalendarStyle(
-              todayDecoration: BoxDecoration(
-                color: const Color(0xFF4F46E5).withValues(alpha: 0.1),
-                shape: BoxShape.circle,
-              ),
-              todayTextStyle: const TextStyle(color: Color(0xFF4F46E5), fontWeight: FontWeight.bold),
-              selectedDecoration: const BoxDecoration(
-                color: Color(0xFF4F46E5),
-                shape: BoxShape.circle,
-              ),
-              markerDecoration: const BoxDecoration(
-                color: Color(0xFFFF6B00),
-                shape: BoxShape.circle,
-              ),
-              markersMaxCount: 1,
-            ),
-          ),
-          if (_selectedDay != null && _events[DateTime(_selectedDay!.year, _selectedDay!.month, _selectedDay!.day)] != null)
-            Padding(
-              padding: const EdgeInsets.all(16.0),
-              child: Column(
-                children: (_events[DateTime(_selectedDay!.year, _selectedDay!.month, _selectedDay!.day)] ?? [])
-                    .map((event) => Container(
-                          margin: const EdgeInsets.only(bottom: 8),
-                          padding: const EdgeInsets.all(12),
-                          decoration: BoxDecoration(
-                            color: const Color(0xFFF8FAFC),
-                            borderRadius: BorderRadius.circular(12),
-                          ),
-                          child: Row(
-                            children: [
-                              Container(
-                                width: 4,
-                                height: 30,
-                                decoration: BoxDecoration(
-                                  color: const Color(0xFFFF6B00),
-                                  borderRadius: BorderRadius.circular(2),
-                                ),
-                              ),
-                              const SizedBox(width: 12),
-                              Expanded(
-                                child: Column(
-                                  crossAxisAlignment: CrossAxisAlignment.start,
-                                  children: [
-                                    Text(
-                                      event['serviceName'] ?? 'Booking',
-                                      style: GoogleFonts.outfit(fontWeight: FontWeight.bold, fontSize: 13),
-                                    ),
-                                    Text(
-                                      event['time'] ?? '',
-                                      style: GoogleFonts.outfit(color: Colors.grey, fontSize: 11),
-                                    ),
-                                  ],
-                                ),
-                              ),
-                              Text(
-                                event['status'] ?? '',
-                                style: GoogleFonts.outfit(
-                                  color: const Color(0xFF4F46E5),
-                                  fontSize: 11,
-                                  fontWeight: FontWeight.w600,
-                                ),
-                              ),
-                            ],
-                          ),
-                        ))
-                    .toList(),
-              ),
-            ),
-        ],
+          );
+        }).toList(),
       ),
     );
   }
@@ -737,7 +724,7 @@ class _ProviderHomeScreenState extends State<ProviderHomeScreen> {
           Text(
             title,
             style: GoogleFonts.outfit(
-              fontSize: 18,
+              fontSize: 16,
               fontWeight: FontWeight.w600,
               color: const Color(0xFF1E293B),
             ),
@@ -772,7 +759,12 @@ class _ProviderHomeScreenState extends State<ProviderHomeScreen> {
         return Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            _buildSectionHeader('New Service Requests', docs.isNotEmpty ? '${docs.length}' : '', () {}),
+            _buildSectionHeader('New Service Requests', docs.isNotEmpty ? 'See all' : '', () {
+              Navigator.push(
+                context,
+                MaterialPageRoute(builder: (context) => const ProviderServiceRequestsPage()),
+              );
+            }),
             const SizedBox(height: 16),
             if (docs.isEmpty)
               Padding(
@@ -806,7 +798,7 @@ class _ProviderHomeScreenState extends State<ProviderHomeScreen> {
                 shrinkWrap: true,
                 physics: const NeverScrollableScrollPhysics(),
                 padding: const EdgeInsets.symmetric(horizontal: 24),
-                itemCount: docs.length,
+                itemCount: docs.length > 3 ? 3 : docs.length,
                 itemBuilder: (context, index) {
                   final doc = docs[index];
                   final data = doc.data() as Map<String, dynamic>;
@@ -974,25 +966,7 @@ class _ProviderHomeScreenState extends State<ProviderHomeScreen> {
     );
   }
 
-  Widget _infoBadge(IconData icon, String text) {
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
-      decoration: BoxDecoration(
-        color: const Color(0xFFF1F5F9),
-        borderRadius: BorderRadius.circular(8),
-      ),
-      child: Row(
-        children: [
-          Icon(icon, size: 14, color: const Color(0xFF64748B)),
-          const SizedBox(width: 6),
-          Text(
-            text,
-            style: GoogleFonts.outfit(color: const Color(0xFF475569), fontSize: 11, fontWeight: FontWeight.w600),
-          ),
-        ],
-      ),
-    );
-  }
+
 
   void _updateBookingStatus(String bookingId, String status) {
     FirebaseFirestore.instance.collection('bookings').doc(bookingId).update({

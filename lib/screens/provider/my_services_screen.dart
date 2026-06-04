@@ -4,6 +4,7 @@ import 'package:firebase_auth/firebase_auth.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'edit_service_screen.dart';
 import 'service_availability_sheet.dart';
+import 'service_analytics_screen.dart';
 
 class MyServicesScreen extends StatefulWidget {
   const MyServicesScreen({super.key});
@@ -354,234 +355,244 @@ class _ServiceListContentState extends State<_ServiceListContent>
     final String priceType = service['priceType'] ?? 'per hour';
     final String? imageUrl = service['servicePhotoUrl'];
 
-    return AnimatedContainer(
-      duration: const Duration(milliseconds: 300),
-      decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(16),
-        border: Border.all(
-          color: isActive
-              ? widget.primaryIndigo.withValues(alpha: 0.1)
-              : Colors.grey.shade100,
-          width: 1,
-        ),
-        boxShadow: [
-          BoxShadow(
-            color: Colors.black.withValues(alpha: 0.03),
-            blurRadius: 15,
-            offset: const Offset(0, 8),
+    return GestureDetector(
+      onTap: () {
+        Navigator.push(
+          context,
+          MaterialPageRoute(
+            builder: (_) => ServiceAnalyticsScreen(serviceData: service),
           ),
-        ],
-      ),
-      child: Padding(
-        padding: const EdgeInsets.all(14),
-        child: Row(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            ClipRRect(
-              borderRadius: BorderRadius.circular(12),
-              child: Container(
-                width: 76,
-                height: 76,
-                color: const Color(0xFFF1F5F9),
-                child: imageUrl != null && imageUrl.isNotEmpty
-                    ? Image.network(
-                        imageUrl,
-                        fit: BoxFit.cover,
-                        errorBuilder: (_, __, ___) => Icon(
-                          Icons.image_not_supported_outlined,
-                          color: Colors.grey.shade400,
-                          size: 28,
-                        ),
-                      )
-                    : Icon(
-                        Icons.home_repair_service_rounded,
-                        color: widget.primaryIndigo.withValues(alpha: 0.4),
-                        size: 32,
-                      ),
-              ),
+        );
+      },
+      child: AnimatedContainer(
+        duration: const Duration(milliseconds: 300),
+        decoration: BoxDecoration(
+          color: Colors.white,
+          borderRadius: BorderRadius.circular(16),
+          border: Border.all(
+            color: isActive
+                ? widget.primaryIndigo.withValues(alpha: 0.1)
+                : Colors.grey.shade100,
+            width: 1,
+          ),
+          boxShadow: [
+            BoxShadow(
+              color: Colors.black.withValues(alpha: 0.03),
+              blurRadius: 15,
+              offset: const Offset(0, 8),
             ),
-            const SizedBox(width: 14),
-            Expanded(
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Row(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Expanded(
-                        child: Text(
-                          title,
-                          style: GoogleFonts.outfit(
-                            fontWeight: FontWeight.w600,
-                            fontSize: 15,
-                            color: const Color(0xFF1E293B),
+          ],
+        ),
+        child: Padding(
+          padding: const EdgeInsets.all(14),
+          child: Row(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              ClipRRect(
+                borderRadius: BorderRadius.circular(12),
+                child: Container(
+                  width: 76,
+                  height: 76,
+                  color: const Color(0xFFF1F5F9),
+                  child: imageUrl != null && imageUrl.isNotEmpty
+                      ? Image.network(
+                          imageUrl,
+                          fit: BoxFit.cover,
+                          errorBuilder: (_, __, ___) => Icon(
+                            Icons.image_not_supported_outlined,
+                            color: Colors.grey.shade400,
+                            size: 28,
                           ),
-                          maxLines: 2,
-                          overflow: TextOverflow.ellipsis,
+                        )
+                      : Icon(
+                          Icons.home_repair_service_rounded,
+                          color: widget.primaryIndigo.withValues(alpha: 0.4),
+                          size: 32,
                         ),
-                      ),
-                      const SizedBox(width: 8),
-                      GestureDetector(
-                        onTap: () {
-                          Navigator.push(
-                            context,
-                            MaterialPageRoute(
-                              builder: (_) => EditServiceScreen(
-                                serviceData: service,
+                ),
+              ),
+              const SizedBox(width: 14),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Row(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Expanded(
+                          child: Text(
+                            title,
+                            style: GoogleFonts.outfit(
+                              fontWeight: FontWeight.w600,
+                              fontSize: 15,
+                              color: const Color(0xFF1E293B),
+                            ),
+                            maxLines: 2,
+                            overflow: TextOverflow.ellipsis,
+                          ),
+                        ),
+                        const SizedBox(width: 8),
+                        GestureDetector(
+                          onTap: () {
+                            Navigator.push(
+                              context,
+                              MaterialPageRoute(
+                                builder: (_) => EditServiceScreen(
+                                  serviceData: service,
+                                ),
                               ),
+                            );
+                          },
+                          child: Padding(
+                            padding: const EdgeInsets.all(4),
+                            child: Icon(
+                              Icons.note_alt_outlined,
+                              size: 22,
+                              color: widget.primaryIndigo.withValues(alpha: 0.8),
                             ),
-                          );
-                        },
-                        child: Padding(
-                          padding: const EdgeInsets.all(4),
-                          child: Icon(
-                            Icons.note_alt_outlined,
-                            size: 22,
-                            color: widget.primaryIndigo.withValues(alpha: 0.8),
                           ),
                         ),
-                      ),
-                      const SizedBox(width: 4),
-                      GestureDetector(
-                        onTap: () {
-                          showModalBottomSheet(
-                            context: context,
-                            isScrollControlled: true,
-                            backgroundColor: Colors.transparent,
-                            builder: (_) => ServiceAvailabilitySheet(
-                              serviceId: serviceId,
-                              serviceTitle: title,
+                        const SizedBox(width: 4),
+                        GestureDetector(
+                          onTap: () {
+                            showModalBottomSheet(
+                              context: context,
+                              isScrollControlled: true,
+                              backgroundColor: Colors.transparent,
+                              builder: (_) => ServiceAvailabilitySheet(
+                                serviceId: serviceId,
+                                serviceTitle: title,
+                              ),
+                            );
+                          },
+                          child: Padding(
+                            padding: const EdgeInsets.all(4),
+                            child: Icon(
+                              Icons.calendar_month_outlined,
+                              size: 22,
+                              color: widget.primaryIndigo.withValues(alpha: 0.8),
                             ),
-                          );
-                        },
-                        child: Padding(
-                          padding: const EdgeInsets.all(4),
-                          child: Icon(
-                            Icons.calendar_month_outlined,
-                            size: 22,
-                            color: widget.primaryIndigo.withValues(alpha: 0.8),
                           ),
                         ),
+                      ],
+                    ),
+                    const SizedBox(height: 4),
+                    if (subCategory.isNotEmpty)
+                      Text(
+                        subCategory,
+                        style: GoogleFonts.outfit(
+                          fontSize: 12,
+                          color: Colors.grey.shade500,
+                        ),
                       ),
-                    ],
-                  ),
-                  const SizedBox(height: 4),
-                  if (subCategory.isNotEmpty)
+                    const SizedBox(height: 8),
                     Text(
-                      subCategory,
+                      'RM $price / $priceType',
                       style: GoogleFonts.outfit(
-                        fontSize: 12,
-                        color: Colors.grey.shade500,
+                        fontSize: 14,
+                        fontWeight: FontWeight.w600,
+                        color: widget.primaryIndigo,
                       ),
                     ),
-                  const SizedBox(height: 8),
-                  Text(
-                    'RM $price / $priceType',
-                    style: GoogleFonts.outfit(
-                      fontSize: 14,
-                      fontWeight: FontWeight.w600,
-                      color: widget.primaryIndigo,
-                    ),
-                  ),
-                  const SizedBox(height: 12),
-                  Row(
-                    children: [
-                      Container(
-                        padding: const EdgeInsets.symmetric(
-                            horizontal: 10, vertical: 5),
-                        decoration: BoxDecoration(
-                          color: isActive
-                              ? const Color(0xFFDCFCE7)
-                              : const Color(0xFFF1F5F9),
-                          borderRadius: BorderRadius.circular(8),
-                        ),
-                        child: Row(
-                          mainAxisSize: MainAxisSize.min,
-                          children: [
-                            Container(
-                              width: 6,
-                              height: 6,
-                              decoration: BoxDecoration(
-                                color: isActive
-                                    ? const Color(0xFF16A34A)
-                                    : Colors.grey.shade400,
-                                shape: BoxShape.circle,
-                              ),
-                            ),
-                            const SizedBox(width: 6),
-                            Text(
-                              isActive ? 'Active' : 'Inactive',
-                              style: GoogleFonts.outfit(
-                                fontSize: 12,
-                                fontWeight: FontWeight.bold,
-                                color: isActive
-                                    ? const Color(0xFF166534)
-                                    : Colors.grey.shade500,
-                              ),
-                            ),
-                          ],
-                        ),
-                      ),
-                      const Spacer(),
-                      // 🔹 TOGGLE SWITCH (Now at bottom)
-                      GestureDetector(
-                        onTap: () => widget.toggleActive(serviceId, isActive),
-                        child: AnimatedContainer(
-                          duration: const Duration(milliseconds: 300),
-                          width: 44,
-                          height: 22,
-                          padding: const EdgeInsets.all(2),
+                    const SizedBox(height: 12),
+                    Row(
+                      children: [
+                        Container(
+                          padding: const EdgeInsets.symmetric(
+                              horizontal: 10, vertical: 5),
                           decoration: BoxDecoration(
-                            borderRadius: BorderRadius.circular(20),
                             color: isActive
                                 ? const Color(0xFFDCFCE7)
-                                : Colors.grey.shade100,
-                            border: Border.all(
-                              color: isActive
-                                  ? const Color(0xFF16A34A)
-                                      .withValues(alpha: 0.2)
-                                  : Colors.grey.shade300,
-                              width: 1,
-                            ),
+                                : const Color(0xFFF1F5F9),
+                            borderRadius: BorderRadius.circular(8),
                           ),
-                          child: Stack(
+                          child: Row(
+                            mainAxisSize: MainAxisSize.min,
                             children: [
-                              AnimatedAlign(
-                                duration: const Duration(milliseconds: 300),
-                                curve: Curves.easeInOut,
-                                alignment: isActive
-                                    ? Alignment.centerRight
-                                    : Alignment.centerLeft,
-                                child: Container(
-                                  width: 18,
-                                  height: 18,
-                                  decoration: BoxDecoration(
-                                    shape: BoxShape.circle,
-                                    color: isActive
-                                        ? const Color(0xFF16A34A)
-                                        : Colors.grey.shade400,
-                                    boxShadow: [
-                                      BoxShadow(
-                                        color:
-                                            Colors.black.withValues(alpha: 0.1),
-                                        blurRadius: 4,
-                                        offset: const Offset(0, 2),
-                                      ),
-                                    ],
-                                  ),
+                              Container(
+                                width: 6,
+                                height: 6,
+                                decoration: BoxDecoration(
+                                  color: isActive
+                                      ? const Color(0xFF16A34A)
+                                      : Colors.grey.shade400,
+                                  shape: BoxShape.circle,
+                                ),
+                              ),
+                              const SizedBox(width: 6),
+                              Text(
+                                isActive ? 'Active' : 'Inactive',
+                                style: GoogleFonts.outfit(
+                                  fontSize: 12,
+                                  fontWeight: FontWeight.bold,
+                                  color: isActive
+                                      ? const Color(0xFF166534)
+                                      : Colors.grey.shade500,
                                 ),
                               ),
                             ],
                           ),
                         ),
-                      ),
-                    ],
-                  ),
-                ],
+                        const Spacer(),
+                        // 🔹 TOGGLE SWITCH (Now at bottom)
+                        GestureDetector(
+                          onTap: () => widget.toggleActive(serviceId, isActive),
+                          child: AnimatedContainer(
+                            duration: const Duration(milliseconds: 300),
+                            width: 44,
+                            height: 22,
+                            padding: const EdgeInsets.all(2),
+                            decoration: BoxDecoration(
+                              borderRadius: BorderRadius.circular(20),
+                              color: isActive
+                                  ? const Color(0xFFDCFCE7)
+                                  : Colors.grey.shade100,
+                              border: Border.all(
+                                color: isActive
+                                    ? const Color(0xFF16A34A)
+                                        .withValues(alpha: 0.2)
+                                    : Colors.grey.shade300,
+                                width: 1,
+                              ),
+                            ),
+                            child: Stack(
+                              children: [
+                                AnimatedAlign(
+                                  duration: const Duration(milliseconds: 300),
+                                  curve: Curves.easeInOut,
+                                  alignment: isActive
+                                      ? Alignment.centerRight
+                                      : Alignment.centerLeft,
+                                  child: Container(
+                                    width: 18,
+                                    height: 18,
+                                    decoration: BoxDecoration(
+                                      shape: BoxShape.circle,
+                                      color: isActive
+                                          ? const Color(0xFF16A34A)
+                                          : Colors.grey.shade400,
+                                      boxShadow: [
+                                        BoxShadow(
+                                          color:
+                                              Colors.black.withValues(alpha: 0.1),
+                                          blurRadius: 4,
+                                          offset: const Offset(0, 2),
+                                        ),
+                                      ],
+                                    ),
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ),
+                        ),
+                      ],
+                    ),
+                  ],
+                ),
               ),
-            ),
-          ],
+            ],
+          ),
         ),
       ),
     );

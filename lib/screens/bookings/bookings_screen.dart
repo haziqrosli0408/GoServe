@@ -643,8 +643,10 @@ class _BookingsScreenState extends State<BookingsScreen> {
         Navigator.push(
           context,
           MaterialPageRoute(
-            builder:
-                (context) => TrackingScreen(bookingData: data, bookingId: id),
+            builder: (context) => TrackingScreen(
+              bookingData: Map<String, dynamic>.from(data)..['id'] = id,
+              bookingId: id,
+            ),
           ),
         );
       },
@@ -880,38 +882,52 @@ class _BookingsScreenState extends State<BookingsScreen> {
                     );
                   },
                 ),
-                if (data['isRated'] != true) ...[
-                  const SizedBox(height: 16),
-                  GestureDetector(
-                    onTap: () {
+                const SizedBox(height: 16),
+                GestureDetector(
+                  onTap: () {
+                    if (data['isRated'] != true) {
                       Navigator.push(
                         context,
                         MaterialPageRoute(
-                          builder: (context) =>
-                              RateServiceScreen(bookingData: data),
+                          builder: (context) => RateServiceScreen(
+                            bookingData: Map<String, dynamic>.from(data)
+                              ..['id'] = id,
+                          ),
                         ),
                       );
-                    },
-                    child: Container(
-                      height: 40,
-                      width: double.infinity,
-                      decoration: BoxDecoration(
-                        color: const Color(0xFFFF6B00),
-                        borderRadius: BorderRadius.circular(10),
-                      ),
-                      child: Center(
-                        child: Text(
-                          'Rate Now',
-                          style: GoogleFonts.outfit(
-                            color: Colors.white,
-                            fontWeight: FontWeight.w600,
-                            fontSize: 13,
-                          ),
+                    } else {
+                      Navigator.push(
+                        context,
+                        MaterialPageRoute(
+                          builder: (context) => ServiceDetailsScreen(provider: data),
+                        ),
+                      );
+                    }
+                  },
+                  child: Container(
+                    height: 40,
+                    width: double.infinity,
+                    decoration: BoxDecoration(
+                      color: data['isRated'] != true
+                          ? const Color(0xFFFF6B00)
+                          : Colors.white,
+                      borderRadius: BorderRadius.circular(10),
+                      border: data['isRated'] == true
+                          ? Border.all(color: const Color(0xFFFF6B00), width: 1.5)
+                          : null,
+                    ),
+                    child: Center(
+                      child: Text(
+                        data['isRated'] != true ? 'Rate Now' : 'Book Again',
+                        style: GoogleFonts.outfit(
+                          color: data['isRated'] != true ? Colors.white : const Color(0xFFFF6B00),
+                          fontWeight: FontWeight.w600,
+                          fontSize: 13,
                         ),
                       ),
                     ),
                   ),
-                ],
+                ),
               ],
             ),
           ),

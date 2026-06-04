@@ -71,6 +71,46 @@ class _PaymentPageState extends State<PaymentPage> {
   };
   final Color primaryGreen = const Color(0xFFFF6B00);
 
+  List<Map<String, dynamic>> savedCards = [];
+  bool isLoadingCards = false;
+  String? selectedSavedCardId;
+
+  @override
+  void initState() {
+    super.initState();
+    _fetchSavedCards();
+  }
+
+  Future<void> _fetchSavedCards() async {
+    final user = FirebaseAuth.instance.currentUser;
+    if (user == null) return;
+    setState(() => isLoadingCards = true);
+    try {
+      final snapshot = await FirebaseFirestore.instance
+          .collection('users')
+          .doc(user.uid)
+          .collection('cards')
+          .get();
+      if (mounted) {
+        setState(() {
+          savedCards = snapshot.docs.map((doc) => {
+            ...doc.data(),
+            'id': doc.id,
+          }).toList();
+          if (savedCards.isNotEmpty) {
+            selectedSavedCardId = savedCards.first['id'];
+          }
+          isLoadingCards = false;
+        });
+      }
+    } catch (e) {
+      debugPrint("Error fetching saved cards: $e");
+      if (mounted) {
+        setState(() => isLoadingCards = false);
+      }
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -303,27 +343,125 @@ class _PaymentPageState extends State<PaymentPage> {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          _formLabel('CARDHOLDER NAME'),
-          _formField('e.g. AHMAD FAISAL'),
-          const SizedBox(height: 20),
-          _formLabel('CARD NUMBER'),
-          _formField('0000 0000 0000 0000', suffix: Row(mainAxisSize: MainAxisSize.min, children: [Icon(Icons.credit_card, size: 16, color: Colors.grey.shade400)])),
-          const SizedBox(height: 20),
-          Row(
-            children: [
-              Expanded(child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [_formLabel('EXPIRY DATE'), _formField('MM / YY')])),
-              const SizedBox(width: 16),
-              Expanded(child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [_formLabel('CVV'), _formField('***')])),
-            ],
-          ),
-          const SizedBox(height: 16),
-          Row(
-            children: [
-              Container(width: 18, height: 18, decoration: BoxDecoration(borderRadius: BorderRadius.circular(4), border: Border.all(color: Colors.grey.shade300))),
-              const SizedBox(width: 10),
-              Text('Save card details for future bookings', style: GoogleFonts.outfit(fontSize: 12, color: const Color(0xFF64748B))),
-            ],
-          ),
+          if (savedCards.isNotEmpty) ...[
+            _formLabel('SAVED CARDS'),
+            const SizedBox(height: 8),
+            ...savedCards.map((card) {
+              final isSelected = selectedSavedCardId == card['id'];
+              return GestureDetector(
+                onTap: () {
+                  setState(() {
+                    selectedSavedCardId = card['id'];
+                  });
+                },
+                child: Container(
+                  margin: const EdgeInsets.only(bottom: 12),
+                  padding: const EdgeInsets.all(16),
+                  decoration: BoxDecoration(
+                    color: Colors.white,
+                    borderRadius: BorderRadius.circular(12),
+                    border: Border.all(
+                      color: isSelected ? primaryGreen : Colors.transparent,
+                      width: 2,
+                    ),
+                  ),
+                  child: Row(
+                    children: [
+                      Icon(Icons.credit_card, color: primaryGreen, size: 20),
+                      const SizedBox(width: 12),
+                      Expanded(
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Text(
+                              "**** **** **** ${card['last4']}",
+                              style: GoogleFonts.outfit(fontSize: 14, fontWeight: FontWeight.w600, color: const Color(0xFF1E293B)),
+                            ),
+                            Text(
+                              card['holderName'] ?? '',
+                              style: GoogleFonts.outfit(fontSize: 11, color: const Color(0xFF64748B)),
+                            ),
+                          ],
+                        ),
+                      ),
+                      Container(
+                        width: 18, height: 18,
+                        decoration: BoxDecoration(
+                          shape: BoxShape.circle,
+                          border: Border.all(color: isSelected ? primaryGreen : Colors.grey.shade300, width: 2),
+                        ),
+                        child: isSelected ? Center(child: Container(width: 8, height: 8, decoration: BoxDecoration(color: primaryGreen, shape: BoxShape.circle))) : null,
+                      ),
+                    ],
+                  ),
+                ),
+              );
+            }),
+            
+            // Option to use another card
+            GestureDetector(
+              onTap: () {
+                setState(() {
+                  selectedSavedCardId = 'new_card';
+                });
+              },
+              child: Container(
+                padding: const EdgeInsets.all(16),
+                decoration: BoxDecoration(
+                  color: Colors.white,
+                  borderRadius: BorderRadius.circular(12),
+                  border: Border.all(
+                    color: selectedSavedCardId == 'new_card' ? primaryGreen : Colors.transparent,
+                    width: 2,
+                  ),
+                ),
+                child: Row(
+                  children: [
+                    Icon(Icons.add_circle_outline, color: primaryGreen, size: 20),
+                    const SizedBox(width: 12),
+                    Text(
+                      "Use another card",
+                      style: GoogleFonts.outfit(fontSize: 14, fontWeight: FontWeight.w500, color: const Color(0xFF1E293B)),
+                    ),
+                    const Spacer(),
+                    Container(
+                      width: 18, height: 18,
+                      decoration: BoxDecoration(
+                        shape: BoxShape.circle,
+                        border: Border.all(color: selectedSavedCardId == 'new_card' ? primaryGreen : Colors.grey.shade300, width: 2),
+                      ),
+                      child: selectedSavedCardId == 'new_card' ? Center(child: Container(width: 8, height: 8, decoration: BoxDecoration(color: primaryGreen, shape: BoxShape.circle))) : null,
+                    ),
+                  ],
+                ),
+              ),
+            ),
+            const SizedBox(height: 24),
+          ],
+          
+          if (savedCards.isEmpty || selectedSavedCardId == 'new_card') ...[
+            _formLabel('CARDHOLDER NAME'),
+            _formField('e.g. AHMAD FAISAL'),
+            const SizedBox(height: 20),
+            _formLabel('CARD NUMBER'),
+            _formField('0000 0000 0000 0000', suffix: Row(mainAxisSize: MainAxisSize.min, children: [Icon(Icons.credit_card, size: 16, color: Colors.grey.shade400)])),
+            const SizedBox(height: 20),
+            Row(
+              children: [
+                Expanded(child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [_formLabel('EXPIRY DATE'), _formField('MM / YY')])),
+                const SizedBox(width: 16),
+                Expanded(child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [_formLabel('CVV'), _formField('***')])),
+              ],
+            ),
+            const SizedBox(height: 16),
+            Row(
+              children: [
+                Container(width: 18, height: 18, decoration: BoxDecoration(borderRadius: BorderRadius.circular(4), border: Border.all(color: Colors.grey.shade300))),
+                const SizedBox(width: 10),
+                Text('Save card details for future bookings', style: GoogleFonts.outfit(fontSize: 12, color: const Color(0xFF64748B))),
+              ],
+            ),
+          ],
         ],
       ),
     );
@@ -528,7 +666,12 @@ class _PaymentPageState extends State<PaymentPage> {
         'chargeFee': widget.totalPrice - widget.basePrice - widget.selectedAddOns.fold(0.0, (total, item) => total + ((item['price'] is String ? double.tryParse(item['price']) : (item['price'] as num).toDouble()) ?? 0.0)),
         'totalPrice': widget.totalPrice,
         'selectedAddOns': widget.selectedAddOns,
-        'paymentMethod': selectedMethod,
+        'paymentMethod': (selectedMethod == 'card' && selectedSavedCardId != null && selectedSavedCardId != 'new_card')
+            ? (() {
+                final card = savedCards.firstWhere((c) => c['id'] == selectedSavedCardId, orElse: () => <String, dynamic>{});
+                return 'Card (Saved: **** ${card['last4'] ?? 'Card'})';
+              })()
+            : selectedMethod,
         'status': 'Pending',
         'providerProfileUrl': widget.providerProfileUrl,
         'createdAt': FieldValue.serverTimestamp(),

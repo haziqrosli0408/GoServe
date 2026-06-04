@@ -75,7 +75,7 @@ class _ProviderBookingsHistoryPageState extends State<ProviderBookingsHistoryPag
         leading: const BackButton(color: Colors.black87),
         title: Text(
           "Bookings History",
-          style: GoogleFonts.outfit(color: Colors.black87, fontWeight: FontWeight.w600),
+          style: GoogleFonts.outfit(color: Colors.black87, fontWeight: FontWeight.w600, fontSize: 18),
         ),
         centerTitle: true,
         backgroundColor: Colors.white,
@@ -209,7 +209,14 @@ class _ProviderBookingsHistoryPageState extends State<ProviderBookingsHistoryPag
                   if (selected) setState(() => activeFilter = filter);
                 },
                 selectedColor: themeColor,
-                backgroundColor: Colors.grey.shade100,
+                backgroundColor: Colors.white,
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(8),
+                  side: BorderSide(
+                    color: isSelected ? themeColor : Colors.grey.shade300,
+                    width: 1,
+                  ),
+                ),
                 showCheckmark: false,
                 padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
               ),

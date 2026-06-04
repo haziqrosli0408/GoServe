@@ -30,7 +30,7 @@ class _HomeScreenState extends State<HomeScreen> {
   String searchQuery = "";
   final TextEditingController _searchController = TextEditingController();
 
-  int _currentBannerPage = 0;
+
   // PageController for non-infinite, left-aligned banner
   final PageController _bannerController = PageController(viewportFraction: 0.85, initialPage: 0);
   Timer? _bannerTimer;
@@ -585,11 +585,7 @@ class _HomeScreenState extends State<HomeScreen> {
               controller: _bannerController,
               clipBehavior: Clip.none,
               padEnds: false, // Align first card to the left of the container
-              onPageChanged: (int page) {
-                setState(() {
-                  _currentBannerPage = page;
-                });
-              },
+
               itemCount: 3,
               itemBuilder: (context, index) {
                 return Padding(

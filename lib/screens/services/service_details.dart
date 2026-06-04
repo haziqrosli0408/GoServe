@@ -48,7 +48,7 @@ class _ServiceDetailsScreenState extends State<ServiceDetailsScreen> {
     Future.delayed(const Duration(milliseconds: 100), () {
       if (!mounted) return;
       final context = _tabsKey.currentContext;
-      if (context != null) {
+      if (context != null && context.mounted) {
         Scrollable.ensureVisible(
           context,
           duration: const Duration(milliseconds: 300),

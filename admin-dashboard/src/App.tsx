@@ -506,7 +506,7 @@ function TabContent({ activeTab, data, setActiveTab }: any) {
   switch (activeTab) {
     case 'dashboard': return <DashboardPage data={data} setActiveTab={setActiveTab} />;
     case 'users': return <UsersPage users={data.users} bookings={data.bookings} reviews={data.reviews} pendingApprovalsCount={data.verifications.length} setActiveTab={setActiveTab} />;
-    case 'reviews': return <ReviewsPage reviews={data.reviews} />;
+    case 'reviews': return <ReviewsPage reviews={data.reviews} bookings={data.bookings} users={data.users} />;
     case 'services': return <ServicesPage services={data.services} users={data.users} bookings={data.bookings} reviews={data.reviews} />;
     case 'bookings': return <BookingsPage bookings={data.bookings} users={data.users} />;
     case 'payments': return <PaymentsPage bookings={data.bookings} users={data.users} />;
@@ -2006,7 +2006,19 @@ function UserProfilePage({ user, bookings, reviews, onClose, getStatus }: any) {
   );
 }
 
-function ReviewsPage({ reviews }: any) {
+function convertTimeTo24h(timeStr: string): string {
+  if (!timeStr) return '00:00:00';
+  const match = timeStr.match(/^(\d+):(\d+)\s*(AM|PM)$/i);
+  if (!match) return '00:00:00';
+  let hours = parseInt(match[1], 10);
+  const minutes = match[2];
+  const ampm = match[3].toUpperCase();
+  if (ampm === 'PM' && hours < 12) hours += 12;
+  if (ampm === 'AM' && hours === 12) hours = 0;
+  return `${hours.toString().padStart(2, '0')}:${minutes}:00`;
+}
+
+function ReviewsPage({ reviews, bookings = [], users = [] }: any) {
   const handleStatus = async (id: string, status: 'Approved' | 'Rejected') => {
     try {
       await updateDoc(doc(db, 'reviews', id), { status });
@@ -2047,27 +2059,84 @@ function ReviewsPage({ reviews }: any) {
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
         {reviews.length === 0 ? (
           <div className="col-span-full p-20 text-center text-gray-400">No Reviews to moderate.</div>
-        ) : reviews.map((r: any) => (
-          <div key={r.id} className="bg-white p-6 rounded-xl border border-gray-100 shadow-sm">
-            <div className="flex justify-between items-start mb-4">
-              <div className="flex items-center gap-1">
-                {[...Array(5)].map((_, i) => (
-                  <Star key={i} size={14} fill={i < r.rating ? "#f59e0b" : "#e2e8f0"} className={i < r.rating ? "text-amber-500" : "text-gray-200"} />
-                ))}
+        ) : reviews.map((r: any) => {
+          let booking = bookings.find((b: any) => b.id === r.bookingId || b.bookingId === r.bookingId);
+          if (!booking) {
+            const candidateBookings = bookings.filter((b: any) => 
+              b.customerId === r.userId && 
+              b.providerId === r.providerId
+            );
+            
+            if (candidateBookings.length > 0) {
+              // Sort candidates descending by date/createdAt so that the most recent booking is matched first
+              candidateBookings.sort((x: any, y: any) => {
+                const secondsX = x.createdAt?.seconds || (x.createdAt?._seconds) || 0;
+                const secondsY = y.createdAt?.seconds || (y.createdAt?._seconds) || 0;
+                if (secondsX && secondsY) return secondsY - secondsX;
+                
+                const timeX = x.date ? new Date(`${x.date}T${x.time ? convertTimeTo24h(x.time) : '00:00:00'}`).getTime() : 0;
+                const timeY = y.date ? new Date(`${y.date}T${y.time ? convertTimeTo24h(y.time) : '00:00:00'}`).getTime() : 0;
+                return timeY - timeX;
+              });
+
+              booking = candidateBookings.find((b: any) => 
+                (b.serviceName && r.serviceName && b.serviceName.toLowerCase() === r.serviceName.toLowerCase()) ||
+                (b.serviceTitle && r.serviceName && b.serviceTitle.toLowerCase() === r.serviceName.toLowerCase())
+              );
+              
+              if (!booking) {
+                booking = candidateBookings[0];
+              }
+            }
+          }
+          const orderId = r.orderId || (booking ? (booking.orderId || booking.id.substring(0, 8).toUpperCase()) : (r.bookingId ? r.bookingId.substring(0, 8).toUpperCase() : 'N/A'));
+
+          const customer = users.find((u: any) => u.id === r.userId);
+          const customerName = customer ? customer.name : (r.customerName || r.userName || 'Customer');
+
+          const provider = users.find((u: any) => u.id === r.providerId);
+          const providerName = provider ? (provider.name || provider.companyName) : (booking ? booking.providerName : (r.providerName || 'Provider'));
+
+          return (
+            <div key={r.id} className="bg-white p-6 rounded-xl border border-gray-100 shadow-sm flex flex-col justify-between">
+              <div>
+                <div className="flex justify-between items-start mb-4">
+                  <div className="flex items-center gap-1">
+                    {[...Array(5)].map((_, i) => (
+                      <Star key={i} size={14} fill={i < r.rating ? "#f59e0b" : "#e2e8f0"} className={i < r.rating ? "text-amber-500" : "text-gray-200"} />
+                    ))}
+                  </div>
+                  <span className={`text-[10px] font-bold uppercase px-2 py-1 rounded ${r.status === 'Approved' ? 'bg-emerald-50 text-emerald-600' : r.status === 'Rejected' ? 'bg-red-50 text-red-600' : 'bg-orange-50 text-orange-600'
+                    }`}>
+                    {r.status || 'Pending'}
+                  </span>
+                </div>
+                <p className="font-bold text-gray-900">{r.serviceName || 'Service'}</p>
+                <p className="text-xs text-gray-600 mb-4 italic">"{r.comment}"</p>
+                
+                <div className="my-4 space-y-2 p-3 bg-gray-50 rounded-lg text-[11px]">
+                  <div className="flex justify-between">
+                    <span className="text-gray-400 font-semibold">Order ID:</span>
+                    <span className="text-gray-700 font-bold font-mono">{orderId}</span>
+                  </div>
+                  <div className="flex justify-between">
+                    <span className="text-gray-400 font-semibold">Customer:</span>
+                    <span className="text-gray-700 font-bold">{customerName}</span>
+                  </div>
+                  <div className="flex justify-between">
+                    <span className="text-gray-400 font-semibold">Provider:</span>
+                    <span className="text-gray-700 font-bold">{providerName}</span>
+                  </div>
+                </div>
               </div>
-              <span className={`text-[10px] font-bold uppercase px-2 py-1 rounded ${r.status === 'Approved' ? 'bg-emerald-50 text-emerald-600' : r.status === 'Rejected' ? 'bg-red-50 text-red-600' : 'bg-orange-50 text-orange-600'
-                }`}>
-                {r.status || 'Pending'}
-              </span>
+
+              <div className="flex gap-2 mt-2">
+                <button onClick={() => handleStatus(r.id, 'Approved')} className="flex-1 py-2 bg-emerald-500 text-white rounded-md font-bold text-xs">Approve</button>
+                <button onClick={() => handleStatus(r.id, 'Rejected')} className="flex-1 py-2 border border-gray-100 text-red-500 rounded-md font-bold text-xs">Reject</button>
+              </div>
             </div>
-            <p className="font-bold text-gray-900">{r.serviceName || 'Service'}</p>
-            <p className="text-xs text-gray-600 mb-6 italic">"{r.comment}"</p>
-            <div className="flex gap-2">
-              <button onClick={() => handleStatus(r.id, 'Approved')} className="flex-1 py-2 bg-emerald-500 text-white rounded-md font-bold text-xs">Approve</button>
-              <button onClick={() => handleStatus(r.id, 'Rejected')} className="flex-1 py-2 border border-gray-100 text-red-500 rounded-md font-bold text-xs">Reject</button>
-            </div>
-          </div>
-        ))}
+          );
+        })}
       </div>
     </div>
   );

@@ -9,9 +9,7 @@ import 'package:url_launcher/url_launcher.dart';
 import 'dart:math' as math;
 
 import 'package:google_maps_flutter/google_maps_flutter.dart';
-import 'dart:ui' as ui;
-import 'dart:typed_data';
-import 'package:http/http.dart' as http;
+
 
 class TrackingScreen extends StatefulWidget {
   final Map<String, dynamic> bookingData;
@@ -172,7 +170,10 @@ class _TrackingScreenState extends State<TrackingScreen> {
                 Navigator.pushReplacement(
                   context,
                   MaterialPageRoute(
-                    builder: (context) => ServiceCompletedScreen(bookingData: data!),
+                    builder: (context) => ServiceCompletedScreen(
+                      bookingData: Map<String, dynamic>.from(data!)
+                        ..['id'] = widget.bookingId,
+                    ),
                   ),
                 );
                 return;

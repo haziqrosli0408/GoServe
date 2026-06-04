@@ -429,6 +429,7 @@ class _RateServiceScreenState extends State<RateServiceScreen> {
         'serviceId': widget.bookingData['serviceId'],
         'serviceName': widget.bookingData['serviceName'],
         'bookingId': widget.bookingData['id'],
+        'orderId': widget.bookingData['orderId'],
         'rating': _rating,
         'comment': _reviewController.text.trim(),
         'tags': _selectedTags,

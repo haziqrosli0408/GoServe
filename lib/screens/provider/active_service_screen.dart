@@ -571,15 +571,12 @@ class _ActiveServiceScreenState extends State<ActiveServiceScreen> {
       action = () => _updateStatus('On the way');
     } else if (status == 'On the way') {
       btnText = "I've Arrived";
-      btnColor = const Color(0xFF10B981);
       action = () => _updateStatus('Arrived');
     } else if (status == 'Arrived') {
       btnText = 'Start Service';
-      btnColor = const Color(0xFFF59E0B);
       action = () => _updateStatus('In progress');
     } else if (status == 'In progress') {
       btnText = 'Complete Service';
-      btnColor = const Color(0xFF4F46E5);
       action = () => _updateStatus('Completed');
     }
 

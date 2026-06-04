@@ -5,14 +5,16 @@ import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_storage/firebase_storage.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:google_fonts/google_fonts.dart';
-import 'addresses_screen.dart';
 import '../services/saved_services_screen.dart';
 import '../../widgets/skeleton_box.dart';
-import 'notification_settings_screen.dart';
-import 'payments_screen.dart';
 import 'provider_bookings_history.dart';
 import 'provider_reviews.dart';
 import 'provider_earnings_page.dart';
+import 'settings_page.dart';
+import '../services/service_details.dart';
+import '../provider/edit_service_screen.dart';
+import '../provider/service_analytics_screen.dart';
+import 'customer_reviews_page.dart';
 
 class ProfileScreen extends StatefulWidget {
   final Color themeColor;
@@ -31,6 +33,8 @@ class _ProfileScreenState extends State<ProfileScreen> {
   double rating = 0.0;
   int savedCount = 0;
   String? role;
+  List<Map<String, dynamic>> _services = [];
+  bool _isServicesLoading = true;
 
   @override
   void initState() {
@@ -130,27 +134,49 @@ class _ProfileScreenState extends State<ProfileScreen> {
             }
           });
 
-      // Calculate Real Earnings for Provider
-      FirebaseFirestore.instance
-          .collection('bookings')
-          .where('providerId', isEqualTo: user!.uid)
-          .where('status', isEqualTo: 'Completed')
-          .get()
-          .then((snapshot) {
-            if (mounted) {
-              double totalEarnings = 0;
-              for (var bDoc in snapshot.docs) {
-                final bData = bDoc.data();
-                final priceStr = bData['totalPrice'] ?? bData['price'] ?? '0';
-                final cleanPrice =
-                    priceStr.toString().replaceAll('RM', '').trim();
-                totalEarnings += double.tryParse(cleanPrice) ?? 0.0;
-              }
-              setState(() {
-                earnings = totalEarnings;
-              });
+      // Calculate Real Earnings for Provider (Available Balance = Completed bookings - Withdrawals)
+      Future.wait([
+        FirebaseFirestore.instance
+            .collection('bookings')
+            .where('providerId', isEqualTo: user!.uid)
+            .where('status', isEqualTo: 'Completed')
+            .get(),
+        FirebaseFirestore.instance
+            .collection('withdrawals')
+            .where('providerId', isEqualTo: user!.uid)
+            .get(),
+      ]).then((results) {
+        if (mounted) {
+          final bookingsSnapshot = results[0];
+          final withdrawalsSnapshot = results[1];
+
+          double totalCompleted = 0.0;
+          for (var bDoc in bookingsSnapshot.docs) {
+            final bData = bDoc.data();
+            if (bData['payoutStatus'] == 'transferred') {
+              final priceStr = bData['totalPrice'] ?? bData['price'] ?? '0';
+              final cleanPrice =
+                  priceStr.toString().replaceAll('RM', '').trim();
+              totalCompleted += double.tryParse(cleanPrice) ?? 0.0;
             }
+          }
+
+          double totalWithdrawn = 0.0;
+          for (var wDoc in withdrawalsSnapshot.docs) {
+            final wData = wDoc.data();
+            final amount = (wData['amount'] as num?)?.toDouble() ?? 0.0;
+            totalWithdrawn += amount;
+          }
+
+          setState(() {
+            earnings = totalCompleted - totalWithdrawn;
           });
+        }
+      });
+    }
+
+    if (role != null) {
+      _fetchServices(role!);
     }
   }
 
@@ -203,11 +229,21 @@ class _ProfileScreenState extends State<ProfileScreen> {
                                 const SizedBox(width: 48),
                               IconButton(
                                 icon: const Icon(
-                                  Icons.logout_rounded,
+                                  Icons.more_vert_rounded,
                                   color: Colors.white,
                                   size: 22,
                                 ),
-                                onPressed: () => _showLogoutDialog(context),
+                                onPressed: () {
+                                  Navigator.push(
+                                    context,
+                                    MaterialPageRoute(
+                                      builder: (context) => SettingsPage(
+                                        themeColor: widget.themeColor,
+                                        role: role ?? 'customer',
+                                      ),
+                                    ),
+                                  ).then((_) => fetchUserData());
+                                },
                               ),
                             ],
                           ),
@@ -378,6 +414,25 @@ class _ProfileScreenState extends State<ProfileScreen> {
                                   ),
                                 ),
                               ],
+                              if (role == 'customer') ...[
+                                const SizedBox(width: 12),
+                                Expanded(
+                                  child: _ProfileStat(
+                                    icon: Icons.rate_review_outlined,
+                                    value: reviewsCount.toString(),
+                                    label: 'Reviews',
+                                    themeColor: widget.themeColor,
+                                    onTap: () => Navigator.push(
+                                      context,
+                                      MaterialPageRoute(
+                                        builder: (_) => CustomerReviewsPage(
+                                          themeColor: widget.themeColor,
+                                        ),
+                                      ),
+                                    ),
+                                  ),
+                                ),
+                              ],
                               const SizedBox(width: 12),
                               Expanded(
                                 child: _ProfileStat(
@@ -416,97 +471,370 @@ class _ProfileScreenState extends State<ProfileScreen> {
                     ),
                   ),
 
-                  // 🔹 SETTINGS SECTIONS
-                  SliverPadding(
-                    padding: const EdgeInsets.symmetric(
-                      horizontal: 20,
-                      vertical: 10,
-                    ),
-                    sliver: SliverList(
-                      delegate: SliverChildListDelegate([
-                        _buildSectionHeader('Account Settings'),
-                        _buildSettingsGroup([
-                          _settingTile(
-                            icon: Icons.location_on_outlined,
-                            color: widget.themeColor,
-                            title: 'Addresses',
-                            subtitle: 'Manage delivery addresses',
-                            onTap:
-                                () => Navigator.push(
-                                  context,
-                                  MaterialPageRoute(
-                                    builder:
-                                        (context) => const AddressesScreen(),
-                                  ),
-                                ),
-                          ),
-                          if (role != 'provider')
-                            _settingTile(
-                              icon: Icons.credit_card,
-                              color: widget.themeColor,
-                              title: 'Payments',
-                              subtitle: 'Manage cards & history',
-                              onTap: () => Navigator.push(
-                                context,
-                                MaterialPageRoute(
-                                  builder: (context) => PaymentsScreen(
-                                    themeColor: widget.themeColor,
-                                  ),
-                                ),
-                              ),
-                            ),
-                        ]),
-                        const SizedBox(height: 12),
-                        _buildSectionHeader('General'),
-                        _buildSettingsGroup([
-                          _settingTile(
-                            icon: Icons.notifications_outlined,
-                            color: widget.themeColor,
-                            title: 'Notifications',
-                            subtitle: 'App alerts and updates',
-                            onTap: () => Navigator.push(
-                              context,
-                              MaterialPageRoute(
-                                builder: (context) => NotificationSettingsScreen(
-                                  themeColor: widget.themeColor,
-                                ),
-                              ),
-                            ),
-                          ),
-
-                          _settingTile(
-                            icon: Icons.help_outline,
-                            color: widget.themeColor,
-                            title: 'Support',
-                            subtitle: 'Help center & contact us',
-                          ),
-                        ]),
-                        const SizedBox(height: 40),
-                      ]),
+                  // 🔹 SERVICES GRID SECTION (Pair Layout)
+                  SliverToBoxAdapter(
+                    child: Padding(
+                      padding: const EdgeInsets.fromLTRB(20, 12, 20, 16),
+                      child: Text(
+                        role == 'provider' ? 'My Services' : 'Saved Services',
+                        style: GoogleFonts.outfit(
+                          fontSize: 18,
+                          fontWeight: FontWeight.w600,
+                          color: const Color(0xFF1E293B),
+                        ),
+                      ),
                     ),
                   ),
+                  if (_isServicesLoading)
+                    const SliverToBoxAdapter(
+                      child: Center(
+                        child: Padding(
+                          padding: EdgeInsets.symmetric(vertical: 40),
+                          child: CircularProgressIndicator(),
+                        ),
+                      ),
+                    )
+                  else if (_services.isEmpty)
+                    SliverToBoxAdapter(
+                      child: Center(
+                        child: Padding(
+                          padding: const EdgeInsets.symmetric(
+                            vertical: 40,
+                            horizontal: 20,
+                          ),
+                          child: Column(
+                            children: [
+                              Icon(
+                                role == 'provider'
+                                    ? Icons.storefront_outlined
+                                    : Icons.bookmark_outline,
+                                size: 40,
+                                color: Colors.grey.shade300,
+                              ),
+                              const SizedBox(height: 12),
+                              Text(
+                                role == 'provider'
+                                    ? 'No services published yet'
+                                    : 'No saved services yet',
+                                style: GoogleFonts.outfit(
+                                  color: Colors.grey.shade400,
+                                  fontSize: 14,
+                                  fontWeight: FontWeight.w500,
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+                      ),
+                    )
+                  else
+                    SliverPadding(
+                      padding: const EdgeInsets.fromLTRB(20, 0, 20, 40),
+                      sliver: SliverGrid(
+                        gridDelegate:
+                            const SliverGridDelegateWithFixedCrossAxisCount(
+                          crossAxisCount: 2,
+                          mainAxisSpacing: 24,
+                          crossAxisSpacing: 18,
+                          childAspectRatio: 0.68,
+                        ),
+                        delegate: SliverChildBuilderDelegate(
+                          (context, index) {
+                            return _buildGridServiceCard(
+                              context,
+                              _services[index],
+                            );
+                          },
+                          childCount: _services.length,
+                        ),
+                      ),
+                    ),
                 ],
               ),
     );
   }
 
-  Widget _buildSectionHeader(String title) {
-    return Padding(
-      padding: const EdgeInsets.only(left: 4, bottom: 12),
-      child: Text(
-        title,
-        style: GoogleFonts.outfit(
-          fontSize: 16,
-          fontWeight: FontWeight.w600,
-          color: const Color(0xFF64748B),
-          letterSpacing: 0.5,
+  Future<void> _fetchServices(String userRole) async {
+    if (user == null) return;
+    try {
+      if (userRole == 'customer') {
+        final userDoc = await FirebaseFirestore.instance
+            .collection('users')
+            .doc(user!.uid)
+            .get();
+        final List<dynamic> savedIds = userDoc.data()?['savedServices'] ?? [];
+
+        if (savedIds.isEmpty) {
+          if (mounted) {
+            setState(() {
+              _services = [];
+              _isServicesLoading = false;
+            });
+          }
+          return;
+        }
+
+        final snapshot = await FirebaseFirestore.instance
+            .collection('services')
+            .where('isActive', isEqualTo: true)
+            .get();
+
+        final allServices = snapshot.docs.map((doc) {
+          final data = doc.data();
+          data['id'] = doc.id;
+          return data;
+        }).toList();
+
+        final filtered = allServices
+            .where((s) => savedIds.contains(s['serviceId']))
+            .toList();
+
+        if (mounted) {
+          setState(() {
+            _services = filtered.cast<Map<String, dynamic>>();
+            _isServicesLoading = false;
+          });
+        }
+      } else {
+        final snapshot = await FirebaseFirestore.instance
+            .collection('services')
+            .where('providerId', isEqualTo: user!.uid)
+            .get();
+
+        final providerServices = snapshot.docs.map((doc) {
+          final data = doc.data();
+          data['id'] = doc.id;
+          return data;
+        }).toList();
+
+        if (mounted) {
+          setState(() {
+            _services = providerServices.cast<Map<String, dynamic>>();
+            _isServicesLoading = false;
+          });
+        }
+      }
+    } catch (e) {
+      debugPrint("Error fetching services: $e");
+      if (mounted) {
+        setState(() => _isServicesLoading = false);
+      }
+    }
+  }
+
+  Future<void> _toggleUnsave(String serviceId) async {
+    if (user == null) return;
+    try {
+      await FirebaseFirestore.instance
+          .collection('users')
+          .doc(user!.uid)
+          .update({
+        'savedServices': FieldValue.arrayRemove([serviceId]),
+      });
+      setState(() {
+        savedCount = (savedCount - 1).clamp(0, 9999);
+      });
+      _fetchServices('customer');
+    } catch (e) {
+      debugPrint("Error unsaving service: $e");
+    }
+  }
+
+  Widget _buildGridServiceCard(
+    BuildContext context,
+    Map<String, dynamic> service,
+  ) {
+    final isProvider = role == 'provider';
+    String serviceId = service['serviceId'] ?? service['id'] ?? '';
+    String providerName = service['providerName'] ??
+        service['name'] ??
+        userData?['name'] ??
+        'Elite Pro';
+    String title = service['title'] ?? 'Elite Service';
+    String price = service['price']?.toString() ?? '0';
+    double avgRating =
+        double.tryParse(service['rating']?.toString() ?? '0') ?? 0.0;
+    String ratingText = avgRating > 0 ? avgRating.toStringAsFixed(1) : 'New';
+    String providerProfileUrl = service['providerProfileUrl'] ??
+        service['profileUrl'] ??
+        userData?['profileUrl'] ??
+        '';
+    String servicePhotoUrl = service['servicePhotoUrl'] ?? '';
+
+    return GestureDetector(
+      onTap: () {
+        if (isProvider) {
+          Navigator.push(
+            context,
+            MaterialPageRoute(
+              builder: (context) => ServiceAnalyticsScreen(serviceData: service),
+            ),
+          ).then((_) => fetchUserData());
+        } else {
+          Navigator.push(
+            context,
+            MaterialPageRoute(
+              builder: (context) => ServiceDetailsScreen(provider: service),
+            ),
+          ).then((_) => fetchUserData());
+        }
+      },
+      child: Container(
+        color: Colors.white,
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Expanded(
+              child: ClipRRect(
+                borderRadius: BorderRadius.circular(16),
+                child: servicePhotoUrl.isNotEmpty
+                    ? Image.network(
+                        servicePhotoUrl,
+                        width: double.infinity,
+                        height: double.infinity,
+                        fit: BoxFit.cover,
+                        errorBuilder: (_, __, ___) => Image.network(
+                          'https://images.unsplash.com/photo-1581578731548-c64695cc6952?q=80&w=800&auto=format&fit=crop',
+                          width: double.infinity,
+                          fit: BoxFit.cover,
+                        ),
+                      )
+                    : Image.network(
+                        'https://images.unsplash.com/photo-1581578731548-c64695cc6952?q=80&w=800&auto=format&fit=crop',
+                        width: double.infinity,
+                        fit: BoxFit.cover,
+                      ),
+              ),
+            ),
+            const SizedBox(height: 8),
+            Row(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              children: [
+                Expanded(
+                  child: Text(
+                    title,
+                    style: GoogleFonts.outfit(
+                      fontSize: 15,
+                      fontWeight: FontWeight.w600,
+                      color: const Color(0xFF1F2937),
+                    ),
+                    maxLines: 2,
+                    overflow: TextOverflow.ellipsis,
+                  ),
+                ),
+                if (!isProvider)
+                  GestureDetector(
+                    onTap: () => _toggleUnsave(serviceId),
+                    child: Icon(
+                      Icons.bookmark,
+                      size: 20,
+                      color: widget.themeColor,
+                    ),
+                  )
+                else
+                  GestureDetector(
+                    onTap: () {
+                      Navigator.push(
+                        context,
+                        MaterialPageRoute(
+                          builder: (context) => EditServiceScreen(serviceData: service),
+                        ),
+                      ).then((_) => fetchUserData());
+                    },
+                    child: Icon(
+                      Icons.edit_rounded,
+                      size: 18,
+                      color: widget.themeColor.withValues(alpha: 0.8),
+                    ),
+                  ),
+              ],
+            ),
+            const SizedBox(height: 6),
+            Row(
+              children: [
+                RichText(
+                  text: TextSpan(
+                    children: [
+                      TextSpan(
+                        text: 'From ',
+                        style: GoogleFonts.outfit(
+                          fontSize: 11,
+                          color: Colors.grey.shade600,
+                        ),
+                      ),
+                      TextSpan(
+                        text: 'RM$price/hr',
+                        style: GoogleFonts.outfit(
+                          fontSize: 15,
+                          fontWeight: FontWeight.w600,
+                          color: widget.themeColor,
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+                Text(
+                  ' · ',
+                  style: GoogleFonts.outfit(
+                    fontSize: 14,
+                    color: const Color(0xFF6B7280),
+                  ),
+                ),
+                const Icon(Icons.star, color: Color(0xFFFFC107), size: 14),
+                const SizedBox(width: 4),
+                Text(
+                  ratingText,
+                  style: GoogleFonts.outfit(
+                    fontSize: 12,
+                    fontWeight: FontWeight.w500,
+                    color: const Color(0xFF1E293B),
+                  ),
+                ),
+              ],
+            ),
+            const SizedBox(height: 8),
+            Row(
+              children: [
+                CircleAvatar(
+                  radius: 10,
+                  backgroundColor: const Color(0xFFF1F5F9),
+                  backgroundImage: providerProfileUrl.isNotEmpty
+                      ? NetworkImage(providerProfileUrl)
+                      : null,
+                  child: providerProfileUrl.isEmpty
+                      ? Text(
+                          providerName.isNotEmpty
+                              ? providerName[0].toUpperCase()
+                              : 'P',
+                          style: GoogleFonts.outfit(
+                            color: const Color(0xFF1F212C),
+                            fontSize: 9,
+                            fontWeight: FontWeight.w600,
+                          ),
+                        )
+                      : null,
+                ),
+                const SizedBox(width: 6),
+                Expanded(
+                  child: Text(
+                    providerName,
+                    style: GoogleFonts.outfit(
+                      fontSize: 11,
+                      fontWeight: FontWeight.w500,
+                      color: const Color(0xFF4B5563),
+                    ),
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                  ),
+                ),
+              ],
+            ),
+          ],
         ),
       ),
     );
-  }
-
-  Widget _buildSettingsGroup(List<Widget> children) {
-    return Column(children: children);
   }
 
   // 📌 NAVIGATE TO EDIT PROFILE SCREEN
@@ -524,111 +852,6 @@ class _ProfileScreenState extends State<ProfileScreen> {
     );
   }
 
-  // LOGOUT
-  void _showLogoutDialog(BuildContext context) {
-    showDialog(
-      context: context,
-      builder:
-          (_) => Dialog(
-            backgroundColor: Colors.white,
-            shape: RoundedRectangleBorder(
-              borderRadius: BorderRadius.circular(24),
-            ),
-            child: Padding(
-              padding: const EdgeInsets.all(24),
-              child: Column(
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  Container(
-                    padding: const EdgeInsets.all(16),
-                    decoration: const BoxDecoration(
-                      color: Color(0xFFFFEEEE),
-                      shape: BoxShape.circle,
-                    ),
-                    child: const Icon(
-                      Icons.logout_rounded,
-                      color: Colors.red,
-                      size: 32,
-                    ),
-                  ),
-                  const SizedBox(height: 24),
-                  Text(
-                    'Sign Out',
-                    style: GoogleFonts.outfit(
-                      fontSize: 20,
-                      fontWeight: FontWeight.w600,
-                      color: const Color(0xFF1F212C),
-                    ),
-                  ),
-                  const SizedBox(height: 12),
-                  Text(
-                    'Are you sure you want to logout? You will need to sign in again to access your account.',
-                    textAlign: TextAlign.center,
-                    style: GoogleFonts.outfit(
-                      fontSize: 14,
-                      color: Colors.grey.shade600,
-                      height: 1.5,
-                    ),
-                  ),
-                  const SizedBox(height: 32),
-                  Row(
-                    children: [
-                      Expanded(
-                        child: TextButton(
-                          onPressed: () => Navigator.pop(context),
-                          style: TextButton.styleFrom(
-                            padding: const EdgeInsets.symmetric(vertical: 14),
-                            shape: RoundedRectangleBorder(
-                              borderRadius: BorderRadius.circular(8),
-                            ),
-                          ),
-                          child: Text(
-                            'Cancel',
-                            style: GoogleFonts.outfit(
-                              fontSize: 15,
-                              fontWeight: FontWeight.w600,
-                              color: const Color(0xFF64748B),
-                            ),
-                          ),
-                        ),
-                      ),
-                      const SizedBox(width: 12),
-                      Expanded(
-                        child: ElevatedButton(
-                          onPressed: () {
-                            FirebaseAuth.instance.signOut();
-                            Navigator.pushNamedAndRemoveUntil(
-                              context,
-                              '/',
-                              (route) => false,
-                            );
-                          },
-                          style: ElevatedButton.styleFrom(
-                            backgroundColor: widget.themeColor,
-                            foregroundColor: Colors.white,
-                            padding: const EdgeInsets.symmetric(vertical: 14),
-                            elevation: 0,
-                            shape: RoundedRectangleBorder(
-                              borderRadius: BorderRadius.circular(8),
-                            ),
-                          ),
-                          child: Text(
-                            'Logout',
-                            style: GoogleFonts.outfit(
-                              fontSize: 15,
-                              fontWeight: FontWeight.w600,
-                            ),
-                          ),
-                        ),
-                      ),
-                    ],
-                  ),
-                ],
-              ),
-            ),
-          ),
-    );
-  }
 
   Widget _buildSkeletonLoader() {
     return SingleChildScrollView(
@@ -1115,27 +1338,4 @@ class _ProfileStat extends StatelessWidget {
   }
 }
 
-Widget _settingTile({
-  required IconData icon,
-  required Color color,
-  required String title,
-  required String subtitle,
-  VoidCallback? onTap,
-}) {
-  return ListTile(
-    onTap: onTap,
-    dense: true,
-    contentPadding: const EdgeInsets.symmetric(vertical: 0),
-    leading: Icon(icon, color: color, size: 24),
-    title: Text(
-      title,
-      style: const TextStyle(fontWeight: FontWeight.w600, fontSize: 15),
-    ),
-    subtitle: Text(subtitle, style: const TextStyle(fontSize: 13)),
-    trailing: const Icon(
-      Icons.chevron_right,
-      color: Color(0xFF94A3B8),
-      size: 16,
-    ),
-  );
-}
+
