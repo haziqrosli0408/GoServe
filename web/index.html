@@ -61,6 +61,25 @@
       100% { transform: rotate(360deg); }
     }
   </style>
+
+  <!-- 🔔 OneSignal Web SDK -->
+  <script src="https://cdn.onesignal.com/sdks/web/v16/OneSignalSDK.page.js" defer></script>
+  <script>
+    window.OneSignalDeferred = window.OneSignalDeferred || [];
+    OneSignalDeferred.push(async function(OneSignal) {
+      await OneSignal.init({
+        appId: "84f79509-0ca9-43e1-b5eb-9f363a5c3b85",
+        allowLocalhostAsSecureOrigin: true,
+      OneSignal.Slidedown.promptPush();
+    });
+
+    window.getOneSignalSubscriptionId = function() {
+      if (window.OneSignal && window.OneSignal.User && window.OneSignal.User.PushSubscription) {
+        return window.OneSignal.User.PushSubscription.id;
+      }
+      return null;
+    };
+  </script>
 </head>
 <body style="background-color: white;">
   <div class="loading">

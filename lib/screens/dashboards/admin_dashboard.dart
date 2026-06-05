@@ -640,7 +640,7 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
                       'Review Identity',
                       style: TextStyle(
                         fontSize: 20,
-                        fontWeight: FontWeight.bold,
+                        fontWeight: FontWeight.w500,
                       ),
                     ),
                     IconButton(
@@ -672,7 +672,7 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
                                     'IC Front',
                                     style: TextStyle(
                                       fontSize: 12,
-                                      fontWeight: FontWeight.bold,
+                                      fontWeight: FontWeight.w500,
                                     ),
                                   ),
                                   const SizedBox(height: 8),
@@ -696,7 +696,7 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
                                     'IC Back',
                                     style: TextStyle(
                                       fontSize: 12,
-                                      fontWeight: FontWeight.bold,
+                                      fontWeight: FontWeight.w500,
                                     ),
                                   ),
                                   const SizedBox(height: 8),
@@ -719,7 +719,7 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
                           'Selfie Comparison',
                           style: TextStyle(
                             fontSize: 12,
-                            fontWeight: FontWeight.bold,
+                            fontWeight: FontWeight.w500,
                           ),
                         ),
                         const SizedBox(height: 8),
@@ -772,7 +772,7 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
                           'Reject',
                           style: TextStyle(
                             color: Colors.red,
-                            fontWeight: FontWeight.bold,
+                            fontWeight: FontWeight.w500,
                           ),
                         ),
                       ),
@@ -799,7 +799,7 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
                           'Approve Provider',
                           style: TextStyle(
                             color: Colors.white,
-                            fontWeight: FontWeight.bold,
+                            fontWeight: FontWeight.w500,
                           ),
                         ),
                       ),
@@ -868,7 +868,7 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
                       'ID: $customId',
                       style: const TextStyle(
                         fontSize: 12,
-                        fontWeight: FontWeight.bold,
+                        fontWeight: FontWeight.w500,
                         color: Colors.black87,
                       ),
                     ),

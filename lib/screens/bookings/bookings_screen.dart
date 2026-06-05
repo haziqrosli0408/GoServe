@@ -35,7 +35,7 @@ class _BookingsScreenState extends State<BookingsScreen> {
           child: Text(
             "My Bookings",
             style: GoogleFonts.outfit(
-              fontWeight: FontWeight.bold,
+              fontWeight: FontWeight.w500,
               color: Colors.black,
               fontSize: 20,
             ),
@@ -448,18 +448,41 @@ class _BookingsScreenState extends State<BookingsScreen> {
 
                 // 🔹 Provider & Status Row (Above Buttons)
                 if (!isInProgress) ...[
-                  FutureBuilder<DocumentSnapshot>(
-                    future: FirebaseFirestore.instance.collection('providers').doc(data['providerId']).get(),
+                  FutureBuilder<Map<String, dynamic>>(
+                    future: () async {
+                      final providerId = data['providerId'];
+                      if (providerId == null || providerId.isEmpty) return <String, dynamic>{};
+                      final pDoc = await FirebaseFirestore.instance.collection('providers').doc(providerId).get();
+                      final reviewsSnap = await FirebaseFirestore.instance.collection('reviews').where('providerId', isEqualTo: providerId).where('status', isEqualTo: 'Approved').get();
+                      
+                      Map<String, dynamic> result = {};
+                      if (pDoc.exists) {
+                        result = pDoc.data() as Map<String, dynamic>;
+                      }
+                      
+                      if (reviewsSnap.docs.isNotEmpty) {
+                        double sum = 0;
+                        for (var r in reviewsSnap.docs) {
+                          sum += (r.data()['rating'] as num).toDouble();
+                        }
+                        result['dynamicRating'] = sum / reviewsSnap.docs.length;
+                        result['dynamicReviews'] = reviewsSnap.docs.length;
+                      } else {
+                        result['dynamicRating'] = 0.0;
+                        result['dynamicReviews'] = 0;
+                      }
+                      return result;
+                    }(),
                     builder: (context, snapshot) {
                       String? liveProfileUrl;
                       double rating = 0.0;
                       int reviews = 0;
 
-                      if (snapshot.hasData && snapshot.data!.exists) {
-                        final pData = snapshot.data!.data() as Map<String, dynamic>;
+                      if (snapshot.hasData) {
+                        final pData = snapshot.data!;
                         liveProfileUrl = pData['profileUrl'] ?? pData['photoUrl'] ?? pData['profileImageUrl'];
-                        rating = (pData['rating'] ?? 0.0).toDouble();
-                        reviews = (pData['reviews'] ?? 0).toInt();
+                        rating = (pData['dynamicRating'] ?? 0.0).toDouble();
+                        reviews = (pData['dynamicReviews'] ?? 0).toInt();
                       }
 
                       return Row(
@@ -793,24 +816,43 @@ class _BookingsScreenState extends State<BookingsScreen> {
             padding: const EdgeInsets.all(12),
             child: Column(
               children: [
-                FutureBuilder<DocumentSnapshot>(
-                  future: FirebaseFirestore.instance
-                      .collection('providers')
-                      .doc(data['providerId'])
-                      .get(),
+                FutureBuilder<Map<String, dynamic>>(
+                  future: () async {
+                    final providerId = data['providerId'];
+                    if (providerId == null || providerId.isEmpty) return <String, dynamic>{};
+                    final pDoc = await FirebaseFirestore.instance.collection('providers').doc(providerId).get();
+                    final reviewsSnap = await FirebaseFirestore.instance.collection('reviews').where('providerId', isEqualTo: providerId).where('status', isEqualTo: 'Approved').get();
+                    
+                    Map<String, dynamic> result = {};
+                    if (pDoc.exists) {
+                      result = pDoc.data() as Map<String, dynamic>;
+                    }
+                    
+                    if (reviewsSnap.docs.isNotEmpty) {
+                      double sum = 0;
+                      for (var r in reviewsSnap.docs) {
+                        sum += (r.data()['rating'] as num).toDouble();
+                      }
+                      result['dynamicRating'] = sum / reviewsSnap.docs.length;
+                      result['dynamicReviews'] = reviewsSnap.docs.length;
+                    } else {
+                      result['dynamicRating'] = 0.0;
+                      result['dynamicReviews'] = 0;
+                    }
+                    return result;
+                  }(),
                   builder: (context, snapshot) {
                     String? liveProfileUrl;
                     double rating = 0.0;
                     int reviews = 0;
 
-                    if (snapshot.hasData && snapshot.data!.exists) {
-                      final pData =
-                          snapshot.data!.data() as Map<String, dynamic>;
+                    if (snapshot.hasData) {
+                      final pData = snapshot.data!;
                       liveProfileUrl = pData['profileUrl'] ??
                           pData['photoUrl'] ??
                           pData['profileImageUrl'];
-                      rating = (pData['rating'] ?? 0.0).toDouble();
-                      reviews = (pData['reviews'] ?? 0).toInt();
+                      rating = (pData['dynamicRating'] ?? 0.0).toDouble();
+                      reviews = (pData['dynamicReviews'] ?? 0).toInt();
                     }
 
                     return Row(
@@ -1549,7 +1591,7 @@ class _BookingsScreenState extends State<BookingsScreen> {
               name.isNotEmpty ? name[0].toUpperCase() : 'P',
               style: GoogleFonts.outfit(
                 fontSize: 18,
-                fontWeight: FontWeight.bold,
+                fontWeight: FontWeight.w500,
                 color: Colors.grey.shade600,
               ),
             )

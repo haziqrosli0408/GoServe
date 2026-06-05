@@ -29,7 +29,8 @@ class _ProviderHomeScreenState extends State<ProviderHomeScreen> {
   // Calendar State
   DateTime? _selectedDay;
   Map<DateTime, List<dynamic>> _events = {};
-  final ScrollController _calendarScrollController = ScrollController(initialScrollOffset: 11 * 63.0);
+  final ScrollController _calendarScrollController = ScrollController();
+  bool _hasScrolledToToday = false;
 
   @override
   void initState() {
@@ -38,6 +39,7 @@ class _ProviderHomeScreenState extends State<ProviderHomeScreen> {
     _fetchProviderData();
     _fetchProviderStats();
     _fetchCalendarEvents();
+
   }
 
   @override
@@ -451,136 +453,154 @@ class _ProviderHomeScreenState extends State<ProviderHomeScreen> {
 
 
   Widget _buildCalendarSection() {
-    return Container(
-      width: double.infinity,
-      decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(24),
-        boxShadow: [
-          BoxShadow(
-            color: Colors.black.withValues(alpha: 0.03),
-            blurRadius: 20,
-            offset: const Offset(0, 10),
-          ),
-        ],
-      ),
-      padding: const EdgeInsets.symmetric(vertical: 20),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          // 🔹 CUSTOM CALENDAR HEADER
-          Padding(
-            padding: const EdgeInsets.only(left: 24, right: 24, bottom: 16),
-            child: Row(
-              mainAxisAlignment: MainAxisAlignment.spaceBetween,
-              children: [
-                Text(
-                  _selectedDay != null ? DateFormat.yMMMM().format(_selectedDay!) : DateFormat.yMMMM().format(DateTime.now()),
-                  style: GoogleFonts.outfit(
-                    fontWeight: FontWeight.w700,
-                    fontSize: 16,
-                    color: const Color(0xFF1E293B),
+    if (!_hasScrolledToToday) {
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        if (mounted && _calendarScrollController.hasClients) {
+          final screenWidth = MediaQuery.of(context).size.width;
+          final targetOffset = 20.0 + (14 * 72.0) + 36.0 - (screenWidth / 2);
+          _calendarScrollController.jumpTo(targetOffset);
+          setState(() {
+            _hasScrolledToToday = true;
+          });
+        }
+      });
+    }
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        // 🔹 CUSTOM CALENDAR HEADER (Outside the dates container)
+        Padding(
+          padding: const EdgeInsets.only(left: 24, right: 24, bottom: 16),
+          child: Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            children: [
+              Text(
+                _selectedDay != null ? DateFormat.yMMMM().format(_selectedDay!) : DateFormat.yMMMM().format(DateTime.now()),
+                style: GoogleFonts.outfit(
+                  fontWeight: FontWeight.w700,
+                  fontSize: 18,
+                  color: const Color(0xFF1E293B),
+                ),
+              ),
+              GestureDetector(
+                onTap: () {
+                  setState(() {
+                    _selectedDay = DateTime.now();
+                  });
+                  final screenWidth = MediaQuery.of(context).size.width;
+                  // 20.0 (ListView padding) + 14 items * 72.0 (width+margin) + 36.0 (half item width)
+                  final targetOffset = 20.0 + (14 * 72.0) + 36.0 - (screenWidth / 2);
+                  _calendarScrollController.animateTo(
+                    targetOffset, 
+                    duration: const Duration(milliseconds: 300),
+                    curve: Curves.easeInOut,
+                  );
+                },
+                child: Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                  decoration: BoxDecoration(
+                    color: const Color(0xFF4F46E5).withValues(alpha: 0.1),
+                    borderRadius: BorderRadius.circular(20),
+                  ),
+                  child: Text(
+                    "Today",
+                    style: GoogleFonts.outfit(
+                      color: const Color(0xFF4F46E5),
+                      fontWeight: FontWeight.w600,
+                      fontSize: 12,
+                    ),
                   ),
                 ),
-                GestureDetector(
-                  onTap: () {
-                    setState(() {
-                      _selectedDay = DateTime.now();
-                    });
-                    _calendarScrollController.animateTo(
-                      11 * 63.0, 
-                      duration: const Duration(milliseconds: 300),
-                      curve: Curves.easeInOut,
-                    );
-                  },
-                  child: Container(
-                    padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
-                    decoration: BoxDecoration(
-                      color: const Color(0xFF4F46E5).withValues(alpha: 0.1),
-                      borderRadius: BorderRadius.circular(20),
-                    ),
-                    child: Text(
-                      "Today",
-                      style: GoogleFonts.outfit(
-                        color: const Color(0xFF4F46E5),
-                        fontWeight: FontWeight.w600,
-                        fontSize: 12,
+              ),
+            ],
+          ),
+        ),
+        // Horizontal Date Selector
+        SizedBox(
+          height: 95,
+          child: ListView.builder(
+            controller: _calendarScrollController,
+            scrollDirection: Axis.horizontal,
+            padding: const EdgeInsets.symmetric(horizontal: 20),
+            itemCount: 90, // Start 14 days ago, show 90 days total
+            itemBuilder: (context, index) {
+              DateTime day = DateTime.now().add(Duration(days: index - 14));
+              day = DateTime(day.year, day.month, day.day); // Normalize
+              DateTime selDay = DateTime(_selectedDay!.year, _selectedDay!.month, _selectedDay!.day);
+              
+              bool isSelected = day.isAtSameMomentAs(selDay);
+              
+              return GestureDetector(
+                onTap: () {
+                  setState(() {
+                    _selectedDay = day;
+                  });
+                },
+                child: Container(
+                  width: 60,
+                  margin: const EdgeInsets.symmetric(horizontal: 6, vertical: 4),
+                  decoration: BoxDecoration(
+                    color: isSelected ? const Color(0xFF4F46E5) : Colors.white,
+                    borderRadius: BorderRadius.circular(24),
+                    boxShadow: [
+                      if (isSelected)
+                        BoxShadow(
+                          color: const Color(0xFF4F46E5).withValues(alpha: 0.3),
+                          blurRadius: 10,
+                          offset: const Offset(0, 4),
+                        )
+                      else
+                        BoxShadow(
+                          color: Colors.black.withValues(alpha: 0.03),
+                          blurRadius: 8,
+                          offset: const Offset(0, 2),
+                        ),
+                    ],
+                    border: isSelected ? null : Border.all(color: const Color(0xFFF1F5F9)),
+                  ),
+                  child: Column(
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    children: [
+                      Text(
+                        '${day.day}',
+                        style: GoogleFonts.outfit(
+                          fontSize: 22,
+                          fontWeight: FontWeight.w600,
+                          color: isSelected ? Colors.white : const Color(0xFF1E293B),
+                        ),
                       ),
-                    ),
+                      const SizedBox(height: 4),
+                      Text(
+                        DateFormat('E').format(day).substring(0, 2),
+                        style: GoogleFonts.outfit(
+                          fontSize: 13,
+                          fontWeight: FontWeight.w500,
+                          color: isSelected ? Colors.white70 : Colors.grey[500],
+                        ),
+                      ),
+                      if (isSelected) ...[
+                        const SizedBox(height: 6),
+                        Container(
+                          width: 6,
+                          height: 6,
+                          decoration: const BoxDecoration(
+                            color: Colors.white,
+                            shape: BoxShape.circle,
+                          ),
+                        ),
+                      ]
+                    ],
                   ),
                 ),
-              ],
-            ),
+              );
+            },
           ),
-          // Horizontal Date Selector
-          SizedBox(
-            height: 90,
-            child: ListView.builder(
-              controller: _calendarScrollController,
-              scrollDirection: Axis.horizontal,
-              itemCount: 90, // Start 14 days ago, show 90 days total
-              itemBuilder: (context, index) {
-                DateTime day = DateTime.now().add(Duration(days: index - 14));
-                day = DateTime(day.year, day.month, day.day); // Normalize
-                DateTime selDay = DateTime(_selectedDay!.year, _selectedDay!.month, _selectedDay!.day);
-                
-                bool isSelected = day.isAtSameMomentAs(selDay);
-                
-                return GestureDetector(
-                  onTap: () {
-                    setState(() {
-                      _selectedDay = day;
-                    });
-                  },
-                  child: Container(
-                    width: 55,
-                    margin: const EdgeInsets.symmetric(horizontal: 4),
-                    decoration: BoxDecoration(
-                      color: isSelected ? const Color(0xFF4F46E5).withValues(alpha: 0.1) : Colors.transparent,
-                      borderRadius: BorderRadius.circular(24),
-                    ),
-                    child: Column(
-                      mainAxisAlignment: MainAxisAlignment.center,
-                      children: [
-                        Text(
-                          '${day.day}',
-                          style: GoogleFonts.outfit(
-                            fontSize: 22,
-                            fontWeight: FontWeight.w600,
-                            color: isSelected ? const Color(0xFF4F46E5) : const Color(0xFF1E293B),
-                          ),
-                        ),
-                        const SizedBox(height: 4),
-                        Text(
-                          DateFormat('E').format(day).substring(0, 2),
-                          style: GoogleFonts.outfit(
-                            fontSize: 13,
-                            fontWeight: FontWeight.w500,
-                            color: isSelected ? const Color(0xFF4F46E5) : Colors.grey[500],
-                          ),
-                        ),
-                        if (isSelected) ...[
-                          const SizedBox(height: 6),
-                          Container(
-                            width: 6,
-                            height: 6,
-                            decoration: const BoxDecoration(
-                              color: Color(0xFF4F46E5),
-                              shape: BoxShape.circle,
-                            ),
-                          ),
-                        ]
-                      ],
-                    ),
-                  ),
-                );
-              },
-            ),
-          ),
-        ],
-      ),
+        ),
+      ],
     );
   }
+
 
   Widget _buildTimelineSection() {
     if (_selectedDay == null) return const SizedBox();
@@ -681,7 +701,7 @@ class _ProviderHomeScreenState extends State<ProviderHomeScreen> {
                                   backgroundColor: Colors.white24,
                                   child: Text(
                                     customerName.isNotEmpty ? customerName[0].toUpperCase() : 'C',
-                                    style: GoogleFonts.outfit(color: Colors.white, fontSize: 10, fontWeight: FontWeight.bold),
+                                    style: GoogleFonts.outfit(color: Colors.white, fontSize: 10, fontWeight: FontWeight.w500),
                                   ),
                                 ),
                                 const SizedBox(width: 8),
@@ -1168,7 +1188,7 @@ class _ProviderHomeScreenState extends State<ProviderHomeScreen> {
                                 'RM ${totalEarnings.toStringAsFixed(2)}',
                                 style: GoogleFonts.outfit(
                                   fontSize: 22,
-                                  fontWeight: FontWeight.bold,
+                                  fontWeight: FontWeight.w500,
                                   color: const Color(0xFF4F46E5),
                                 ),
                               );

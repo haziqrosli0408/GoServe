@@ -5,6 +5,7 @@ import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import '../bookings/booking_screen.dart';
 import '../chat/single_chat_screen.dart';
+import '../profile/view_provider_screen.dart';
 
 class ServiceDetailsScreen extends StatefulWidget {
   final Map<String, dynamic> provider;
@@ -826,38 +827,58 @@ class _ServiceDetailsScreenState extends State<ServiceDetailsScreen> {
         children: [
           Row(
             children: [
-              Container(
-                padding: const EdgeInsets.all(2),
-                decoration: BoxDecoration(
-                  shape: BoxShape.circle,
-                  border: Border.all(color: const Color(0xFFF1F5F9), width: 1),
-                ),
-                child: CircleAvatar(
-                  radius: 22,
-                  backgroundColor: const Color(0xFFF1F5F9),
-                  backgroundImage: profileUrl.isNotEmpty ? NetworkImage(profileUrl) : null,
-                  child: profileUrl.isEmpty 
-                      ? Text(name.isNotEmpty ? name[0].toUpperCase() : 'P', style: GoogleFonts.outfit(color: const Color(0xFF1F212C), fontSize: 14, fontWeight: FontWeight.w600)) 
-                      : null,
-                ),
-              ),
-              const SizedBox(width: 12),
-              Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  mainAxisSize: MainAxisSize.min,
+              GestureDetector(
+                onTap: () {
+                  final String providerId = widget.provider['providerId'] ?? widget.provider['id'] ?? '';
+                  if (providerId.isNotEmpty) {
+                    Navigator.push(
+                      context,
+                      MaterialPageRoute(
+                        builder: (context) => ViewProviderScreen(
+                          providerId: providerId,
+                          providerName: name,
+                          providerProfileUrl: profileUrl,
+                        ),
+                      ),
+                    );
+                  }
+                },
+                child: Row(
                   children: [
-                    Text(
-                      name, 
-                      style: GoogleFonts.outfit(
-                        fontSize: 15, 
-                        fontWeight: FontWeight.w700, 
-                        color: const Color(0xFF0F172A)
-                      )
+                    Container(
+                      padding: const EdgeInsets.all(2),
+                      decoration: BoxDecoration(
+                        shape: BoxShape.circle,
+                        border: Border.all(color: const Color(0xFFF1F5F9), width: 1),
+                      ),
+                      child: CircleAvatar(
+                        radius: 22,
+                        backgroundColor: const Color(0xFFF1F5F9),
+                        backgroundImage: profileUrl.isNotEmpty ? NetworkImage(profileUrl) : null,
+                        child: profileUrl.isEmpty 
+                            ? Text(name.isNotEmpty ? name[0].toUpperCase() : 'P', style: GoogleFonts.outfit(color: const Color(0xFF1F212C), fontSize: 14, fontWeight: FontWeight.w600)) 
+                            : null,
+                      ),
+                    ),
+                    const SizedBox(width: 12),
+                    Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        Text(
+                          name, 
+                          style: GoogleFonts.outfit(
+                            fontSize: 15, 
+                            fontWeight: FontWeight.w700, 
+                            color: const Color(0xFF0F172A)
+                          )
+                        ),
+                      ],
                     ),
                   ],
                 ),
               ),
+              const Spacer(),
               const SizedBox(width: 8),
               // Compact Chat Button
               GestureDetector(

@@ -133,7 +133,7 @@ class _MyServicesScreenState extends State<MyServicesScreen>
                 style: GoogleFonts.outfit(
                   color: const Color(0xFF1E293B),
                   fontSize: 22,
-                  fontWeight: FontWeight.bold,
+                  fontWeight: FontWeight.w500,
                 ),
               ),
             ),
@@ -524,7 +524,7 @@ class _ServiceListContentState extends State<_ServiceListContent>
                                 isActive ? 'Active' : 'Inactive',
                                 style: GoogleFonts.outfit(
                                   fontSize: 12,
-                                  fontWeight: FontWeight.bold,
+                                  fontWeight: FontWeight.w500,
                                   color: isActive
                                       ? const Color(0xFF166534)
                                       : Colors.grey.shade500,

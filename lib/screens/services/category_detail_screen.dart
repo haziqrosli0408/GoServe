@@ -124,6 +124,13 @@ class _CategoryDetailScreenState extends State<CategoryDetailScreen> with Single
           .where('isActive', isEqualTo: true)
           .get();
 
+      // Dynamically fetch approved reviews
+      final reviewsSnapshot = await FirebaseFirestore.instance
+          .collection('reviews')
+          .where('status', isEqualTo: 'Approved')
+          .get();
+      final allReviews = reviewsSnapshot.docs.map((d) => d.data()).toList();
+
       if (mounted) {
         setState(() {
           final categoryQuery = widget.categoryName.toLowerCase();
@@ -132,6 +139,19 @@ class _CategoryDetailScreenState extends State<CategoryDetailScreen> with Single
           _allProviders = snapshot.docs.map((doc) {
             final data = doc.data();
             data['serviceId'] = doc.id;
+            
+            final serviceReviews = allReviews.where((r) => r['serviceId'] == doc.id).toList();
+            if (serviceReviews.isNotEmpty) {
+              double sum = 0;
+              for (var r in serviceReviews) {
+                sum += (r['rating'] as num).toDouble();
+              }
+              data['averageRating'] = sum / serviceReviews.length;
+              data['reviewCount'] = serviceReviews.length;
+            } else {
+              data['averageRating'] = 0.0;
+              data['reviewCount'] = 0;
+            }
             return data;
           }).where((s) {
              final serviceCategory = (s['category'] as String?)?.toLowerCase() ?? '';
@@ -207,7 +227,7 @@ class _CategoryDetailScreenState extends State<CategoryDetailScreen> with Single
           widget.categoryName,
           style: GoogleFonts.outfit(
             color: contentColor,
-            fontWeight: FontWeight.bold,
+            fontWeight: FontWeight.w500,
             fontSize: 20,
           ),
         ),

@@ -5,6 +5,7 @@ import 'package:image_picker/image_picker.dart';
 import 'package:firebase_storage/firebase_storage.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'dart:io' show File;
+import '../../services/onesignal_service.dart';
 
 class UploadProofScreen extends StatefulWidget {
   final String bookingId;
@@ -63,7 +64,6 @@ class _UploadProofScreenState extends State<UploadProofScreen> {
       
       final downloadUrl = await storageRef.getDownloadURL();
 
-      // 2. Update Firestore booking
       await FirebaseFirestore.instance
           .collection('bookings')
           .doc(widget.bookingId)
@@ -72,6 +72,17 @@ class _UploadProofScreenState extends State<UploadProofScreen> {
         'proofImageUrl': downloadUrl,
         'completedAt': FieldValue.serverTimestamp(),
       });
+      
+      // 🔔 Send push notification to customer
+      try {
+        await OneSignalService.notifyServiceCompleted(
+          customerId: widget.bookingData['customerId'],
+          serviceName: widget.bookingData['serviceName'] ?? 'Service',
+          bookingId: widget.bookingId,
+        );
+      } catch (e) {
+        debugPrint('Error sending service completed notification: $e');
+      }
 
       // 3. Show Success Animation
       setState(() {
@@ -107,7 +118,7 @@ class _UploadProofScreenState extends State<UploadProofScreen> {
         centerTitle: true,
         title: Text(
           'Upload your work',
-          style: GoogleFonts.outfit(color: const Color(0xFF1E293B), fontWeight: FontWeight.bold, fontSize: 18),
+          style: GoogleFonts.outfit(color: const Color(0xFF1E293B), fontWeight: FontWeight.w500, fontSize: 18),
         ),
       ),
       body: Padding(
@@ -168,7 +179,7 @@ class _UploadProofScreenState extends State<UploadProofScreen> {
                 ),
                 child: _isUploading
                     ? const SizedBox(height: 20, width: 20, child: CircularProgressIndicator(color: Colors.white, strokeWidth: 2))
-                    : Text('Submit Completion', style: GoogleFonts.outfit(fontSize: 16, fontWeight: FontWeight.bold)),
+                    : Text('Submit Completion', style: GoogleFonts.outfit(fontSize: 16, fontWeight: FontWeight.w500)),
               ),
             ),
           ],
@@ -189,7 +200,7 @@ class _UploadProofScreenState extends State<UploadProofScreen> {
           children: [
             Container(width: 40, height: 4, decoration: BoxDecoration(color: Colors.grey[300], borderRadius: BorderRadius.circular(2))),
             const SizedBox(height: 24),
-            Text('Select Source', style: GoogleFonts.outfit(fontSize: 18, fontWeight: FontWeight.bold)),
+            Text('Select Source', style: GoogleFonts.outfit(fontSize: 18, fontWeight: FontWeight.w500)),
             const SizedBox(height: 24),
             Row(
               children: [
@@ -249,7 +260,7 @@ class _UploadProofScreenState extends State<UploadProofScreen> {
             const SizedBox(height: 32),
             Text(
               'Job Completed!',
-              style: GoogleFonts.outfit(fontSize: 28, fontWeight: FontWeight.bold, color: const Color(0xFF1E293B)),
+              style: GoogleFonts.outfit(fontSize: 28, fontWeight: FontWeight.w500, color: const Color(0xFF1E293B)),
             ),
             const SizedBox(height: 12),
             Text(

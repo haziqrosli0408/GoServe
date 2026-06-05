@@ -5,6 +5,7 @@ import 'package:cloud_firestore/cloud_firestore.dart';
 import 'addresses_screen.dart';
 import 'payments_screen.dart';
 import 'notification_settings_screen.dart';
+import '../../services/onesignal_service.dart';
 
 class SettingsPage extends StatefulWidget {
   final Color themeColor;
@@ -25,6 +26,7 @@ class _SettingsPageState extends State<SettingsPage> {
 
   Future<void> _handleLogout() async {
     try {
+      OneSignalService.logoutUser();
       await _auth.signOut();
       if (mounted) {
         Navigator.of(context).pushNamedAndRemoveUntil('/', (route) => false);
@@ -183,7 +185,7 @@ class _SettingsPageState extends State<SettingsPage> {
     final isProvider = widget.role == 'provider';
 
     return Scaffold(
-      backgroundColor: const Color(0xFFF8FAFC),
+      backgroundColor: Colors.white,
       appBar: AppBar(
         leading: BackButton(color: Colors.grey.shade800),
         title: Text(
@@ -205,94 +207,62 @@ class _SettingsPageState extends State<SettingsPage> {
         ),
       ),
       body: SingleChildScrollView(
-        padding: const EdgeInsets.all(24.0),
+        padding: const EdgeInsets.symmetric(vertical: 24.0),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             // --- ACCOUNT SETTINGS SECTION ---
-            _buildSectionHeader('ACCOUNT SETTINGS'),
-            const SizedBox(height: 12),
-            Container(
-              decoration: BoxDecoration(
-                color: Colors.white,
-                borderRadius: BorderRadius.circular(20),
-                boxShadow: [
-                  BoxShadow(
-                    color: Colors.black.withValues(alpha: 0.02),
-                    blurRadius: 10,
-                    offset: const Offset(0, 4),
-                  ),
-                ],
-              ),
-              child: Column(
-                children: [
-                  // Addresses Tile
-                  _buildSettingTile(
-                    icon: Icons.location_on_outlined,
-                    iconColor: widget.themeColor,
-                    title: 'Addresses',
-                    subtitle: 'Manage delivery addresses',
-                    onTap: () => Navigator.push(
-                      context,
-                      MaterialPageRoute(
-                        builder: (context) => const AddressesScreen(),
-                      ),
-                    ),
-                  ),
-                  if (!isProvider) ...[
-                    Divider(
-                      height: 1,
-                      indent: 20,
-                      endIndent: 20,
-                      color: Colors.grey.shade100,
-                    ),
-                    // Payments Tile
-                    _buildSettingTile(
-                      icon: Icons.credit_card,
-                      iconColor: widget.themeColor,
-                      title: 'Payments',
-                      subtitle: 'Manage cards & history',
-                      onTap: () => Navigator.push(
-                        context,
-                        MaterialPageRoute(
-                          builder: (context) => PaymentsScreen(
-                            themeColor: widget.themeColor,
-                          ),
-                        ),
-                      ),
-                    ),
-                  ],
-                ],
+            Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 24.0),
+              child: _buildSectionHeader('ACCOUNT SETTINGS'),
+            ),
+            const SizedBox(height: 8),
+            _buildSettingTile(
+              icon: Icons.location_on_outlined,
+              iconColor: widget.themeColor,
+              title: 'Addresses',
+              subtitle: 'Manage delivery addresses',
+              onTap: () => Navigator.push(
+                context,
+                MaterialPageRoute(
+                  builder: (context) => const AddressesScreen(),
+                ),
               ),
             ),
-            const SizedBox(height: 24),
-
-            // --- GENERAL SECTION ---
-            _buildSectionHeader('GENERAL'),
-            const SizedBox(height: 12),
-            Container(
-              decoration: BoxDecoration(
-                color: Colors.white,
-                borderRadius: BorderRadius.circular(20),
-                boxShadow: [
-                  BoxShadow(
-                    color: Colors.black.withValues(alpha: 0.02),
-                    blurRadius: 10,
-                    offset: const Offset(0, 4),
-                  ),
-                ],
-              ),
-              child: _buildSettingTile(
-                icon: Icons.notifications_outlined,
+            if (!isProvider) ...[
+              _buildSettingTile(
+                icon: Icons.credit_card,
                 iconColor: widget.themeColor,
-                title: 'Notifications',
-                subtitle: 'App alerts and updates',
+                title: 'Payments',
+                subtitle: 'Manage cards & history',
                 onTap: () => Navigator.push(
                   context,
                   MaterialPageRoute(
-                    builder: (context) => NotificationSettingsScreen(
+                    builder: (context) => PaymentsScreen(
                       themeColor: widget.themeColor,
                     ),
+                  ),
+                ),
+              ),
+            ],
+            const SizedBox(height: 24),
+
+            // --- GENERAL SECTION ---
+            Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 24.0),
+              child: _buildSectionHeader('GENERAL'),
+            ),
+            const SizedBox(height: 8),
+            _buildSettingTile(
+              icon: Icons.notifications_outlined,
+              iconColor: widget.themeColor,
+              title: 'Notifications',
+              subtitle: 'App alerts and updates',
+              onTap: () => Navigator.push(
+                context,
+                MaterialPageRoute(
+                  builder: (context) => NotificationSettingsScreen(
+                    themeColor: widget.themeColor,
                   ),
                 ),
               ),
@@ -300,110 +270,90 @@ class _SettingsPageState extends State<SettingsPage> {
             const SizedBox(height: 24),
 
             // --- ACCOUNT & SESSION SECTION ---
-            _buildSectionHeader('ACCOUNT & SESSION'),
-            const SizedBox(height: 12),
-            Container(
-              decoration: BoxDecoration(
-                color: Colors.white,
-                borderRadius: BorderRadius.circular(20),
-                boxShadow: [
-                  BoxShadow(
-                    color: Colors.black.withValues(alpha: 0.02),
-                    blurRadius: 10,
-                    offset: const Offset(0, 4),
-                  ),
-                ],
+            Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 24.0),
+              child: _buildSectionHeader('ACCOUNT & SESSION'),
+            ),
+            const SizedBox(height: 8),
+            ListTile(
+              dense: true,
+              contentPadding: const EdgeInsets.symmetric(
+                horizontal: 24,
+                vertical: 0,
               ),
-              child: Column(
-                children: [
-                  // Log Out Row
-                  ListTile(
-                    contentPadding: const EdgeInsets.symmetric(
-                      horizontal: 20,
-                      vertical: 8,
-                    ),
-                    leading: Container(
-                      padding: const EdgeInsets.all(10),
-                      decoration: BoxDecoration(
-                        color: widget.themeColor.withValues(alpha: 0.1),
-                        shape: BoxShape.circle,
-                      ),
-                      child: Icon(
-                        Icons.logout_rounded,
-                        color: widget.themeColor,
-                        size: 20,
-                      ),
-                    ),
-                    title: Text(
-                      'Log Out',
-                      style: GoogleFonts.outfit(
-                        fontWeight: FontWeight.w600,
-                        fontSize: 16,
-                        color: const Color(0xFF1E293B),
-                      ),
-                    ),
-                    subtitle: Text(
-                      'Sign out of your active session',
-                      style: GoogleFonts.outfit(
-                        fontSize: 13,
-                        color: Colors.grey.shade500,
-                      ),
-                    ),
-                    trailing: Icon(
-                      Icons.arrow_forward_ios,
-                      size: 14,
-                      color: Colors.grey.shade400,
-                    ),
-                    onTap: _handleLogout,
-                  ),
-                  Divider(
-                    height: 1,
-                    indent: 20,
-                    endIndent: 20,
-                    color: Colors.grey.shade100,
-                  ),
-                  // Delete Account Row
-                  ListTile(
-                    contentPadding: const EdgeInsets.symmetric(
-                      horizontal: 20,
-                      vertical: 8,
-                    ),
-                    leading: Container(
-                      padding: const EdgeInsets.all(10),
-                      decoration: BoxDecoration(
-                        color: Colors.red.shade50,
-                        shape: BoxShape.circle,
-                      ),
-                      child: Icon(
-                        Icons.delete_forever_rounded,
-                        color: Colors.red.shade700,
-                        size: 20,
-                      ),
-                    ),
-                    title: Text(
-                      'Delete Account',
-                      style: GoogleFonts.outfit(
-                        fontWeight: FontWeight.w600,
-                        fontSize: 16,
-                        color: Colors.red.shade700,
-                      ),
-                    ),
-                    subtitle: Text(
-                      'Permanently remove all data',
-                      style: GoogleFonts.outfit(
-                        fontSize: 13,
-                        color: Colors.grey.shade500,
-                      ),
-                    ),
-                    trailing: Icon(
-                      Icons.arrow_forward_ios,
-                      size: 14,
-                      color: Colors.grey.shade400,
-                    ),
-                    onTap: _handleDeleteAccount,
-                  ),
-                ],
+              leading: Container(
+                padding: const EdgeInsets.all(10),
+                decoration: BoxDecoration(
+                  color: widget.themeColor.withValues(alpha: 0.1),
+                  shape: BoxShape.circle,
+                ),
+                child: Icon(
+                  Icons.logout_rounded,
+                  color: widget.themeColor,
+                  size: 20,
+                ),
               ),
+              title: Text(
+                'Log Out',
+                style: GoogleFonts.outfit(
+                  fontWeight: FontWeight.w400,
+                  fontSize: 15,
+                  color: const Color(0xFF1E293B),
+                ),
+              ),
+              subtitle: Text(
+                'Sign out of your active session',
+                style: GoogleFonts.outfit(
+                  fontSize: 12,
+                  color: Colors.grey.shade500,
+                ),
+              ),
+              trailing: Icon(
+                Icons.arrow_forward_ios,
+                size: 14,
+                color: Colors.grey.shade400,
+              ),
+              onTap: _handleLogout,
+            ),
+            ListTile(
+              dense: true,
+              contentPadding: const EdgeInsets.symmetric(
+                horizontal: 24,
+                vertical: 0,
+              ),
+              leading: Container(
+                padding: const EdgeInsets.all(10),
+                decoration: BoxDecoration(
+                  color: Colors.red.shade50,
+                  shape: BoxShape.circle,
+                ),
+                child: Icon(
+                  Icons.delete_forever_rounded,
+                  color: Colors.red.shade700,
+                  size: 20,
+                ),
+              ),
+              title: Text(
+                'Delete Account',
+                style: GoogleFonts.outfit(
+                  fontWeight: FontWeight.w400,
+                  fontSize: 15,
+                  color: Colors.red.shade700,
+                ),
+              ),
+              subtitle: Text(
+                'Permanently remove all data',
+                style: GoogleFonts.outfit(
+                  fontSize: 12,
+                  color: Colors.grey.shade500,
+                ),
+              ),
+              trailing: Icon(
+                Icons.arrow_forward_ios,
+                size: 14,
+                color: Colors.grey.shade400,
+              ),
+              onTap: _handleDeleteAccount,
             ),
           ],
         ),
@@ -434,9 +384,10 @@ class _SettingsPageState extends State<SettingsPage> {
     required VoidCallback onTap,
   }) {
     return ListTile(
+      dense: true,
       contentPadding: const EdgeInsets.symmetric(
-        horizontal: 20,
-        vertical: 8,
+        horizontal: 24,
+        vertical: 0,
       ),
       leading: Container(
         padding: const EdgeInsets.all(10),
@@ -453,15 +404,15 @@ class _SettingsPageState extends State<SettingsPage> {
       title: Text(
         title,
         style: GoogleFonts.outfit(
-          fontWeight: FontWeight.w600,
-          fontSize: 16,
+          fontWeight: FontWeight.w400,
+          fontSize: 15,
           color: const Color(0xFF1E293B),
         ),
       ),
       subtitle: Text(
         subtitle,
         style: GoogleFonts.outfit(
-          fontSize: 13,
+          fontSize: 12,
           color: Colors.grey.shade500,
         ),
       ),

@@ -144,16 +144,38 @@ class _TopRatedScreenState extends State<TopRatedScreen> with TickerProviderStat
       final snapshot = await FirebaseFirestore.instance
           .collection('services')
           .where('isActive', isEqualTo: true)
-          .orderBy('averageRating', descending: true)
           .get();
+
+      // Dynamically fetch approved reviews
+      final reviewsSnapshot = await FirebaseFirestore.instance
+          .collection('reviews')
+          .where('status', isEqualTo: 'Approved')
+          .get();
+      final allReviews = reviewsSnapshot.docs.map((d) => d.data()).toList();
 
       if (mounted) {
         setState(() {
           _allProviders = snapshot.docs.map((doc) {
             final data = doc.data();
             data['serviceId'] = doc.id;
+            
+            final serviceReviews = allReviews.where((r) => r['serviceId'] == doc.id).toList();
+            if (serviceReviews.isNotEmpty) {
+              double sum = 0;
+              for (var r in serviceReviews) {
+                sum += (r['rating'] as num).toDouble();
+              }
+              data['averageRating'] = sum / serviceReviews.length;
+              data['reviewCount'] = serviceReviews.length;
+            } else {
+              data['averageRating'] = 0.0;
+              data['reviewCount'] = 0;
+            }
             return data;
           }).toList();
+          
+          _allProviders.sort((a, b) => ((b['averageRating'] ?? 0).toDouble()).compareTo((a['averageRating'] ?? 0).toDouble()));
+          
           _filteredProviders = _allProviders;
           _isLoading = false;
         });
@@ -236,7 +258,7 @@ class _TopRatedScreenState extends State<TopRatedScreen> with TickerProviderStat
                         'Top Rated Services',
                         style: GoogleFonts.outfit(
                           color: contentColor,
-                          fontWeight: FontWeight.bold,
+                          fontWeight: FontWeight.w500,
                           fontSize: 18,
                         ),
                       ),

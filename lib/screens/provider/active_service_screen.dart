@@ -5,6 +5,7 @@ import 'package:url_launcher/url_launcher.dart';
 import '../../services/location_service.dart';
 import '../chat/single_chat_screen.dart';
 import 'upload_proof_screen.dart';
+import '../../services/onesignal_service.dart';
 
 class ActiveServiceScreen extends StatefulWidget {
   final String bookingId;
@@ -66,6 +67,21 @@ class _ActiveServiceScreenState extends State<ActiveServiceScreen> {
             .collection('bookings')
             .doc(widget.bookingId)
             .update({'status': newStatus});
+            
+        if (newStatus == 'On the way') {
+          try {
+            final providerDoc = await FirebaseFirestore.instance.collection('providers').doc(widget.bookingData['providerId']).get();
+            final providerName = providerDoc.data()?['name'] ?? 'Your provider';
+            
+            await OneSignalService.notifyProviderOnTheWay(
+              customerId: widget.bookingData['customerId'],
+              providerName: providerName,
+              bookingId: widget.bookingId,
+            );
+          } catch (e) {
+            debugPrint('Error sending on the way notification: $e');
+          }
+        }
       }
       
       if (newStatus == 'Completed') {
@@ -167,7 +183,7 @@ class _ActiveServiceScreenState extends State<ActiveServiceScreen> {
             'Active Service',
             style: GoogleFonts.outfit(
               fontSize: 20,
-              fontWeight: FontWeight.bold,
+              fontWeight: FontWeight.w500,
               color: const Color(0xFF1E293B),
             ),
           ),
@@ -198,7 +214,7 @@ class _ActiveServiceScreenState extends State<ActiveServiceScreen> {
             backgroundColor: const Color(0xFFF1F5F9),
             backgroundImage: (profileUrl != null && profileUrl!.isNotEmpty) ? NetworkImage(profileUrl!) : null,
             child: (profileUrl == null || profileUrl!.isEmpty)
-                ? Text((customerName ?? 'C')[0].toUpperCase(), style: GoogleFonts.outfit(fontWeight: FontWeight.bold))
+                ? Text((customerName ?? 'C')[0].toUpperCase(), style: GoogleFonts.outfit(fontWeight: FontWeight.w500))
                 : null,
           ),
           const SizedBox(width: 16),
@@ -208,7 +224,7 @@ class _ActiveServiceScreenState extends State<ActiveServiceScreen> {
               children: [
                 Text(
                   customerName ?? 'Loading...',
-                  style: GoogleFonts.outfit(fontSize: 18, fontWeight: FontWeight.bold, color: const Color(0xFF1E293B)),
+                  style: GoogleFonts.outfit(fontSize: 18, fontWeight: FontWeight.w500, color: const Color(0xFF1E293B)),
                 ),
                 Text(
                   customerPhone ?? 'Loading phone...',
@@ -599,7 +615,7 @@ class _ActiveServiceScreenState extends State<ActiveServiceScreen> {
             elevation: 0,
             shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
           ),
-          child: Text(btnText, style: GoogleFonts.outfit(fontSize: 16, fontWeight: FontWeight.bold)),
+          child: Text(btnText, style: GoogleFonts.outfit(fontSize: 16, fontWeight: FontWeight.w500)),
         ),
       ),
     );

@@ -47,7 +47,7 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
           "Notifications",
           style: GoogleFonts.outfit(
             color: Colors.black,
-            fontWeight: FontWeight.bold,
+            fontWeight: FontWeight.w500,
             fontSize: 20,
           ),
         ),
@@ -184,7 +184,7 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
                     Text(
                       title,
                       style: GoogleFonts.outfit(
-                        fontWeight: FontWeight.bold,
+                        fontWeight: FontWeight.w500,
                         fontSize: 16,
                         color: const Color(0xFF1E293B),
                       ),

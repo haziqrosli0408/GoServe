@@ -130,6 +130,12 @@ class _ProfileScreenState extends State<ProfileScreen> {
               }
               setState(() {
                 rating = totalRating / snapshot.docs.length;
+                reviewsCount = snapshot.docs.length; // Use reviewsCount for provider too
+              });
+            } else if (mounted) {
+              setState(() {
+                rating = 0.0;
+                reviewsCount = 0;
               });
             }
           });
@@ -402,8 +408,8 @@ class _ProfileScreenState extends State<ProfileScreen> {
                                 Expanded(
                                   child: _ProfileStat(
                                     icon: Icons.star_outline_rounded,
-                                    value: rating.toStringAsFixed(1),
-                                    label: 'Rating',
+                                    value: rating > 0 ? rating.toStringAsFixed(1) : 'New',
+                                    label: '$reviewsCount Reviews',
                                     themeColor: widget.themeColor,
                                     onTap: () => Navigator.push(
                                       context,
@@ -601,9 +607,34 @@ class _ProfileScreenState extends State<ProfileScreen> {
             .where('providerId', isEqualTo: user!.uid)
             .get();
 
+        // Dynamically compute rating from fetched reviews to keep cards in sync
+        final reviewsSnapshot = await FirebaseFirestore.instance
+            .collection('reviews')
+            .where('providerId', isEqualTo: user!.uid)
+            .where('status', isEqualTo: 'Approved')
+            .get();
+
         final providerServices = snapshot.docs.map((doc) {
           final data = doc.data();
           data['id'] = doc.id;
+          
+          final serviceReviews = reviewsSnapshot.docs.where((r) {
+            final rData = r.data();
+            return rData['serviceId'] == doc.id;
+          }).toList();
+
+          if (serviceReviews.isNotEmpty) {
+            double sum = 0;
+            for (var r in serviceReviews) {
+              sum += (r.data()['rating'] as num).toDouble();
+            }
+            data['averageRating'] = sum / serviceReviews.length;
+            data['reviewCount'] = serviceReviews.length;
+          } else {
+            data['averageRating'] = 0.0;
+            data['reviewCount'] = 0;
+          }
+          
           return data;
         }).toList();
 
@@ -653,8 +684,9 @@ class _ProfileScreenState extends State<ProfileScreen> {
     String title = service['title'] ?? 'Elite Service';
     String price = service['price']?.toString() ?? '0';
     double avgRating =
-        double.tryParse(service['rating']?.toString() ?? '0') ?? 0.0;
-    String ratingText = avgRating > 0 ? avgRating.toStringAsFixed(1) : 'New';
+        (service['averageRating'] ?? 0).toDouble();
+    int reviewCount = service['reviewCount'] ?? 0;
+    String ratingText = avgRating > 0 ? "${avgRating.toStringAsFixed(1)} ($reviewCount)" : 'New';
     String providerProfileUrl = service['providerProfileUrl'] ??
         service['profileUrl'] ??
         userData?['profileUrl'] ??

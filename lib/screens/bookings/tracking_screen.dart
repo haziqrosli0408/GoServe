@@ -135,16 +135,14 @@ class _TrackingScreenState extends State<TrackingScreen> {
             _markers.clear();
             
             // 1. Destination Marker (Customer's address)
-            if (destLat != 0 && destLng != 0) {
-              _markers.add(
-                Marker(
-                  markerId: const MarkerId('destination'),
-                  position: destLatLng,
-                  icon: BitmapDescriptor.defaultMarkerWithHue(BitmapDescriptor.hueRed),
-                  infoWindow: InfoWindow(title: 'Service Location', snippet: widget.bookingData['address'] ?? ''),
-                ),
-              );
-            }
+            _markers.add(
+              Marker(
+                markerId: const MarkerId('destination'),
+                position: destLatLng,
+                icon: BitmapDescriptor.defaultMarkerWithHue(BitmapDescriptor.hueRed),
+                infoWindow: InfoWindow(title: 'Service Location', snippet: widget.bookingData['address'] ?? 'No exact coordinates'),
+              ),
+            );
 
             // 2. Provider Marker - REMOVED for stability as requested
 
@@ -182,15 +180,15 @@ class _TrackingScreenState extends State<TrackingScreen> {
               // 2. Map Camera Updates
               if (_mapController != null) {
                 // Check if distance is realistic (e.g., < 500km) before trying to fit both
-                if (currentStatus == 'On the way' && distance < 500) {
+                if (currentStatus == 'On the way' && distance > 0 && distance < 500) {
                   LatLngBounds bounds = LatLngBounds(
                     southwest: LatLng(
-                      math.min(providerLatLng.latitude, destLat),
-                      math.min(providerLatLng.longitude, destLng),
+                      math.min(providerLatLng.latitude, destLatLng.latitude),
+                      math.min(providerLatLng.longitude, destLatLng.longitude),
                     ),
                     northeast: LatLng(
-                      math.max(providerLatLng.latitude, destLat),
-                      math.max(providerLatLng.longitude, destLng),
+                      math.max(providerLatLng.latitude, destLatLng.latitude),
+                      math.max(providerLatLng.longitude, destLatLng.longitude),
                     ),
                   );
                   _mapController!.animateCamera(CameraUpdate.newLatLngBounds(bounds, 80));
@@ -728,7 +726,7 @@ class _TrackingScreenState extends State<TrackingScreen> {
               ),
               Text(
                 'RM ${totalPaid.toStringAsFixed(2)}',
-                style: GoogleFonts.outfit(fontSize: 18, fontWeight: FontWeight.bold, color: const Color(0xFFFF6B00)),
+                style: GoogleFonts.outfit(fontSize: 18, fontWeight: FontWeight.w500, color: const Color(0xFFFF6B00)),
               ),
             ],
           ),

@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
+import '../../services/onesignal_service.dart';
 
 class SettingsModal extends StatefulWidget {
   final VoidCallback onClose;
@@ -187,6 +188,7 @@ class _SettingsModalState extends State<SettingsModal>
 
   Future<void> _handleLogout() async {
     try {
+      OneSignalService.logoutUser();
       await _auth.signOut();
       if (mounted) {
         // Redirects to root ('/') which is the IntroScreen and clears history

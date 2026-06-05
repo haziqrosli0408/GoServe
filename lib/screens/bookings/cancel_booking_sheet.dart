@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'booking_cancelled_screen.dart';
+import '../../services/onesignal_service.dart';
 
 class CancelBookingSheet extends StatefulWidget {
   final String bookingId;
@@ -86,6 +87,17 @@ class _CancelBookingSheetState extends State<CancelBookingSheet> {
           'read': false,
           'createdAt': FieldValue.serverTimestamp(),
         });
+        
+        // 🔔 Send push notification to Provider
+        final userDoc = await FirebaseFirestore.instance.collection('users').doc(widget.bookingData['customerId'] ?? '').get();
+        final customerName = userDoc.exists ? (userDoc.data()?['name'] ?? 'A customer') : 'A customer';
+        
+        await OneSignalService.notifyBookingCancelled(
+          providerId: providerId,
+          customerName: customerName,
+          serviceName: widget.bookingData['serviceName'] ?? 'Service',
+          bookingId: widget.bookingId,
+        );
       }
 
       if (mounted) {

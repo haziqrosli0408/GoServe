@@ -10,6 +10,7 @@ import {
   updateDoc,
   orderBy,
   writeBatch,
+  addDoc,
 } from 'firebase/firestore';
 import {
   Users,
@@ -520,6 +521,29 @@ function BookingsPage({ bookings, users }: { bookings: Booking[], users: AppUser
   const [search, setSearch] = useState('');
   const [statusFilter, setStatusFilter] = useState('All');
   const [selectedBooking, setSelectedBooking] = useState<Booking | null>(null);
+  const [loadingAction, setLoadingAction] = useState(false);
+
+  const handleAdminCancel = async () => {
+    if (!selectedBooking) return;
+    const confirm = window.confirm("Are you sure you want to officially cancel and refund this booking? This action cannot be undone.");
+    if (!confirm) return;
+
+    setLoadingAction(true);
+    try {
+      await updateDoc(doc(db, 'bookings', selectedBooking.id), {
+        status: 'Cancelled',
+        adminCancelled: true,
+        cancelledAt: new Date(),
+        payoutStatus: 'refunded'
+      });
+      alert("Booking has been successfully cancelled and marked for refund.");
+      setSelectedBooking(null);
+    } catch (e: any) {
+      alert(`Failed to cancel booking: ${e.message}`);
+    } finally {
+      setLoadingAction(false);
+    }
+  };
 
   const filteredBookings = bookings.filter(b => {
     const seeker = users.find(u => u.id === b.customerId);
@@ -551,8 +575,55 @@ function BookingsPage({ bookings, users }: { bookings: Booking[], users: AppUser
     }
   };
 
+  const exportToCSV = () => {
+    const headers = ['Order ID', 'Service', 'Provider', 'Customer', 'Date', 'Time', 'Status', 'Price', 'Fee'];
+    const csvContent = [
+      headers.join(','),
+      ...filteredBookings.map(b => {
+        const seeker = users.find(u => u.id === b.customerId);
+        return [
+          b.orderId || '',
+          `"${b.serviceName || ''}"`,
+          `"${b.providerName || ''}"`,
+          `"${seeker?.name || ''}"`,
+          b.selectedDate || '',
+          b.selectedTime || '',
+          b.status || '',
+          b.totalPrice || '',
+          b.chargeFee || ''
+        ].join(',');
+      })
+    ].join('\n');
+
+    const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+    const link = document.createElement('a');
+    link.href = URL.createObjectURL(blob);
+    link.setAttribute('download', `goserve_bookings_${new Date().toISOString().split('T')[0]}.csv`);
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+  };
+
   return (
     <div className="space-y-6">
+      <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-6">
+        <div className="space-y-1">
+          <h1 className="text-xl font-bold text-gray-900 tracking-tight">Bookings</h1>
+          <p className="text-gray-500 text-sm max-w-lg leading-relaxed">
+            Monitor all service bookings and their current status across the platform.
+          </p>
+        </div>
+        <div className="flex items-center gap-3 w-full md:w-auto">
+          <button 
+            onClick={exportToCSV}
+            className="flex-1 md:flex-none flex items-center justify-center gap-2 px-4 py-2.5 bg-orange-500 text-white rounded-lg text-sm font-bold hover:bg-orange-600 transition-all shadow-sm shadow-orange-100"
+          >
+            <Download size={18} />
+            Export CSV
+          </button>
+        </div>
+      </div>
+
       {/* HEADER & STATS */}
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
         <div className="bg-white p-5 rounded-xl border border-gray-100 shadow-sm">
@@ -824,10 +895,20 @@ function BookingsPage({ bookings, users }: { bookings: Booking[], users: AppUser
             </div>
 
             {/* Modal Footer */}
-            <div className="p-6 border-t border-gray-100 bg-gray-50 sticky bottom-0 z-10">
+            <div className="p-6 border-t border-gray-100 bg-gray-50 sticky bottom-0 z-10 flex gap-3">
+              {['Pending', 'Confirmed', 'In Progress'].includes(selectedBooking.status || '') && (
+                <button 
+                  onClick={handleAdminCancel}
+                  disabled={loadingAction}
+                  className="flex-1 py-3 bg-white border border-red-200 rounded-xl font-black text-sm text-red-500 hover:bg-red-50 transition-all uppercase tracking-widest flex items-center justify-center gap-2"
+                >
+                  {loadingAction ? <div className="animate-spin h-4 w-4 border-2 border-red-500 border-t-transparent rounded-full" /> : <Trash2 size={16} />}
+                  Cancel & Refund
+                </button>
+              )}
               <button 
                 onClick={() => setSelectedBooking(null)}
-                className="w-full py-3 bg-white border border-gray-200 rounded-xl font-black text-sm text-gray-700 hover:bg-gray-100 transition-all uppercase tracking-widest"
+                className="flex-1 py-3 bg-slate-800 border border-slate-800 rounded-xl font-black text-sm text-white hover:bg-slate-700 transition-all uppercase tracking-widest"
               >
                 Close Details
               </button>
@@ -1000,7 +1081,11 @@ function VerificationPage({ requests }: { requests: VerificationRequest[] }) {
 function DashboardPage({ data, setActiveTab }: any) {
   const { users, services, reviews, bookings } = data;
 
-  const totalRevenue = bookings.reduce((acc: number, b: any) => acc + (Number(b.totalPrice) || 0), 0);
+  // Calculate actual Platform Revenue (GoServe's fees from Completed bookings)
+  const totalRevenue = bookings
+    .filter((b: any) => b.status === 'Completed')
+    .reduce((acc: number, b: any) => acc + (Number(b.chargeFee) || 0), 0);
+    
   const totalBookings = bookings.length;
   const pendingBookings = bookings.filter((b: any) => b.status === 'Pending').length;
   const completedServices = bookings.filter((b: any) => b.status === 'Completed').length;
@@ -2019,6 +2104,19 @@ function convertTimeTo24h(timeStr: string): string {
 }
 
 function ReviewsPage({ reviews, bookings = [], users = [] }: any) {
+  const [statusFilter, setStatusFilter] = useState('All');
+  const [sortOrder, setSortOrder] = useState<'desc' | 'asc'>('desc');
+  
+  const filteredReviews = reviews.filter((r: any) => {
+    if (statusFilter === 'All') return true;
+    const status = r.status || 'Pending';
+    return status === statusFilter;
+  }).sort((a: any, b: any) => {
+    const timeA = a.createdAt?.seconds || (a.createdAt?._seconds) || 0;
+    const timeB = b.createdAt?.seconds || (b.createdAt?._seconds) || 0;
+    return sortOrder === 'desc' ? timeB - timeA : timeA - timeB;
+  });
+
   const handleStatus = async (id: string, status: 'Approved' | 'Rejected') => {
     try {
       await updateDoc(doc(db, 'reviews', id), { status });
@@ -2051,92 +2149,139 @@ function ReviewsPage({ reviews, bookings = [], users = [] }: any) {
 
   return (
     <div className="space-y-6">
-      <div>
-        <h1 className="text-lg font-bold text-gray-900 uppercase">Review Board</h1>
-        <p className="text-gray-500 text-sm font-medium">Moderating Marketplace Veracity</p>
+      <div className="flex justify-between items-end">
+        <div>
+          <h1 className="text-lg font-bold text-gray-900 uppercase">Review Board</h1>
+          <p className="text-gray-500 text-sm font-medium">Moderating Marketplace Veracity</p>
+        </div>
+        <div className="flex items-center gap-4">
+          <select 
+            value={sortOrder} 
+            onChange={(e) => setSortOrder(e.target.value as 'desc' | 'asc')}
+            className="px-3 py-1.5 bg-white border border-gray-200 rounded-lg text-xs font-bold text-gray-700 outline-none hover:border-orange-200 focus:border-orange-500 focus:ring-2 focus:ring-orange-500/20 transition-all cursor-pointer"
+          >
+            <option value="desc">Newest First</option>
+            <option value="asc">Oldest First</option>
+          </select>
+
+          <div className="flex gap-2 bg-gray-50 p-1 rounded-lg border border-gray-100">
+            {['All', 'Pending', 'Approved', 'Rejected'].map(s => (
+              <button 
+                key={s}
+                onClick={() => setStatusFilter(s)}
+                className={`px-4 py-1.5 rounded-md text-xs font-bold transition-all ${
+                  statusFilter === s 
+                    ? 'bg-white text-orange-600 shadow-sm border border-gray-200/60' 
+                    : 'text-gray-500 hover:text-gray-700 hover:bg-gray-200/50 border border-transparent'
+                }`}
+              >
+                {s}
+              </button>
+            ))}
+          </div>
+        </div>
       </div>
 
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-        {reviews.length === 0 ? (
-          <div className="col-span-full p-20 text-center text-gray-400">No Reviews to moderate.</div>
-        ) : reviews.map((r: any) => {
-          let booking = bookings.find((b: any) => b.id === r.bookingId || b.bookingId === r.bookingId);
-          if (!booking) {
-            const candidateBookings = bookings.filter((b: any) => 
-              b.customerId === r.userId && 
-              b.providerId === r.providerId
-            );
-            
-            if (candidateBookings.length > 0) {
-              // Sort candidates descending by date/createdAt so that the most recent booking is matched first
-              candidateBookings.sort((x: any, y: any) => {
-                const secondsX = x.createdAt?.seconds || (x.createdAt?._seconds) || 0;
-                const secondsY = y.createdAt?.seconds || (y.createdAt?._seconds) || 0;
-                if (secondsX && secondsY) return secondsY - secondsX;
-                
-                const timeX = x.date ? new Date(`${x.date}T${x.time ? convertTimeTo24h(x.time) : '00:00:00'}`).getTime() : 0;
-                const timeY = y.date ? new Date(`${y.date}T${y.time ? convertTimeTo24h(y.time) : '00:00:00'}`).getTime() : 0;
-                return timeY - timeX;
-              });
+      <div className="bg-white rounded-xl border border-gray-100 shadow-sm overflow-hidden">
+        <div className="overflow-x-auto">
+          <table className="w-full text-left">
+            <thead>
+              <tr className="bg-gray-50/50 border-b border-gray-100">
+                <th className="px-6 py-4 text-[10px] font-bold text-gray-400 uppercase tracking-widest">Review</th>
+                <th className="px-6 py-4 text-[10px] font-bold text-gray-400 uppercase tracking-widest">Order & Users</th>
+                <th className="px-6 py-4 text-[10px] font-bold text-gray-400 uppercase tracking-widest text-center">Status</th>
+                <th className="px-6 py-4 text-[10px] font-bold text-gray-400 uppercase tracking-widest text-right">Actions</th>
+              </tr>
+            </thead>
+            <tbody className="divide-y divide-gray-50">
+              {filteredReviews.length === 0 ? (
+                <tr>
+                  <td colSpan={4} className="px-6 py-20 text-center text-gray-400">No reviews found for this filter.</td>
+                </tr>
+              ) : filteredReviews.map((r: any) => {
+                let booking = bookings.find((b: any) => b.id === r.bookingId || b.bookingId === r.bookingId);
+                if (!booking) {
+                  const candidateBookings = bookings.filter((b: any) => 
+                    b.customerId === r.userId && 
+                    b.providerId === r.providerId
+                  );
+                  
+                  if (candidateBookings.length > 0) {
+                    candidateBookings.sort((x: any, y: any) => {
+                      const secondsX = x.createdAt?.seconds || (x.createdAt?._seconds) || 0;
+                      const secondsY = y.createdAt?.seconds || (y.createdAt?._seconds) || 0;
+                      if (secondsX && secondsY) return secondsY - secondsX;
+                      
+                      const timeX = x.date ? new Date(`${x.date}T${x.time ? convertTimeTo24h(x.time) : '00:00:00'}`).getTime() : 0;
+                      const timeY = y.date ? new Date(`${y.date}T${y.time ? convertTimeTo24h(y.time) : '00:00:00'}`).getTime() : 0;
+                      return timeY - timeX;
+                    });
 
-              booking = candidateBookings.find((b: any) => 
-                (b.serviceName && r.serviceName && b.serviceName.toLowerCase() === r.serviceName.toLowerCase()) ||
-                (b.serviceTitle && r.serviceName && b.serviceTitle.toLowerCase() === r.serviceName.toLowerCase())
-              );
-              
-              if (!booking) {
-                booking = candidateBookings[0];
-              }
-            }
-          }
-          const orderId = r.orderId || (booking ? (booking.orderId || booking.id.substring(0, 8).toUpperCase()) : (r.bookingId ? r.bookingId.substring(0, 8).toUpperCase() : 'N/A'));
+                    booking = candidateBookings.find((b: any) => 
+                      (b.serviceName && r.serviceName && b.serviceName.toLowerCase() === r.serviceName.toLowerCase()) ||
+                      (b.serviceTitle && r.serviceName && b.serviceTitle.toLowerCase() === r.serviceName.toLowerCase())
+                    );
+                    
+                    if (!booking) {
+                      booking = candidateBookings[0];
+                    }
+                  }
+                }
+                const orderId = r.orderId || (booking ? (booking.orderId || booking.id.substring(0, 8).toUpperCase()) : (r.bookingId ? r.bookingId.substring(0, 8).toUpperCase() : 'N/A'));
+                const customer = users.find((u: any) => u.id === r.userId);
+                const customerName = customer ? customer.name : (r.customerName || r.userName || 'Customer');
+                const provider = users.find((u: any) => u.id === r.providerId);
+                const providerName = provider ? (provider.name || provider.companyName) : (booking ? booking.providerName : (r.providerName || 'Provider'));
 
-          const customer = users.find((u: any) => u.id === r.userId);
-          const customerName = customer ? customer.name : (r.customerName || r.userName || 'Customer');
-
-          const provider = users.find((u: any) => u.id === r.providerId);
-          const providerName = provider ? (provider.name || provider.companyName) : (booking ? booking.providerName : (r.providerName || 'Provider'));
-
-          return (
-            <div key={r.id} className="bg-white p-6 rounded-xl border border-gray-100 shadow-sm flex flex-col justify-between">
-              <div>
-                <div className="flex justify-between items-start mb-4">
-                  <div className="flex items-center gap-1">
-                    {[...Array(5)].map((_, i) => (
-                      <Star key={i} size={14} fill={i < r.rating ? "#f59e0b" : "#e2e8f0"} className={i < r.rating ? "text-amber-500" : "text-gray-200"} />
-                    ))}
-                  </div>
-                  <span className={`text-[10px] font-bold uppercase px-2 py-1 rounded ${r.status === 'Approved' ? 'bg-emerald-50 text-emerald-600' : r.status === 'Rejected' ? 'bg-red-50 text-red-600' : 'bg-orange-50 text-orange-600'
-                    }`}>
-                    {r.status || 'Pending'}
-                  </span>
-                </div>
-                <p className="font-bold text-gray-900">{r.serviceName || 'Service'}</p>
-                <p className="text-xs text-gray-600 mb-4 italic">"{r.comment}"</p>
-                
-                <div className="my-4 space-y-2 p-3 bg-gray-50 rounded-lg text-[11px]">
-                  <div className="flex justify-between">
-                    <span className="text-gray-400 font-semibold">Order ID:</span>
-                    <span className="text-gray-700 font-bold font-mono">{orderId}</span>
-                  </div>
-                  <div className="flex justify-between">
-                    <span className="text-gray-400 font-semibold">Customer:</span>
-                    <span className="text-gray-700 font-bold">{customerName}</span>
-                  </div>
-                  <div className="flex justify-between">
-                    <span className="text-gray-400 font-semibold">Provider:</span>
-                    <span className="text-gray-700 font-bold">{providerName}</span>
-                  </div>
-                </div>
-              </div>
-
-              <div className="flex gap-2 mt-2">
-                <button onClick={() => handleStatus(r.id, 'Approved')} className="flex-1 py-2 bg-emerald-500 text-white rounded-md font-bold text-xs">Approve</button>
-                <button onClick={() => handleStatus(r.id, 'Rejected')} className="flex-1 py-2 border border-gray-100 text-red-500 rounded-md font-bold text-xs">Reject</button>
-              </div>
-            </div>
-          );
-        })}
+                return (
+                  <tr key={r.id} className="hover:bg-gray-50/50 transition-colors">
+                    <td className="px-6 py-4">
+                      <div className="flex items-center gap-1 mb-1">
+                        {[...Array(5)].map((_, i) => (
+                          <Star key={i} size={14} fill={i < r.rating ? "#f59e0b" : "#e2e8f0"} className={i < r.rating ? "text-amber-500" : "text-gray-200"} />
+                        ))}
+                      </div>
+                      <p className="font-bold text-gray-900 text-sm mt-1">{r.serviceName || 'Service'}</p>
+                      <p className="text-xs text-gray-600 mt-1 italic max-w-sm">"{r.comment}"</p>
+                    </td>
+                    <td className="px-6 py-4">
+                      <div className="space-y-1">
+                        <p className="text-xs font-mono font-bold text-orange-600">{orderId}</p>
+                        <p className="text-xs text-gray-700"><span className="text-gray-400 font-semibold mr-1">C:</span>{customerName}</p>
+                        <p className="text-xs text-gray-700"><span className="text-gray-400 font-semibold mr-1">P:</span>{providerName}</p>
+                      </div>
+                    </td>
+                    <td className="px-6 py-4 text-center">
+                      <span className={`text-[10px] font-bold uppercase px-2 py-1 rounded inline-block ${
+                        r.status === 'Approved' ? 'bg-emerald-50 text-emerald-600' : 
+                        r.status === 'Rejected' ? 'bg-red-50 text-red-600' : 
+                        'bg-orange-50 text-orange-600'
+                      }`}>
+                        {r.status || 'Pending'}
+                      </span>
+                    </td>
+                    <td className="px-6 py-4">
+                      <div className="flex justify-end gap-2">
+                        <button 
+                          onClick={() => handleStatus(r.id, 'Approved')} 
+                          className="px-4 py-1.5 bg-emerald-50 text-emerald-600 hover:bg-emerald-500 hover:text-white rounded-md font-bold text-xs transition-colors"
+                        >
+                          Approve
+                        </button>
+                        <button 
+                          onClick={() => handleStatus(r.id, 'Rejected')} 
+                          className="px-4 py-1.5 border border-red-100 text-red-500 hover:bg-red-50 rounded-md font-bold text-xs transition-colors"
+                        >
+                          Reject
+                        </button>
+                      </div>
+                    </td>
+                  </tr>
+                );
+              })}
+            </tbody>
+          </table>
+        </div>
       </div>
     </div>
   );
@@ -2255,6 +2400,18 @@ function ServicesPage({ services, users, bookings, reviews }: { services: Servic
       });
     } catch (e) {
       console.error(e);
+    }
+  };
+
+  const handleDeleteService = async (id: string) => {
+    if (!window.confirm("Are you sure you want to permanently delete this service? This will remove it from the platform entirely.")) return;
+    try {
+      const { deleteDoc } = await import('firebase/firestore');
+      await deleteDoc(doc(db, 'services', id));
+      alert("Service deleted successfully.");
+      setSelectedService(null);
+    } catch (e: any) {
+      alert(`Failed to delete service: ${e.message}`);
     }
   };
 
@@ -2671,6 +2828,16 @@ function ServicesPage({ services, users, bookings, reviews }: { services: Servic
                     ))}
                   </div>
                 </div>
+
+                <div className="pt-8 border-t border-gray-100 mt-8">
+                  <button 
+                    onClick={() => handleDeleteService(selectedService.id)}
+                    className="w-full py-3.5 bg-red-50 text-red-500 rounded-xl font-black text-sm hover:bg-red-500 hover:text-white transition-all uppercase tracking-widest flex items-center justify-center gap-2"
+                  >
+                    <Trash2 size={16} />
+                    Permanently Delete Service
+                  </button>
+                </div>
               </div>
             </div>
           </div>
@@ -2697,11 +2864,36 @@ function PaymentsPage({ bookings, users }: { bookings: Booking[], users: AppUser
     setLoading(bookingId);
     try {
       const b = bookings.find(item => item.id === bookingId);
+      const payoutAmount = (b?.totalPrice || 0) - (b?.chargeFee || 0);
+      
       await updateDoc(doc(db, 'bookings', bookingId), {
         payoutStatus: 'transferred',
         payoutAt: new Date(),
-        payoutAmount: (b?.totalPrice || 0) - (b?.chargeFee || 0)
+        payoutAmount: payoutAmount
       });
+
+      // Email Notification Logic
+      const providerUser = users.find(u => u.id === b?.providerId);
+      const providerEmail = providerUser?.email;
+
+      if (providerEmail) {
+        const orderIdStr = b?.orderId || b?.id.substring(0, 8);
+        const subject = `Payout Processed for Booking ${orderIdStr}`;
+        const text = `Hello ${b?.providerName},\n\nWe have successfully processed the payout for your completed service (Order ID: ${orderIdStr}).\n\nAmount Transferred: RM ${payoutAmount.toLocaleString()}\nDate: ${new Date().toLocaleDateString()}\n\nThe funds should reflect in your earnings in GoServe application shortly.\n\nThank you for your excellent service!\n\nBest Regards,\nGoServe Admin Team`;
+        
+        // Write to Firebase 'mail' collection to automatically trigger the email extension in the background
+        await addDoc(collection(db, 'mail'), {
+          to: providerEmail,
+          message: {
+            subject: subject,
+            text: text
+          }
+        });
+        
+        alert('Transfer processed successfully! An email notification has been automatically sent to the provider.');
+      } else {
+        alert("Transfer processed successfully! However, the provider's email was not found to send a notification.");
+      }
     } catch (e) {
       console.error(e);
       alert('Transfer failed');
@@ -2710,12 +2902,48 @@ function PaymentsPage({ bookings, users }: { bookings: Booking[], users: AppUser
     }
   };
 
+  const exportToCSV = () => {
+    const headers = ['Order ID', 'Provider', 'Service', 'Total Price', 'Platform Fee', 'Payout Amount', 'Payout Status'];
+    const csvContent = [
+      headers.join(','),
+      ...completedBookings.map((b: any) => {
+        const payoutAmount = (b.totalPrice || 0) - (b.chargeFee || 0);
+        return [
+          b.orderId || '',
+          `"${b.providerName || ''}"`,
+          `"${b.serviceName || ''}"`,
+          b.totalPrice || '',
+          b.chargeFee || '',
+          payoutAmount,
+          b.payoutStatus || 'pending'
+        ].join(',');
+      })
+    ].join('\n');
+
+    const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+    const link = document.createElement('a');
+    link.href = URL.createObjectURL(blob);
+    link.setAttribute('download', `goserve_payments_${new Date().toISOString().split('T')[0]}.csv`);
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+  };
+
   return (
     <div className="space-y-8 animate-premium-in">
-      <div className="flex justify-between items-center">
+      <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-6">
         <div>
           <h1 className="text-xl font-bold text-slate-900">Payment Management</h1>
           <p className="text-slate-500 text-sm">Monitor escrow and manage provider payouts</p>
+        </div>
+        <div className="flex items-center gap-3 w-full md:w-auto">
+          <button 
+            onClick={exportToCSV}
+            className="flex-1 md:flex-none flex items-center justify-center gap-2 px-4 py-2.5 bg-orange-500 text-white rounded-lg text-sm font-bold hover:bg-orange-600 transition-all shadow-sm shadow-orange-100"
+          >
+            <Download size={18} />
+            Export CSV
+          </button>
         </div>
       </div>
 
@@ -2790,9 +3018,12 @@ function PaymentsPage({ bookings, users }: { bookings: Booking[], users: AppUser
                     <tr key={b.id} className="group hover:bg-slate-50/50 transition-colors">
                       <td className="px-8 py-5">
                         <p className="text-sm font-bold text-slate-900">{b.providerName}</p>
+                        <p className="text-[10px] text-slate-400 font-bold uppercase">{users.find(u => u.id === b.providerId)?.customId || 'PR-UNKNOWN'}</p>
+                      </td>
+                      <td className="px-6 py-5">
+                        <p className="text-xs font-bold text-slate-500 uppercase">{b.orderId || b.id.substring(0, 8)}</p>
                         <p className="text-[10px] text-slate-400 font-medium">Completed: {new Date(b.date).toLocaleDateString()}</p>
                       </td>
-                      <td className="px-6 py-5 text-xs font-bold text-slate-500 uppercase">{b.orderId || b.id.substring(0, 8)}</td>
                       <td className="px-6 py-5 text-sm font-bold text-slate-900">RM {b.totalPrice?.toLocaleString()}</td>
                       <td className="px-6 py-5 text-sm font-bold text-rose-500">- RM {fee.toLocaleString()}</td>
                       <td className="px-6 py-5 text-sm font-black text-emerald-600">RM {payout.toLocaleString()}</td>
@@ -2809,6 +3040,61 @@ function PaymentsPage({ bookings, users }: { bookings: Booking[], users: AppUser
                           )}
                           Process Transfer
                         </button>
+                      </td>
+                    </tr>
+                  );
+                })
+              )}
+            </tbody>
+          </table>
+        </div>
+      </div>
+
+      <div className="bg-white rounded-3xl border border-slate-100 shadow-sm overflow-hidden mt-8">
+        <div className="p-8 border-b border-slate-50 flex items-center justify-between">
+          <h3 className="font-bold text-slate-900 text-lg">Payout History</h3>
+          <span className="px-3 py-1 bg-emerald-50 text-emerald-600 rounded-full text-[10px] font-black uppercase">{completedPayouts.length} Transferred</span>
+        </div>
+        <div className="overflow-x-auto">
+          <table className="w-full text-left">
+            <thead>
+              <tr className="text-[10px] font-bold text-slate-400 uppercase tracking-widest border-b border-slate-50">
+                <th className="px-8 py-4">Provider</th>
+                <th className="px-6 py-4">Booking ID</th>
+                <th className="px-6 py-4">Total Paid</th>
+                <th className="px-6 py-4">Charge Fee</th>
+                <th className="px-6 py-4">Amount Sent</th>
+                <th className="px-8 py-4 text-right">Transfer Date</th>
+              </tr>
+            </thead>
+            <tbody className="divide-y divide-slate-50">
+              {completedPayouts.length === 0 ? (
+                <tr>
+                  <td colSpan={6} className="px-8 py-20 text-center text-slate-400 font-medium italic">No payout history found</td>
+                </tr>
+              ) : (
+                completedPayouts.sort((a: any, b: any) => {
+                  const dateA = a.payoutAt?.seconds ? a.payoutAt.seconds : 0;
+                  const dateB = b.payoutAt?.seconds ? b.payoutAt.seconds : 0;
+                  return dateB - dateA;
+                }).map((b: any) => {
+                  const fee = b.chargeFee || 0;
+                  const payout = (b.totalPrice || 0) - fee;
+                  return (
+                    <tr key={b.id} className="group hover:bg-slate-50/50 transition-colors">
+                      <td className="px-8 py-5">
+                        <p className="text-sm font-bold text-slate-900">{b.providerName}</p>
+                        <p className="text-[10px] text-slate-400 font-bold uppercase">{users.find(u => u.id === b.providerId)?.customId || 'PR-UNKNOWN'}</p>
+                      </td>
+                      <td className="px-6 py-5">
+                        <p className="text-xs font-bold text-slate-500 uppercase">{b.orderId || b.id.substring(0, 8)}</p>
+                        <p className="text-[10px] text-slate-400 font-medium">Completed: {new Date(b.date).toLocaleDateString()}</p>
+                      </td>
+                      <td className="px-6 py-5 text-sm font-bold text-slate-900">RM {b.totalPrice?.toLocaleString()}</td>
+                      <td className="px-6 py-5 text-sm font-bold text-rose-500">- RM {fee.toLocaleString()}</td>
+                      <td className="px-6 py-5 text-sm font-black text-emerald-600">RM {payout.toLocaleString()}</td>
+                      <td className="px-8 py-5 text-right text-xs font-bold text-slate-500">
+                        {b.payoutAt?.seconds ? new Date(b.payoutAt.seconds * 1000).toLocaleDateString() : 'Unknown Date'}
                       </td>
                     </tr>
                   );
@@ -2857,106 +3143,103 @@ function ReportsPage({ reports }: { reports: Report[] }) {
         </div>
       </div>
 
-      <div className="grid grid-cols-1 gap-4">
+      <div className="bg-white rounded-xl border border-gray-100 shadow-sm overflow-hidden">
         {reports.length === 0 ? (
-          <div className="py-20 bg-white rounded-xl border border-dashed border-gray-200 flex flex-col items-center justify-center text-gray-400">
+          <div className="py-20 flex flex-col items-center justify-center text-gray-400">
             <Check size={48} className="mb-4 opacity-20" />
             <p className="font-medium">No pending reports</p>
             <p className="text-xs">Great job! All customer issues are cleared.</p>
           </div>
-        ) : reports.map((rpt) => (
-              <div key={rpt.id} className="bg-white rounded-xl border border-gray-100 shadow-sm overflow-hidden p-6">
-                <div className="flex flex-col md:flex-row justify-between gap-8">
-                  <div className="flex-1 space-y-5">
-                    <div className="flex items-start justify-between">
-                      <div className="flex items-center gap-4">
-                        <div className="relative">
-                          {rpt.customerProfileUrl ? (
-                            <img src={rpt.customerProfileUrl} alt={rpt.customerName} className="w-12 h-12 rounded-full object-cover border-2 border-orange-100 shadow-sm" />
-                          ) : (
-                            <div className="w-12 h-12 bg-orange-100 text-orange-600 rounded-full flex items-center justify-center font-black text-lg">
-                              {rpt.customerName?.[0]?.toUpperCase()}
-                            </div>
-                          )}
-                          <div className="absolute -bottom-1 -right-1 w-5 h-5 bg-white rounded-full flex items-center justify-center shadow-sm">
-                            <Users size={12} className="text-orange-500" />
+        ) : (
+          <div className="overflow-x-auto">
+            <table className="w-full text-left">
+              <thead>
+                <tr className="bg-gray-50/50 border-b border-gray-100">
+                  <th className="px-6 py-4 text-[10px] font-bold text-gray-400 uppercase tracking-widest">Customer</th>
+                  <th className="px-6 py-4 text-[10px] font-bold text-gray-400 uppercase tracking-widest">Provider</th>
+                  <th className="px-6 py-4 text-[10px] font-bold text-gray-400 uppercase tracking-widest">Report Detail</th>
+                  <th className="px-6 py-4 text-[10px] font-bold text-gray-400 uppercase tracking-widest">Date</th>
+                  <th className="px-6 py-4 text-[10px] font-bold text-gray-400 uppercase tracking-widest text-center">Status</th>
+                  <th className="px-6 py-4 text-[10px] font-bold text-gray-400 uppercase tracking-widest text-right">Actions</th>
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-gray-100">
+                {reports.map((rpt) => (
+                  <tr key={rpt.id} className="hover:bg-gray-50/50 transition-colors">
+                    <td className="px-6 py-4">
+                      <div className="flex items-center gap-3">
+                        {rpt.customerProfileUrl ? (
+                          <img src={rpt.customerProfileUrl} alt={rpt.customerName} className="w-8 h-8 rounded-full object-cover border border-gray-200" />
+                        ) : (
+                          <div className="w-8 h-8 rounded-full bg-orange-100 text-orange-600 flex items-center justify-center font-bold text-xs">
+                            {rpt.customerName?.[0]?.toUpperCase()}
                           </div>
-                        </div>
+                        )}
                         <div>
-                          <h3 className="font-black text-gray-900 leading-tight text-lg">{rpt.customerName}</h3>
-                          <p className="text-[10px] text-gray-400 font-bold uppercase tracking-widest mt-0.5">ID: {rpt.customerCustomId || 'CU-PENDING'}</p>
+                          <p className="text-sm font-bold text-gray-900">{rpt.customerName}</p>
+                          <p className="text-[10px] text-gray-500 uppercase">{rpt.customerCustomId || 'CU-PENDING'}</p>
                         </div>
                       </div>
-                      <span className={`px-3 py-1.5 rounded-full text-[10px] font-black border uppercase tracking-widest ${
+                    </td>
+                    <td className="px-6 py-4">
+                      <div>
+                        <p className="text-sm font-bold text-gray-900">{rpt.providerName}</p>
+                        <p className="text-[10px] text-gray-500 uppercase">{rpt.providerCustomId || 'PR-PENDING'}</p>
+                      </div>
+                    </td>
+                    <td className="px-6 py-4">
+                      <div className="max-w-xs">
+                        <p className="text-xs font-bold text-gray-800 truncate">{rpt.serviceName}</p>
+                        <p className="text-[10px] text-gray-500 truncate italic mt-0.5">"{rpt.issue}"</p>
+                        <p className="text-[9px] font-bold text-orange-600 uppercase mt-1">Order ID: {rpt.orderId}</p>
+                      </div>
+                    </td>
+                    <td className="px-6 py-4">
+                      <div className="flex items-center gap-1.5 text-[10px] font-bold text-gray-500 uppercase">
+                        <Clock size={12} className="text-gray-400" />
+                        {rpt.timestamp?.seconds ? new Date(rpt.timestamp.seconds * 1000).toLocaleDateString() : 'Just now'}
+                      </div>
+                    </td>
+                    <td className="px-6 py-4 text-center">
+                      <span className={`inline-flex px-3 py-1 rounded-full text-[10px] font-black uppercase tracking-widest ${
                         rpt.status === 'resolved' 
-                        ? 'bg-emerald-50 text-emerald-600 border-emerald-100' 
-                        : 'bg-amber-50 text-amber-600 border-amber-100 animate-pulse'
+                        ? 'bg-emerald-50 text-emerald-600 border border-emerald-100' 
+                        : 'bg-amber-50 text-amber-600 border border-amber-100 animate-pulse'
                       }`}>
                         {rpt.status}
                       </span>
-                    </div>
-
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                      <div className="p-3 bg-gray-50 rounded-lg border border-gray-100">
-                        <p className="text-[9px] font-black text-gray-400 uppercase tracking-tighter mb-1">Booking Info</p>
-                        <p className="text-sm font-black text-gray-800">{rpt.serviceName}</p>
-                        <p className="text-[11px] font-bold text-orange-600 uppercase mt-0.5">Order ID: {rpt.orderId}</p>
+                    </td>
+                    <td className="px-6 py-4 text-right">
+                      <div className="flex items-center justify-end gap-2">
+                        {rpt.status !== 'resolved' && (
+                          <button
+                            onClick={() => handleResolve(rpt.id)}
+                            disabled={loadingId === rpt.id}
+                            className="p-2 text-emerald-600 hover:bg-emerald-50 rounded-lg transition-colors"
+                            title="Mark Resolved"
+                          >
+                            {loadingId === rpt.id ? (
+                              <div className="animate-spin h-4 w-4 border-2 border-emerald-600 border-t-transparent rounded-full" />
+                            ) : (
+                              <Check size={18} />
+                            )}
+                          </button>
+                        )}
+                        <button
+                          onClick={() => handleDelete(rpt.id)}
+                          className="p-2 text-red-500 hover:bg-red-50 rounded-lg transition-colors"
+                          title="Delete Report"
+                        >
+                          <Trash2 size={18} />
+                        </button>
                       </div>
-                      <div className="p-3 bg-gray-50 rounded-lg border border-gray-100">
-                        <p className="text-[9px] font-black text-gray-400 uppercase tracking-tighter mb-1">Assigned Provider</p>
-                        <p className="text-sm font-black text-gray-800">{rpt.providerName}</p>
-                        <p className="text-[11px] font-bold text-gray-500 uppercase mt-0.5">ID: {rpt.providerCustomId || 'PR-PENDING'}</p>
-                      </div>
-                    </div>
-
-                    <div className="bg-gray-50/50 p-5 rounded-xl border border-gray-100 relative">
-                      <div className="absolute top-4 right-4">
-                        <FileText size={16} className="text-gray-200" />
-                      </div>
-                      <p className="text-[10px] font-black text-gray-400 uppercase tracking-widest mb-3">Report Details</p>
-                      <p className="text-sm text-gray-700 leading-relaxed font-medium italic">"{rpt.issue}"</p>
-                    </div>
-
-                    <div className="flex items-center gap-6 text-[10px] font-bold text-gray-400 uppercase tracking-widest pt-2">
-                      <div className="flex items-center gap-1.5">
-                        <Clock size={14} className="text-gray-300" />
-                        {rpt.timestamp?.seconds ? new Date(rpt.timestamp.seconds * 1000).toLocaleString() : 'Just now'}
-                      </div>
-                      <div className="flex items-center gap-1.5">
-                        <Bookmark size={14} className="text-gray-300" />
-                        Report ID: {rpt.id.substring(0, 8)}
-                      </div>
-                    </div>
-                  </div>
-
-                  <div className="flex md:flex-col justify-end gap-3 shrink-0 pt-2">
-                {rpt.status !== 'resolved' && (
-                  <button
-                    onClick={() => handleResolve(rpt.id)}
-                    disabled={loadingId === rpt.id}
-                    className="px-6 py-2.5 bg-emerald-500 text-white rounded-lg font-bold text-xs shadow-lg shadow-emerald-100 hover:bg-emerald-600 transition-all flex items-center justify-center gap-2"
-                  >
-                    {loadingId === rpt.id ? (
-                      <div className="animate-spin h-4 w-4 border-2 border-white border-t-transparent rounded-full" />
-                    ) : (
-                      <>
-                        <Check size={16} />
-                        Mark Resolved
-                      </>
-                    )}
-                  </button>
-                )}
-                <button
-                  onClick={() => handleDelete(rpt.id)}
-                  className="px-6 py-2.5 bg-white border border-red-100 text-red-500 rounded-lg font-bold text-xs hover:bg-red-50 transition-all flex items-center justify-center gap-2"
-                >
-                  <Trash2 size={16} />
-                  Delete
-                </button>
-              </div>
-            </div>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
           </div>
-        ))}
+        )}
       </div>
     </div>
   );

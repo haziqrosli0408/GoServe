@@ -622,7 +622,7 @@ class _ProviderEarningsPageState extends State<ProviderEarningsPage> {
             style: GoogleFonts.outfit(
               color: Colors.white,
               fontSize: 36,
-              fontWeight: FontWeight.bold,
+              fontWeight: FontWeight.w500,
             ),
           ),
           const SizedBox(height: 16),
@@ -745,7 +745,7 @@ class _ProviderEarningsPageState extends State<ProviderEarningsPage> {
                   "- RM ${amount.toStringAsFixed(2)}",
                   style: GoogleFonts.outfit(
                     fontSize: 15,
-                    fontWeight: FontWeight.bold,
+                    fontWeight: FontWeight.w500,
                     color: Colors.orange.shade700,
                   ),
                 ),
@@ -857,7 +857,7 @@ class _ProviderEarningsPageState extends State<ProviderEarningsPage> {
                     "$prefix RM ${amount.toStringAsFixed(2)}",
                     style: GoogleFonts.outfit(
                       fontSize: 15,
-                      fontWeight: FontWeight.bold,
+                      fontWeight: FontWeight.w500,
                       color: color,
                     ),
                   ),

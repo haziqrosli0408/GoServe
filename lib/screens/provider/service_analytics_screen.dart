@@ -363,7 +363,7 @@ class _ServiceAnalyticsScreenState extends State<ServiceAnalyticsScreen> {
                 Text(
                   title,
                   style: GoogleFonts.outfit(
-                    fontWeight: FontWeight.bold,
+                    fontWeight: FontWeight.w500,
                     fontSize: 16,
                     color: const Color(0xFF1E293B),
                   ),
@@ -418,7 +418,7 @@ class _ServiceAnalyticsScreenState extends State<ServiceAnalyticsScreen> {
                   textAlign: TextAlign.center,
                   style: GoogleFonts.outfit(
                     fontSize: 13,
-                    fontWeight: FontWeight.bold,
+                    fontWeight: FontWeight.w500,
                     color: isSelected ? themeColor : const Color(0xFF64748B),
                   ),
                 ),
@@ -522,7 +522,7 @@ class _ServiceAnalyticsScreenState extends State<ServiceAnalyticsScreen> {
                 value,
                 style: GoogleFonts.outfit(
                   fontSize: 18,
-                  fontWeight: FontWeight.bold,
+                  fontWeight: FontWeight.w500,
                   color: const Color(0xFF1E293B),
                 ),
               ),
@@ -578,7 +578,7 @@ class _ServiceAnalyticsScreenState extends State<ServiceAnalyticsScreen> {
             'Bookings Trend',
             style: GoogleFonts.outfit(
               fontSize: 15,
-              fontWeight: FontWeight.bold,
+              fontWeight: FontWeight.w500,
               color: const Color(0xFF1E293B),
             ),
           ),
@@ -609,7 +609,7 @@ class _ServiceAnalyticsScreenState extends State<ServiceAnalyticsScreen> {
                         '$count',
                         style: GoogleFonts.outfit(
                           fontSize: 11,
-                          fontWeight: FontWeight.bold,
+                          fontWeight: FontWeight.w500,
                           color: count > 0 ? themeColor : Colors.grey.shade300,
                         ),
                       ),
@@ -662,7 +662,7 @@ class _ServiceAnalyticsScreenState extends State<ServiceAnalyticsScreen> {
             'Booking Status Breakdown',
             style: GoogleFonts.outfit(
               fontSize: 15,
-              fontWeight: FontWeight.bold,
+              fontWeight: FontWeight.w500,
               color: const Color(0xFF1E293B),
             ),
           ),
@@ -730,7 +730,7 @@ class _ServiceAnalyticsScreenState extends State<ServiceAnalyticsScreen> {
           '$count (${(pct * 100).toStringAsFixed(0)}%)',
           style: GoogleFonts.outfit(
             fontSize: 14,
-            fontWeight: FontWeight.bold,
+            fontWeight: FontWeight.w500,
             color: const Color(0xFF1E293B),
           ),
         ),
@@ -760,7 +760,7 @@ class _ServiceAnalyticsScreenState extends State<ServiceAnalyticsScreen> {
             'Rating Distribution',
             style: GoogleFonts.outfit(
               fontSize: 15,
-              fontWeight: FontWeight.bold,
+              fontWeight: FontWeight.w500,
               color: const Color(0xFF1E293B),
             ),
           ),
@@ -777,7 +777,7 @@ class _ServiceAnalyticsScreenState extends State<ServiceAnalyticsScreen> {
                       '$stars★',
                       style: GoogleFonts.outfit(
                         fontSize: 12,
-                        fontWeight: FontWeight.bold,
+                        fontWeight: FontWeight.w500,
                         color: const Color(0xFF64748B),
                       ),
                     ),
@@ -804,7 +804,7 @@ class _ServiceAnalyticsScreenState extends State<ServiceAnalyticsScreen> {
                       textAlign: Alignment.centerRight.x > 0 ? TextAlign.right : TextAlign.left,
                       style: GoogleFonts.outfit(
                         fontSize: 12,
-                        fontWeight: FontWeight.bold,
+                        fontWeight: FontWeight.w500,
                         color: const Color(0xFF1E293B),
                       ),
                     ),
@@ -833,7 +833,7 @@ class _ServiceAnalyticsScreenState extends State<ServiceAnalyticsScreen> {
             'Booking Insights',
             style: GoogleFonts.outfit(
               fontSize: 15,
-              fontWeight: FontWeight.bold,
+              fontWeight: FontWeight.w500,
               color: const Color(0xFF1E293B),
             ),
           ),
@@ -901,7 +901,7 @@ class _ServiceAnalyticsScreenState extends State<ServiceAnalyticsScreen> {
                 value,
                 style: GoogleFonts.outfit(
                   fontSize: 14,
-                  fontWeight: FontWeight.bold,
+                  fontWeight: FontWeight.w500,
                   color: const Color(0xFF1E293B),
                 ),
               ),

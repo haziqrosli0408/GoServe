@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import '../../services/google_auth_service.dart';
+import '../../services/onesignal_service.dart';
 import 'google_role_select_screen.dart';
 
 class LoginScreen extends StatefulWidget {
@@ -46,6 +47,8 @@ class _LoginScreenState extends State<LoginScreen> {
       if (providerDoc.exists) {
         final data = providerDoc.data();
         if (data?['role'] == 'provider') {
+          await OneSignalService.loginUser(uid);
+          if (!mounted) return;
           Navigator.pushReplacementNamed(context, "/provider");
           return;
         }
@@ -55,6 +58,8 @@ class _LoginScreenState extends State<LoginScreen> {
       if (userDoc.exists) {
         final data = userDoc.data();
         if (data?['role'] == 'customer') {
+          await OneSignalService.loginUser(uid);
+          if (!mounted) return;
           Navigator.pushReplacementNamed(context, "/customer");
           return;
         }
@@ -62,12 +67,16 @@ class _LoginScreenState extends State<LoginScreen> {
 
       // Fallback: If in providers but role field is weird
       if (providerDoc.exists) {
+        await OneSignalService.loginUser(uid);
+        if (!mounted) return;
         Navigator.pushReplacementNamed(context, "/provider");
         return;
       }
 
       // Final Check for users
       if (userDoc.exists) {
+        await OneSignalService.loginUser(uid);
+        if (!mounted) return;
         Navigator.pushReplacementNamed(context, "/customer");
         return;
       }
@@ -124,6 +133,8 @@ class _LoginScreenState extends State<LoginScreen> {
       if (providerDoc.exists) {
         final data = providerDoc.data();
         if (data?['role'] == 'provider') {
+          await OneSignalService.loginUser(uid);
+          if (!mounted) return;
           Navigator.pushReplacementNamed(context, "/provider");
           return;
         }
@@ -133,6 +144,8 @@ class _LoginScreenState extends State<LoginScreen> {
       if (userDoc.exists) {
         final data = userDoc.data();
         if (data?['role'] == 'customer') {
+          await OneSignalService.loginUser(uid);
+          if (!mounted) return;
           Navigator.pushReplacementNamed(context, "/customer");
           return;
         }
@@ -140,8 +153,12 @@ class _LoginScreenState extends State<LoginScreen> {
 
       // Fallbacks
       if (providerDoc.exists) {
+        await OneSignalService.loginUser(uid);
+        if (!mounted) return;
         Navigator.pushReplacementNamed(context, "/provider");
       } else if (userDoc.exists) {
+        await OneSignalService.loginUser(uid);
+        if (!mounted) return;
         Navigator.pushReplacementNamed(context, "/customer");
       } else {
         throw Exception("Account not registered in database");

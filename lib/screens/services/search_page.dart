@@ -170,9 +170,32 @@ class _SearchPageState extends State<SearchPage> {
   Future<void> _fetchServices() async {
     try {
       final snapshot = await FirebaseFirestore.instance.collection('services').where('isActive', isEqualTo: true).get();
+      
+      // Dynamically fetch approved reviews to ensure service cards are 100% in sync
+      final reviewsSnapshot = await FirebaseFirestore.instance.collection('reviews').where('status', isEqualTo: 'Approved').get();
+      final allReviews = reviewsSnapshot.docs.map((d) => d.data()).toList();
+
       if (mounted) {
         setState(() {
-          _allServices = snapshot.docs.map((doc) => doc.data()).toList();
+          _allServices = snapshot.docs.map((doc) {
+            final data = doc.data();
+            data['serviceId'] = doc.id;
+            
+            // Calculate dynamic rating
+            final serviceReviews = allReviews.where((r) => r['serviceId'] == doc.id).toList();
+            if (serviceReviews.isNotEmpty) {
+              double sum = 0;
+              for (var r in serviceReviews) {
+                sum += (r['rating'] as num).toDouble();
+              }
+              data['averageRating'] = sum / serviceReviews.length;
+              data['reviewCount'] = serviceReviews.length;
+            } else {
+              data['averageRating'] = 0.0;
+              data['reviewCount'] = 0;
+            }
+            return data;
+          }).toList();
           _isLoading = false;
         });
       }
@@ -224,6 +247,22 @@ class _SearchPageState extends State<SearchPage> {
           providerAddress.contains(query);
 
       if (!matchesQuery) return false;
+
+      // Base Location Filter (State level) - ONLY apply if NO specific range is set
+      if (_locationRangeKm == 0) {
+        String userAddress = _userData?['address']?.toString() ?? 'Kuala Lumpur, Malaysia';
+        String userState = userAddress;
+        if (userAddress.contains(',')) {
+          final parts = userAddress.split(',');
+          if (parts.length >= 2) {
+            userState = parts[parts.length - 2].trim();
+          }
+        }
+        if (!providerAddress.contains(userState.toLowerCase())) {
+          return false;
+        }
+      }
+
 
       // Price Filter
       double price = double.tryParse(s['price']?.toString() ?? '0') ?? 0.0;
@@ -552,10 +591,11 @@ class _SearchPageState extends State<SearchPage> {
                                   _selectedSort = 'Popular';
                                   _priceRange = const RangeValues(0, 500);
                                   _minRating = 0.0;
-                                  _pricingOption = 'By Hour';
+                                  _pricingOption = 'All';
                                   _locationRangeKm = 0;
                                   _selectedLocationText = 'All over Malaysia';
                                 });
+                                setState(() {}); // Immediately update main screen
                               },
                               style: OutlinedButton.styleFrom(
                                 side: BorderSide(color: Colors.grey.shade300),

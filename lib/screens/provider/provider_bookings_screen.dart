@@ -169,6 +169,15 @@ class _ProviderBookingsScreenState extends State<ProviderBookingsScreen> {
           }
         }).toList();
 
+        // Sort by createdAt descending
+        filteredDocs.sort((a, b) {
+          final aData = a.data() as Map<String, dynamic>;
+          final bData = b.data() as Map<String, dynamic>;
+          final aTime = (aData['createdAt'] as Timestamp?)?.toDate() ?? DateTime.fromMillisecondsSinceEpoch(0);
+          final bTime = (bData['createdAt'] as Timestamp?)?.toDate() ?? DateTime.fromMillisecondsSinceEpoch(0);
+          return bTime.compareTo(aTime);
+        });
+
         if (filteredDocs.isEmpty) {
           return Center(
             child: Text(

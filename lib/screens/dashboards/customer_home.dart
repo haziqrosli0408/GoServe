@@ -1,11 +1,13 @@
 import 'package:flutter/material.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
+import 'package:google_fonts/google_fonts.dart';
 import '../services/home_screen.dart';
 import '../bookings/bookings_screen.dart';
 import '../chat/chat_screen.dart';
 import '../profile/profile_screen.dart';
 import '../../services/presence_service.dart';
+import '../chat/ai_chat_screen.dart';
 
 class CustomerHome extends StatefulWidget {
   final int initialIndex;
@@ -58,6 +60,7 @@ class _CustomerHomeState extends State<CustomerHome>
   final List<Widget> screens = [
     const HomeScreen(),
     const BookingsScreen(),
+    const SizedBox.shrink(), // Placeholder for AI center button
     const ChatScreen(themeColor: Color(0xFFFF6B00)),
     const ProfileScreen(),
   ];
@@ -119,36 +122,80 @@ class _CustomerHomeState extends State<CustomerHome>
 
   // 🔹 CUSTOM PREMIUM BOTTOM NAV BAR
   Widget _buildBottomNav() {
-    return Container(
-      decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: const BorderRadius.only(
-          topLeft: Radius.circular(25),
-          topRight: Radius.circular(25),
-        ),
-        boxShadow: [
-          BoxShadow(
-            color: Colors.black.withValues(alpha: 0.05),
-            blurRadius: 20,
-            offset: const Offset(0, -4),
+    return SizedBox(
+      height: 65 + MediaQuery.of(context).padding.bottom,
+      child: Stack(
+        clipBehavior: Clip.none,
+        alignment: Alignment.bottomCenter,
+        children: [
+          // White Nav Bar
+          Container(
+            height: 65 + MediaQuery.of(context).padding.bottom,
+            decoration: BoxDecoration(
+              color: Colors.white,
+              borderRadius: const BorderRadius.only(
+                topLeft: Radius.circular(25),
+                topRight: Radius.circular(25),
+              ),
+              boxShadow: [
+                BoxShadow(
+                  color: Colors.black.withValues(alpha: 0.05),
+                  blurRadius: 20,
+                  offset: const Offset(0, -4),
+                ),
+              ],
+            ),
+            child: SafeArea(
+              top: false,
+              child: Padding(
+                padding: const EdgeInsets.symmetric(horizontal: 10),
+                child: Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceAround,
+                  crossAxisAlignment: CrossAxisAlignment.center,
+                  children: [
+                    _navItem(0, Icons.home_rounded, 'Home'),
+                    _navItem(1, Icons.calendar_month_rounded, 'Bookings'),
+                    const SizedBox(width: 50), // Space for floating button
+                    _navItem(3, Icons.chat_bubble_outline_rounded, 'Chat'),
+                    _navItem(4, Icons.person_rounded, 'Profile'),
+                  ],
+                ),
+              ),
+            ),
+          ),
+          // Floating Center Button
+          Positioned(
+            top: -25,
+            child: _buildCenterButton(),
           ),
         ],
       ),
-      child: SafeArea(
-        child: Container(
-          height: 65, // Explicit height for the row content
-          padding: const EdgeInsets.symmetric(horizontal: 10),
-          child: Row(
-            mainAxisAlignment: MainAxisAlignment.spaceAround,
-            crossAxisAlignment: CrossAxisAlignment.center,
-            children: [
-              _navItem(0, Icons.home_rounded, 'Home'),
-              _navItem(1, Icons.calendar_month_rounded, 'Bookings'),
-              _navItem(2, Icons.chat_rounded, 'Chat'),
-              _navItem(3, Icons.person_rounded, 'Profile'),
-            ],
-          ),
+    );
+  }
+
+  Widget _buildCenterButton() {
+    return GestureDetector(
+      onTap: () {
+        Navigator.push(
+          context,
+          MaterialPageRoute(builder: (_) => const AiChatScreen()),
+        );
+      },
+      child: Container(
+        width: 60,
+        height: 60,
+        decoration: BoxDecoration(
+          color: const Color(0xFFFF6B00),
+          shape: BoxShape.circle,
+          boxShadow: [
+            BoxShadow(
+              color: const Color(0xFFFF6B00).withValues(alpha: 0.3),
+              blurRadius: 12,
+              offset: const Offset(0, 6),
+            ),
+          ],
         ),
+        child: const Icon(Icons.auto_awesome, color: Colors.white, size: 32),
       ),
     );
   }
@@ -157,7 +204,9 @@ class _CustomerHomeState extends State<CustomerHome>
     bool isActive = _index == index;
 
     return GestureDetector(
-      onTap: () => setState(() => _index = index),
+      onTap: () {
+        setState(() => _index = index);
+      },
       behavior: HitTestBehavior.opaque,
       child: Column(
         mainAxisSize: MainAxisSize.min,
@@ -167,20 +216,20 @@ class _CustomerHomeState extends State<CustomerHome>
             children: [
               Icon(
                 icon,
-                color: isActive ? const Color(0xFFFF6B00) : Colors.grey.shade600,
-                size: 28,
+                color: isActive ? const Color(0xFFFF6B00) : Colors.grey.shade500,
+                size: 26,
               ),
-              if (index == 2) _buildChatBadge(isActive),
+              if (index == 3) _buildChatBadge(isActive),
             ],
           ),
-          const SizedBox(height: 4),
+          const SizedBox(height: 6),
           Text(
             label,
-            style: TextStyle(
-              fontSize: 10,
-              fontWeight: isActive ? FontWeight.w700 : FontWeight.w600,
-              color: isActive ? const Color(0xFFFF6B00) : Colors.grey.shade600,
-              letterSpacing: 0.5,
+            style: GoogleFonts.outfit(
+              fontSize: 11,
+              fontWeight: isActive ? FontWeight.w600 : FontWeight.w500,
+              color: isActive ? const Color(0xFFFF6B00) : Colors.grey.shade500,
+              letterSpacing: 0.2,
             ),
           ),
         ],

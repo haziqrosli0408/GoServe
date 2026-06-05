@@ -42,7 +42,7 @@ class _CategoriesScreenState extends State<CategoriesScreen> {
             'All Categories',
             style: GoogleFonts.outfit(
               fontSize: 18,
-              fontWeight: FontWeight.bold,
+              fontWeight: FontWeight.w500,
               color: const Color(0xFF1E293B),
             ),
           ),
@@ -134,7 +134,7 @@ class _CategoriesScreenState extends State<CategoriesScreen> {
                                 textAlign: TextAlign.center,
                                 style: GoogleFonts.outfit(
                                   fontSize: 11,
-                                  fontWeight: FontWeight.bold,
+                                  fontWeight: FontWeight.w500,
                                   color: const Color(0xFF1E293B),
                                   height: 1.1,
                                 ),

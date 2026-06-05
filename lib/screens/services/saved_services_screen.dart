@@ -45,14 +45,37 @@ class _SavedServicesScreenState extends State<SavedServicesScreen> {
       }
 
       // 2. Fetch those services
-      // Note: we fetch as much as we can. Firestore 'where in' limit is 10 or 30 depending on version.
-      // For now, let's fetch all services and filter locally to avoid indexing complex queries
       final snapshot = await FirebaseFirestore.instance
           .collection('services')
           .where('isActive', isEqualTo: true)
           .get();
 
-      final allServices = snapshot.docs.map((doc) => doc.data()).toList();
+      // Dynamically fetch approved reviews to calculate exact rating
+      final reviewsSnapshot = await FirebaseFirestore.instance
+          .collection('reviews')
+          .where('status', isEqualTo: 'Approved')
+          .get();
+      final allReviews = reviewsSnapshot.docs.map((d) => d.data()).toList();
+
+      final allServices = snapshot.docs.map((doc) {
+        final data = doc.data();
+        data['serviceId'] = doc.id;
+        
+        final serviceReviews = allReviews.where((r) => r['serviceId'] == doc.id).toList();
+        if (serviceReviews.isNotEmpty) {
+          double sum = 0;
+          for (var r in serviceReviews) {
+            sum += (r['rating'] as num).toDouble();
+          }
+          data['averageRating'] = sum / serviceReviews.length;
+          data['reviewCount'] = serviceReviews.length;
+        } else {
+          data['averageRating'] = 0.0;
+          data['reviewCount'] = 0;
+        }
+        return data;
+      }).toList();
+      
       final filtered = allServices.where((s) => savedIds.contains(s['serviceId'])).toList();
 
       if (mounted) {
@@ -168,7 +191,9 @@ class _SavedServicesScreenState extends State<SavedServicesScreen> {
     String name = provider['providerName'] ?? provider['name'] ?? 'Elite Pro';
     String title = provider['title'] ?? 'Elite Service';
     String price = provider['price']?.toString() ?? '85';
-    String rating = '4.9';
+    double ratingValue = (provider['averageRating'] ?? 0).toDouble();
+    int reviewsCount = provider['reviewCount'] ?? 0;
+    String rating = ratingValue == 0 ? "New" : "${ratingValue.toStringAsFixed(1)} ($reviewsCount)";
     String providerProfileUrl = provider['providerProfileUrl'] ?? provider['profileUrl'] ?? '';
     String servicePhotoUrl = provider['servicePhotoUrl'] ?? '';
 

@@ -1,10 +1,10 @@
 import 'dart:convert';
 import 'package:flutter/foundation.dart';
-import 'package:firebase_vertexai/firebase_vertexai.dart';
+import 'package:firebase_ai/firebase_ai.dart';
 
 class AiRecommendationService {
-  static final _model = FirebaseVertexAI.instance.generativeModel(
-    model: 'gemini-flash-latest',
+  static final _model = FirebaseAI.vertexAI().generativeModel(
+    model: 'gemini-2.5-flash',
   );
 
   /// Get recommendations from Gemini based on user preferences, location, and available services

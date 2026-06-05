@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'dart:math';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
+import '../../services/onesignal_service.dart';
 
 class GoogleRoleSelectScreen extends StatefulWidget {
   final User user;
@@ -68,6 +69,8 @@ class _GoogleRoleSelectScreenState extends State<GoogleRoleSelectScreen> {
         "createdAt": DateTime.now(),
         if (role == "provider") "services": [],
       });
+
+      await OneSignalService.loginUser(widget.user.uid);
 
       if (!mounted) return;
       Navigator.pushReplacementNamed(context, role == "customer" ? "/customer" : "/provider");

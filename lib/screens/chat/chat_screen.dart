@@ -109,7 +109,7 @@ class _ChatScreenState extends State<ChatScreen> {
               child: Text(
                 isSelectionMode ? '${selectedChatIds.length} Selected' : 'Messages',
                 style: GoogleFonts.outfit(
-                  fontWeight: FontWeight.bold, 
+                  fontWeight: FontWeight.w500, 
                   color: Colors.black,
                   fontSize: 20,
                 ),
@@ -480,7 +480,7 @@ class _ChatScreenState extends State<ChatScreen> {
                 ),
                 child: Text(
                   "Delete",
-                  style: GoogleFonts.outfit(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 13),
+                  style: GoogleFonts.outfit(color: Colors.white, fontWeight: FontWeight.w500, fontSize: 13),
                 ),
               ),
             ),
@@ -659,7 +659,7 @@ class _ChatListItemState extends State<ChatListItem> {
               backgroundImage: displayPhoto.isNotEmpty ? NetworkImage(displayPhoto) : null,
               child: displayPhoto.isEmpty 
                 ? Text(displayName.isNotEmpty ? displayName[0].toUpperCase() : 'U', 
-                    style: GoogleFonts.outfit(fontWeight: FontWeight.bold, color: Colors.black54)) 
+                    style: GoogleFonts.outfit(fontWeight: FontWeight.w500, color: Colors.black54)) 
                 : null,
             ),
             const SizedBox(width: 14),
@@ -681,7 +681,7 @@ class _ChatListItemState extends State<ChatListItem> {
                   Text(
                     displayName,
                     style: GoogleFonts.outfit(
-                      fontWeight: FontWeight.bold, 
+                      fontWeight: FontWeight.w500, 
                       fontSize: 16,
                       color: const Color(0xFF1E293B),
                     ),
@@ -722,7 +722,7 @@ class _ChatListItemState extends State<ChatListItem> {
                       style: const TextStyle(
                         color: Colors.white, 
                         fontSize: 10, 
-                        fontWeight: FontWeight.bold
+                        fontWeight: FontWeight.w500
                       ),
                       textAlign: TextAlign.center,
                     ),

@@ -5,7 +5,8 @@ import 'package:firebase_auth/firebase_auth.dart';
 import 'package:intl/intl.dart';
 
 class ProviderReviewsPage extends StatefulWidget {
-  const ProviderReviewsPage({super.key});
+  final String? providerId;
+  const ProviderReviewsPage({super.key, this.providerId});
 
   @override
   State<ProviderReviewsPage> createState() => _ProviderReviewsPageState();
@@ -17,6 +18,13 @@ class _ProviderReviewsPageState extends State<ProviderReviewsPage> {
   final user = FirebaseAuth.instance.currentUser;
 
   bool _isSubmitting = false;
+  
+  /// The effective provider ID to query reviews for.
+  /// Uses the explicit providerId if given, otherwise falls back to the current user.
+  String? get _effectiveProviderId => widget.providerId ?? user?.uid;
+  
+  /// Whether this is a read-only view (customer viewing someone else's reviews).
+  bool get _isReadOnly => widget.providerId != null && widget.providerId != user?.uid;
 
   void _showResponseModal(String reviewId, String customerName, String comment, String? existingResponse) {
     _responseController.text = existingResponse ?? '';
@@ -91,7 +99,7 @@ class _ProviderReviewsPageState extends State<ProviderReviewsPage> {
                               customerName.isNotEmpty ? customerName[0].toUpperCase() : 'C',
                               style: GoogleFonts.outfit(
                                 fontSize: 10,
-                                fontWeight: FontWeight.bold,
+                                fontWeight: FontWeight.w500,
                                 color: const Color(0xFF4F46E5),
                               ),
                             ),
@@ -217,12 +225,12 @@ class _ProviderReviewsPageState extends State<ProviderReviewsPage> {
         backgroundColor: Colors.white,
         elevation: 0,
       ),
-      body: user == null
+      body: _effectiveProviderId == null
           ? const Center(child: CircularProgressIndicator())
           : StreamBuilder<QuerySnapshot>(
               stream: FirebaseFirestore.instance
                   .collection('reviews')
-                  .where('providerId', isEqualTo: user!.uid)
+                  .where('providerId', isEqualTo: _effectiveProviderId)
                   .where('status', isEqualTo: 'Approved')
                   .snapshots(),
               builder: (context, snapshot) {
@@ -538,32 +546,33 @@ class _ProviderReviewsPageState extends State<ProviderReviewsPage> {
             const SizedBox(height: 12),
           ],
           
-          Row(
-            mainAxisAlignment: MainAxisAlignment.end,
-            children: [
-              TextButton(
-                onPressed: () => _showResponseModal(reviewId, customerName, comment, response),
-                style: TextButton.styleFrom(
-                  backgroundColor: response != null ? Colors.grey[100] : const Color(0xFF4F46E5),
-                  foregroundColor: response != null ? Colors.black87 : Colors.white,
-                  shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(12),
+          if (!_isReadOnly)
+            Row(
+              mainAxisAlignment: MainAxisAlignment.end,
+              children: [
+                TextButton(
+                  onPressed: () => _showResponseModal(reviewId, customerName, comment, response),
+                  style: TextButton.styleFrom(
+                    backgroundColor: response != null ? Colors.grey[100] : const Color(0xFF4F46E5),
+                    foregroundColor: response != null ? Colors.black87 : Colors.white,
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(12),
+                    ),
+                    padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 12),
+                    minimumSize: Size.zero,
+                    tapTargetSize: MaterialTapTargetSize.shrinkWrap,
                   ),
-                  padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 12),
-                  minimumSize: Size.zero,
-                  tapTargetSize: MaterialTapTargetSize.shrinkWrap,
-                ),
-                child: Text(
-                  response != null ? 'Edit Response' : 'Respond',
-                  style: GoogleFonts.outfit(
-                    fontSize: 13,
-                    color: response != null ? Colors.black87 : Colors.white,
-                    fontWeight: FontWeight.w600,
+                  child: Text(
+                    response != null ? 'Edit Response' : 'Respond',
+                    style: GoogleFonts.outfit(
+                      fontSize: 13,
+                      color: response != null ? Colors.black87 : Colors.white,
+                      fontWeight: FontWeight.w600,
+                    ),
                   ),
                 ),
-              ),
-            ],
-          ),
+              ],
+            ),
         ],
       ),
     );

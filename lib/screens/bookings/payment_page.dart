@@ -4,6 +4,7 @@ import 'package:intl/intl.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'booking_success_screen.dart';
+import '../../services/onesignal_service.dart';
 
 class PaymentPage extends StatefulWidget {
   final String providerName;
@@ -676,6 +677,31 @@ class _PaymentPageState extends State<PaymentPage> {
         'providerProfileUrl': widget.providerProfileUrl,
         'createdAt': FieldValue.serverTimestamp(),
       });
+      
+      // 🔔 Send push notifications to provider
+      try {
+        final userData = await FirebaseFirestore.instance.collection('users').doc(user.uid).get();
+        final customerName = userData.data()?['name'] ?? 'A customer';
+        
+        await OneSignalService.notifyNewBooking(
+          providerId: widget.providerId,
+          customerName: customerName,
+          serviceName: widget.serviceName,
+          date: DateFormat('yyyy-MM-dd').format(widget.selectedDate),
+          time: widget.selectedTime,
+          bookingId: orderId,
+        );
+        
+        await OneSignalService.notifyPaymentReceived(
+          providerId: widget.providerId,
+          serviceName: widget.serviceName,
+          amount: widget.totalPrice,
+        );
+      } catch (e) {
+        debugPrint('Error sending push notifications: $e');
+      }
+
+      await Future.delayed(const Duration(seconds: 2));
       
       if (mounted) {
         Navigator.pop(context); // Close loading dialog

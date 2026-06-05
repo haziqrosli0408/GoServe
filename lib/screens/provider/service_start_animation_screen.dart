@@ -120,7 +120,7 @@ class _ServiceStartAnimationScreenState extends State<ServiceStartAnimationScree
                         'Starting Service',
                         style: GoogleFonts.outfit(
                           fontSize: 28,
-                          fontWeight: FontWeight.bold,
+                          fontWeight: FontWeight.w500,
                           color: const Color(0xFF1E293B),
                           letterSpacing: 1.2,
                         ),

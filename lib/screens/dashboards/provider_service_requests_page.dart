@@ -4,6 +4,7 @@ import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:url_launcher/url_launcher.dart';
 import '../chat/single_chat_screen.dart';
+import '../../services/onesignal_service.dart';
 
 
 class ProviderServiceRequestsPage extends StatefulWidget {
@@ -23,11 +24,31 @@ class _ProviderServiceRequestsPageState extends State<ProviderServiceRequestsPag
         'status': newStatus,
         'updatedAt': FieldValue.serverTimestamp(),
       });
+      
+      if (newStatus == 'Confirmed') {
+        try {
+          final doc = await FirebaseFirestore.instance.collection('bookings').doc(bookingId).get();
+          final data = doc.data() as Map<String, dynamic>;
+          final customerId = data['customerId'];
+          
+          final providerDoc = await FirebaseFirestore.instance.collection('providers').doc(user?.uid).get();
+          final providerName = providerDoc.data()?['name'] ?? 'A provider';
+          
+          await OneSignalService.notifyBookingConfirmed(
+            customerId: customerId,
+            providerName: providerName,
+            serviceName: data['serviceName'] ?? 'Service',
+            bookingId: bookingId,
+          );
+        } catch (e) {
+          debugPrint('Error sending confirmation notification: $e');
+        }
+      }
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
             content: Text('Request $newStatus successfully'),
-            backgroundColor: newStatus == 'Accepted' ? Colors.green : Colors.red,
+            backgroundColor: newStatus == 'Confirmed' ? Colors.green : Colors.red,
           ),
         );
       }
@@ -250,7 +271,7 @@ class _ProviderServiceRequestsPageState extends State<ProviderServiceRequestsPag
                                   Expanded(
                                     child: ElevatedButton(
                                       onPressed: () {
-                                        _updateBookingStatus(doc.id, 'Accepted');
+                                        _updateBookingStatus(doc.id, 'Confirmed');
                                       },
                                       style: ElevatedButton.styleFrom(
                                         padding: const EdgeInsets.symmetric(vertical: 12),
@@ -476,7 +497,7 @@ class _ProviderServiceRequestsPageState extends State<ProviderServiceRequestsPag
                                 'RM ${totalEarnings.toStringAsFixed(2)}',
                                 style: GoogleFonts.outfit(
                                   fontSize: 22,
-                                  fontWeight: FontWeight.bold,
+                                  fontWeight: FontWeight.w500,
                                   color: const Color(0xFF4F46E5),
                                 ),
                               );

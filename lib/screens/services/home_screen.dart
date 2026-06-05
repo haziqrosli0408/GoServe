@@ -17,7 +17,6 @@ import 'package:geolocator/geolocator.dart';
 import 'package:geocoding/geocoding.dart';
 import '../../services/ai_recommendation_service.dart';
 import '../../widgets/skeleton_box.dart';
-
 class HomeScreen extends StatefulWidget {
   const HomeScreen({super.key});
 
@@ -198,9 +197,33 @@ class _HomeScreenState extends State<HomeScreen> {
   Future<void> _fetchServices() async {
     try {
       final snapshot = await FirebaseFirestore.instance.collection('services').where('isActive', isEqualTo: true).get();
+      
+      // Dynamically fetch approved reviews to ensure service cards are 100% in sync
+      final reviewsSnapshot = await FirebaseFirestore.instance.collection('reviews').where('status', isEqualTo: 'Approved').get();
+      final allReviews = reviewsSnapshot.docs.map((d) => d.data()).toList();
+
       if (mounted) {
         setState(() {
-          _servicesList = snapshot.docs.map((doc) => doc.data()).toList();
+          _servicesList = snapshot.docs.map((doc) {
+            final data = doc.data();
+            data['serviceId'] = doc.id;
+            
+            // Calculate dynamic rating
+            final serviceReviews = allReviews.where((r) => r['serviceId'] == doc.id).toList();
+            if (serviceReviews.isNotEmpty) {
+              double sum = 0;
+              for (var r in serviceReviews) {
+                sum += (r['rating'] as num).toDouble();
+              }
+              data['averageRating'] = sum / serviceReviews.length;
+              data['reviewCount'] = serviceReviews.length;
+            } else {
+              data['averageRating'] = 0.0;
+              data['reviewCount'] = 0;
+            }
+
+            return data;
+          }).toList();
         });
       }
     } catch (e) {
@@ -277,6 +300,7 @@ class _HomeScreenState extends State<HomeScreen> {
   Widget build(BuildContext context) {
     return Scaffold(
       backgroundColor: Colors.white,
+
       body: _isLoadingServices 
           ? _buildSkeletonLoader()
           : SingleChildScrollView(
@@ -384,7 +408,7 @@ class _HomeScreenState extends State<HomeScreen> {
                       // User Profile Picture
                       GestureDetector(
                         onTap: () {
-                          CustomerHome.setIndex(context, 3);
+                          CustomerHome.setIndex(context, 4);
                         },
                         child: Container(
                           decoration: BoxDecoration(
@@ -407,7 +431,7 @@ class _HomeScreenState extends State<HomeScreen> {
                                   firstName.isNotEmpty ? firstName[0].toUpperCase() : 'U',
                                   style: GoogleFonts.outfit(
                                     color: const Color(0xFFFF6B00),
-                                    fontWeight: FontWeight.bold,
+                                    fontWeight: FontWeight.w500,
                                   ),
                                 ) 
                               : null,
@@ -702,7 +726,7 @@ class _HomeScreenState extends State<HomeScreen> {
                         overflow: TextOverflow.ellipsis,
                         style: GoogleFonts.outfit(
                           fontSize: 14,
-                          fontWeight: FontWeight.bold,
+                          fontWeight: FontWeight.w500,
                           color: textColor,
                           height: 1.1,
                         ),
@@ -848,7 +872,7 @@ class _HomeScreenState extends State<HomeScreen> {
                     textAlign: TextAlign.center,
                     style: GoogleFonts.outfit(
                       fontSize: 10, // Reduced from 11
-                      fontWeight: FontWeight.bold,
+                      fontWeight: FontWeight.w500,
                       color: const Color(0xFF1E293B),
                       height: 1.1,
                     ),
@@ -1166,26 +1190,26 @@ class _HomeScreenState extends State<HomeScreen> {
                   borderRadius: BorderRadius.circular(16),
                   child: Image.network(
                     servicePhotoUrl.isNotEmpty ? servicePhotoUrl : 'https://images.unsplash.com/photo-1581578731548-c64695cc6952?q=80&w=800&auto=format&fit=crop',
-                    width: 140, 
-                    height: 140, 
+                    width: 120, 
+                    height: 120, 
                     fit: BoxFit.cover,
                     loadingBuilder: (context, child, loadingProgress) {
                       if (loadingProgress == null) return child;
-                      return const SkeletonBox(width: 140, height: 140, borderRadiusValue: 16);
+                      return const SkeletonBox(width: 120, height: 120, borderRadiusValue: 16);
                     },
                     errorBuilder: (_, __, ___) => Image.network(
                       'https://images.unsplash.com/photo-1581578731548-c64695cc6952?q=80&w=800&auto=format&fit=crop', 
-                      width: 140, 
-                      height: 140, 
+                      width: 120, 
+                      height: 120, 
                       fit: BoxFit.cover
                     ),
                   ),
                 ),
-                const SizedBox(width: 18), // Increased from 16
+                const SizedBox(width: 14),
                 // Details
                 Expanded(
                   child: SizedBox(
-                    height: 140, // Increased from 120
+                    height: 120,
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
@@ -1198,7 +1222,7 @@ class _HomeScreenState extends State<HomeScreen> {
                             child: Text(
                               title,
                               style: GoogleFonts.outfit(
-                                fontSize: 17, // Increased from 16
+                                fontSize: 15,
                                 fontWeight: FontWeight.w600,
                                 color: const Color(0xFF1E293B),
                               ),
@@ -1212,24 +1236,24 @@ class _HomeScreenState extends State<HomeScreen> {
                               padding: const EdgeInsets.only(top: 2),
                               child: Icon(
                                 _savedServiceIds.contains(serviceId) ? Icons.bookmark : Icons.bookmark_border,
-                                size: 22, // Increased from 20
+                                size: 20,
                                 color: _savedServiceIds.contains(serviceId) ? const Color(0xFFFF6B00) : Colors.grey.shade400,
                               ),
                             ),
                           ),
                         ],
                       ),
-                      const SizedBox(height: 4), // Increased from 2
+                      const SizedBox(height: 2),
                       
                       // Rating
                       Row(
                         children: [
-                          const Icon(Icons.star, color: Color(0xFFFFC107), size: 15), // Increased from 14
+                          const Icon(Icons.star, color: Color(0xFFFFC107), size: 14),
                           const SizedBox(width: 4),
                           Text(
                             ratingLabel,
                             style: GoogleFonts.outfit(
-                              fontSize: 13, // Increased from 12
+                              fontSize: 12,
                               color: Colors.grey.shade600,
                             ),
                             maxLines: 1,
@@ -1246,7 +1270,7 @@ class _HomeScreenState extends State<HomeScreen> {
                             TextSpan(
                               text: 'From ',
                               style: GoogleFonts.outfit(
-                                fontSize: 13,
+                                fontSize: 12,
                                 fontWeight: FontWeight.w500,
                                 color: Colors.grey.shade500,
                               ),
@@ -1254,7 +1278,7 @@ class _HomeScreenState extends State<HomeScreen> {
                             TextSpan(
                               text: 'RM$price',
                               style: GoogleFonts.outfit(
-                                fontSize: 17, // Increased from 16
+                                fontSize: 16,
                                 fontWeight: FontWeight.w600,
                                 color: const Color(0xFFFF6B00),
                               ),
@@ -1263,7 +1287,7 @@ class _HomeScreenState extends State<HomeScreen> {
                               TextSpan(
                                 text: '/hr',
                                 style: GoogleFonts.outfit(
-                                  fontSize: 13,
+                                  fontSize: 12,
                                   fontWeight: FontWeight.w500,
                                   color: Colors.grey.shade400,
                                 ),
@@ -1271,26 +1295,26 @@ class _HomeScreenState extends State<HomeScreen> {
                           ],
                         ),
                       ),
-                      const SizedBox(height: 10), // Increased from 8
+                      const SizedBox(height: 8),
 
                       // Provider Profile Row
                       Row(
                         children: [
                           CircleAvatar(
-                            radius: 11, // Increased from 9
+                            radius: 9,
                             backgroundColor: const Color(0xFFF1F5F9),
                             backgroundImage: providerProfileUrl.isNotEmpty ? NetworkImage(providerProfileUrl) : null,
                             child: providerProfileUrl.isEmpty 
                               ? Text(providerName.isNotEmpty ? providerName[0].toUpperCase() : 'P', style: GoogleFonts.outfit(color: const Color(0xFF1F212C), fontSize: 10, fontWeight: FontWeight.w600)) 
                               : null,
                           ),
-                          const SizedBox(width: 8), // Increased from 6
+                          const SizedBox(width: 6),
                           Expanded(
                             child: Text(
                               providerName,
                               style: GoogleFonts.outfit(
-                                fontSize: 13, // Increased from 12
-                                fontWeight: FontWeight.w500, // Increased from normal
+                                fontSize: 12,
+                                fontWeight: FontWeight.w500,
                                 color: const Color(0xFF64748B),
                               ),
                               maxLines: 1,

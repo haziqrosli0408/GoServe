@@ -289,7 +289,7 @@ class _AddCardScreenState extends State<AddCardScreen> {
               color: Colors.white,
               fontSize: 22,
               letterSpacing: 2,
-              fontWeight: FontWeight.bold,
+              fontWeight: FontWeight.w500,
             ),
           ),
           const SizedBox(height: 20),

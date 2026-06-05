@@ -209,7 +209,7 @@ class _EditServiceScreenState extends State<EditServiceScreen> {
             onPressed: () => Navigator.pop(ctx, true),
             child: Text('Delete',
                 style: GoogleFonts.outfit(
-                    color: Colors.red, fontWeight: FontWeight.bold)),
+                    color: Colors.red, fontWeight: FontWeight.w500)),
           ),
         ],
       ),

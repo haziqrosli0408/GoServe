@@ -110,7 +110,7 @@ class _VerificationScreenState extends State<VerificationScreen> {
               const SizedBox(height: 20),
               Text(
                 'Submission Sent!',
-                style: GoogleFonts.outfit(fontSize: 20, fontWeight: FontWeight.bold),
+                style: GoogleFonts.outfit(fontSize: 20, fontWeight: FontWeight.w500),
               ),
               const SizedBox(height: 10),
               Text(
@@ -206,7 +206,7 @@ class _VerificationScreenState extends State<VerificationScreen> {
               n.toString(),
               style: GoogleFonts.outfit(
                 color: active ? Colors.white : Colors.grey[400],
-                fontWeight: FontWeight.bold,
+                fontWeight: FontWeight.w500,
               ),
             ),
           ),
@@ -222,7 +222,7 @@ class _VerificationScreenState extends State<VerificationScreen> {
       children: [
         Text(
           'Take a Selfie',
-          style: GoogleFonts.outfit(fontSize: 24, fontWeight: FontWeight.bold),
+          style: GoogleFonts.outfit(fontSize: 24, fontWeight: FontWeight.w500),
         ),
         const SizedBox(height: 10),
         Text(
@@ -262,7 +262,7 @@ class _VerificationScreenState extends State<VerificationScreen> {
       children: [
         Text(
           'IC: Front Side',
-          style: GoogleFonts.outfit(fontSize: 24, fontWeight: FontWeight.bold),
+          style: GoogleFonts.outfit(fontSize: 24, fontWeight: FontWeight.w500),
         ),
         const SizedBox(height: 10),
         Text(
@@ -309,7 +309,7 @@ class _VerificationScreenState extends State<VerificationScreen> {
       children: [
         Text(
           'IC: Back Side',
-          style: GoogleFonts.outfit(fontSize: 24, fontWeight: FontWeight.bold),
+          style: GoogleFonts.outfit(fontSize: 24, fontWeight: FontWeight.w500),
         ),
         const SizedBox(height: 10),
         Text(

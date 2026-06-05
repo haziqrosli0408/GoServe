@@ -5,6 +5,9 @@ import 'package:geolocator/geolocator.dart';
 import 'package:geocoding/geocoding.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
+import 'package:flutter/foundation.dart' show kIsWeb;
+import 'dart:convert';
+import 'package:http/http.dart' as http;
 import 'payment_page.dart';
 
 class BookingPage extends StatefulWidget {
@@ -365,9 +368,11 @@ class _BookingPageState extends State<BookingPage> {
           ),
           const SizedBox(height: 24),
           if (hasProviderAvailability) ...[
-            if (morningSlots.isNotEmpty) ...[_timeSection('MORNING', Icons.wb_sunny_outlined, morningSlots), const SizedBox(height: 12)],
-            if (afternoonSlots.isNotEmpty) ...[_timeSection('AFTERNOON', Icons.sunny, afternoonSlots), const SizedBox(height: 12)],
-            if (eveningSlots.isNotEmpty) _timeSection('EVENING', Icons.nightlight_round, eveningSlots),
+            _timeSection('MORNING', Icons.wb_sunny_outlined, ['08:00 AM', '09:30 AM', '11:00 AM'], availableSlots: morningSlots),
+            const SizedBox(height: 12),
+            _timeSection('AFTERNOON', Icons.sunny, ['01:30 PM', '03:00 PM', '04:30 PM'], availableSlots: afternoonSlots),
+            const SizedBox(height: 12),
+            _timeSection('EVENING', Icons.nightlight_round, ['06:00 PM', '07:30 PM', '09:00 PM'], availableSlots: eveningSlots),
           ] else ...[
             // Fallback: show default slots if provider hasn't set availability
             _timeSection('MORNING', Icons.wb_sunny_outlined, ['08:00 AM', '09:30 AM', '11:00 AM']),
@@ -433,29 +438,39 @@ class _BookingPageState extends State<BookingPage> {
     return GridView.count(shrinkWrap: true, physics: const NeverScrollableScrollPhysics(), crossAxisCount: 7, childAspectRatio: 1.4, children: gridItems);
   }
 
-  Widget _timeSection(String title, IconData icon, List<String> slots) {
+  Widget _timeSection(String title, IconData icon, List<String> allSlots, {List<String>? availableSlots}) {
     return Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
         Row(children: [Icon(icon, size: 16, color: primaryGreen), const SizedBox(width: 8), Text(title, style: GoogleFonts.outfit(fontSize: 10, fontWeight: FontWeight.w600, color: Colors.grey.shade600, letterSpacing: 0.5))]),
         const SizedBox(height: 10),
-        Row(mainAxisAlignment: MainAxisAlignment.spaceBetween, children: slots.map((s) => _timeSlot(s)).toList()),
+        Row(
+          mainAxisAlignment: MainAxisAlignment.spaceBetween, 
+          children: allSlots.map((s) {
+            bool isAvailable = availableSlots == null || availableSlots.contains(s);
+            return _timeSlot(s, isAvailable: isAvailable);
+          }).toList()
+        ),
     ]);
   }
 
-  Widget _timeSlot(String time) {
+  Widget _timeSlot(String time, {bool isAvailable = true}) {
     bool isSelected = selectedTime == time;
     return GestureDetector(
-      onTap: () => setState(() => selectedTime = time),
+      onTap: isAvailable ? () => setState(() => selectedTime = time) : null,
       child: Container(
         width: 100, height: 50,
         decoration: BoxDecoration(
-          color: isSelected ? primaryGreen : Colors.white, 
+          color: isSelected ? primaryGreen : (isAvailable ? Colors.white : Colors.grey.shade100), 
           borderRadius: BorderRadius.circular(8), 
-          border: isSelected ? null : Border.all(color: Colors.black.withValues(alpha: 0.1), width: 1.5),
+          border: isSelected ? null : Border.all(color: Colors.black.withValues(alpha: isAvailable ? 0.1 : 0.05), width: 1.5),
           boxShadow: [
-            if (!isSelected) BoxShadow(color: Colors.black.withValues(alpha: 0.01), blurRadius: 4, offset: const Offset(0, 2))
+            if (!isSelected && isAvailable) BoxShadow(color: Colors.black.withValues(alpha: 0.01), blurRadius: 4, offset: const Offset(0, 2))
           ],
         ),
-        child: Center(child: Text(time, style: GoogleFonts.outfit(fontSize: 14, fontWeight: FontWeight.w600, color: isSelected ? Colors.white : Colors.black87))),
+        child: Center(child: Text(time, style: GoogleFonts.outfit(
+          fontSize: 14, 
+          fontWeight: FontWeight.w600, 
+          color: isSelected ? Colors.white : (isAvailable ? Colors.black87 : Colors.grey.shade400)
+        ))),
       ),
     );
   }
@@ -550,42 +565,78 @@ class _BookingPageState extends State<BookingPage> {
       if (permission == LocationPermission.deniedForever) throw Exception('Location permissions are permanently denied.');
 
       Position position = await Geolocator.getCurrentPosition(locationSettings: const LocationSettings(accuracy: LocationAccuracy.high));
-      List<Placemark> placemarks = await placemarkFromCoordinates(position.latitude, position.longitude);
       
-      if (placemarks.isNotEmpty) {
-        Placemark place = placemarks[0];
-        
-        // Debug exactly what we're getting back
-        debugPrint("📍 Placemark details: ${place.toJson()}");
+      setState(() {
+        latitude = position.latitude;
+        longitude = position.longitude;
+      });
 
-        setState(() {
-          latitude = position.latitude;
-          longitude = position.longitude;
-          
-          unitNoController.text = place.subThoroughfare ?? '';
-          
-          // Try to find the most specific street information available
-          String street = place.street ?? '';
-          String thoroughfare = place.thoroughfare ?? '';
-          String subLocality = place.subLocality ?? '';
-          
-          if (thoroughfare.isNotEmpty) {
-            streetNameController.text = thoroughfare;
-          } else if (street.isNotEmpty && !street.contains('+')) {
-            // Some results return '+ Plus Codes', we want to avoid those
-            streetNameController.text = street;
-          } else if (subLocality.isNotEmpty) {
-            streetNameController.text = subLocality;
+      try {
+        if (kIsWeb) {
+          final apiKey = 'AIzaSyAbuq1D2c5ZgL5jGjQSCp3tFWx2S7aBl60';
+          final url = Uri.parse('https://maps.googleapis.com/maps/api/geocode/json?latlng=${position.latitude},${position.longitude}&key=$apiKey');
+          final response = await http.get(url);
+          if (response.statusCode == 200) {
+            final data = json.decode(response.body);
+            if (data['status'] == 'OK' && data['results'] != null && data['results'].isNotEmpty) {
+              final components = data['results'][0]['address_components'] as List;
+              String unit = '';
+              String route = '';
+              String sublocal = '';
+              String zip = '';
+              String city = '';
+              for (var c in components) {
+                List types = c['types'];
+                if (types.contains('street_number') || types.contains('premise')) unit = c['long_name'];
+                if (types.contains('route')) route = c['long_name'];
+                if (types.contains('sublocality')) sublocal = c['long_name'];
+                if (types.contains('postal_code')) zip = c['long_name'];
+                if (types.contains('locality') || types.contains('administrative_area_level_2')) {
+                  if (city.isEmpty) city = c['long_name'];
+                }
+              }
+              setState(() {
+                unitNoController.text = unit;
+                streetNameController.text = route.isNotEmpty ? route : sublocal;
+                postcodeController.text = zip;
+                cityController.text = city;
+              });
+            } else {
+              throw Exception("Web Reverse Geocoding API returned no results.");
+            }
           } else {
-            streetNameController.text = place.name ?? '';
+            throw Exception("Web Reverse Geocoding HTTP Error ${response.statusCode}");
           }
-
-          postcodeController.text = place.postalCode ?? '';
-          cityController.text = place.locality ?? place.subAdministrativeArea ?? '';
-        });
+        } else {
+          List<Placemark> placemarks = await placemarkFromCoordinates(position.latitude, position.longitude);
+          if (placemarks.isNotEmpty) {
+            Placemark place = placemarks[0];
+            debugPrint("📍 Placemark details: ${place.toJson()}");
+            setState(() {
+              unitNoController.text = place.subThoroughfare ?? '';
+              String street = place.street ?? '';
+              String thoroughfare = place.thoroughfare ?? '';
+              String subLocality = place.subLocality ?? '';
+              if (thoroughfare.isNotEmpty) {
+                streetNameController.text = thoroughfare;
+              } else if (street.isNotEmpty && !street.contains('+')) {
+                streetNameController.text = street;
+              } else if (subLocality.isNotEmpty) {
+                streetNameController.text = subLocality;
+              } else {
+                streetNameController.text = place.name ?? '';
+              }
+              postcodeController.text = place.postalCode ?? '';
+              cityController.text = place.locality ?? place.subAdministrativeArea ?? '';
+            });
+          }
+        }
+      } catch (e) {
+        debugPrint("Reverse geocoding failed: $e");
+        if (mounted) ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Location found, but address details must be entered manually.')));
       }
     } catch (e) {
-      if (mounted) ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(e.toString())));
+      if (mounted) ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Failed to get location: $e')));
     } finally {
       if (mounted) setState(() => isGettingLocation = false);
     }
@@ -899,7 +950,7 @@ class _BookingPageState extends State<BookingPage> {
     );
   }
 
-  void _showBookingSummary() {
+  void _showBookingSummary() async {
     final unitNo = unitNoController.text;
     final streetName = streetNameController.text;
     final postcode = postcodeController.text;
@@ -924,14 +975,40 @@ class _BookingPageState extends State<BookingPage> {
     // Manual Geocoding Fallback if they didn't use GPS button
     if (latitude == null || longitude == null) {
       final fullAddress = '$streetName, $postcode $city';
-      locationFromAddress(fullAddress).then((locs) {
-        if (locs.isNotEmpty) {
-          latitude = locs.first.latitude;
-          longitude = locs.first.longitude;
+      if (kIsWeb) {
+        try {
+          final apiKey = 'AIzaSyAbuq1D2c5ZgL5jGjQSCp3tFWx2S7aBl60';
+          final url = Uri.parse('https://maps.googleapis.com/maps/api/geocode/json?address=${Uri.encodeComponent(fullAddress)}&key=$apiKey');
+          final response = await http.get(url);
+          if (response.statusCode == 200) {
+            final data = json.decode(response.body);
+            if (data['status'] == 'OK' && data['results'] != null && data['results'].isNotEmpty) {
+              final location = data['results'][0]['geometry']['location'];
+              latitude = location['lat'];
+              longitude = location['lng'];
+            } else {
+              debugPrint("Web Geocoding API returned no results: ${data['status']}");
+            }
+          } else {
+            debugPrint("Web Geocoding API failed with status ${response.statusCode}");
+          }
+        } catch (e) {
+          debugPrint("Web Geocoding API exception: $e");
         }
-        return [];
-      });
+      } else {
+        try {
+          final locs = await locationFromAddress(fullAddress);
+          if (locs.isNotEmpty) {
+            latitude = locs.first.latitude;
+            longitude = locs.first.longitude;
+          }
+        } catch (e) {
+          debugPrint("Native Geocoding failed: $e");
+        }
+      }
     }
+
+    if (!mounted) return;
 
     showModalBottomSheet(
       context: context,

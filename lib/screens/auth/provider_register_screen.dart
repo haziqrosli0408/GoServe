@@ -13,6 +13,7 @@ import 'package:gooservee/utils/categories_data.dart';
 import 'package:flutter/foundation.dart';
 import 'package:http/http.dart' as http;
 import 'dart:convert';
+import '../../services/onesignal_service.dart';
 
 class ProviderRegisterScreen extends StatefulWidget {
   const ProviderRegisterScreen({super.key});
@@ -88,7 +89,10 @@ class _ProviderRegisterScreenState extends State<ProviderRegisterScreen> {
   final emailController = TextEditingController();
   final passwordController = TextEditingController();
   final confirmController = TextEditingController();
-  final addressController = TextEditingController();
+  final unitNoController = TextEditingController();
+  final streetNameController = TextEditingController();
+  final postcodeController = TextEditingController();
+  final cityController = TextEditingController();
   final accountNumberController = TextEditingController();
   
   String? selectedBank;
@@ -234,15 +238,28 @@ class _ProviderRegisterScreenState extends State<ProviderRegisterScreen> {
         ),
       );
       
-      String? address;
-
       if (!kIsWeb) {
         try {
           List<Placemark> placemarks = await placemarkFromCoordinates(position.latitude, position.longitude);
           if (placemarks.isNotEmpty) {
             Placemark place = placemarks[0];
-            address = "${place.street != null && place.street!.isNotEmpty ? '${place.street}, ' : ''}${place.locality ?? ''}, ${place.administrativeArea ?? ''}, ${place.country ?? ''}";
-            address = address.replaceAll(RegExp(r'^, |, $'), '');
+            setState(() {
+              unitNoController.text = place.subThoroughfare ?? '';
+              String street = place.street ?? '';
+              String thoroughfare = place.thoroughfare ?? '';
+              String subLocality = place.subLocality ?? '';
+              if (thoroughfare.isNotEmpty) {
+                streetNameController.text = thoroughfare;
+              } else if (street.isNotEmpty && !street.contains('+')) {
+                streetNameController.text = street;
+              } else if (subLocality.isNotEmpty) {
+                streetNameController.text = subLocality;
+              } else {
+                streetNameController.text = place.name ?? '';
+              }
+              postcodeController.text = place.postalCode ?? '';
+              cityController.text = place.locality ?? place.subAdministrativeArea ?? '';
+            });
           }
         } catch (e) {
           debugPrint("Geocoding failed: $e");
@@ -257,18 +274,33 @@ class _ProviderRegisterScreenState extends State<ProviderRegisterScreen> {
           if (response.statusCode == 200) {
             final data = json.decode(response.body);
             if (data['status'] == 'OK' && data['results'].isNotEmpty) {
-              address = data['results'][0]['formatted_address'];
+              final components = data['results'][0]['address_components'] as List;
+              String unit = '';
+              String route = '';
+              String sublocal = '';
+              String zip = '';
+              String city = '';
+              for (var c in components) {
+                List types = c['types'];
+                if (types.contains('street_number') || types.contains('premise')) unit = c['long_name'];
+                if (types.contains('route')) route = c['long_name'];
+                if (types.contains('sublocality')) sublocal = c['long_name'];
+                if (types.contains('postal_code')) zip = c['long_name'];
+                if (types.contains('locality') || types.contains('administrative_area_level_2')) {
+                  if (city.isEmpty) city = c['long_name'];
+                }
+              }
+              setState(() {
+                unitNoController.text = unit;
+                streetNameController.text = route.isNotEmpty ? route : sublocal;
+                postcodeController.text = zip;
+                cityController.text = city;
+              });
             }
           }
         } catch (e) {
           debugPrint("Web Geocoding failed: $e");
         }
-      }
-      
-      if (address != null && address.isNotEmpty) {
-        addressController.text = address;
-      } else {
-        addressController.text = "${position.latitude}, ${position.longitude}";
       }
       
       setState(() {
@@ -356,7 +388,7 @@ class _ProviderRegisterScreenState extends State<ProviderRegisterScreen> {
         "name": nameController.text.trim(),
         "email": emailController.text.trim(),
         "phone": phoneController.text.trim(),
-        "address": addressController.text.trim(),
+        "address": [unitNoController.text.trim(), streetNameController.text.trim(), postcodeController.text.trim(), cityController.text.trim()].where((e) => e.isNotEmpty).join(", "),
         "profileUrl": _profileImageUrl ?? "",
         "bankName": selectedBank,
         "accountNumber": accountNumberController.text.trim(),
@@ -368,6 +400,7 @@ class _ProviderRegisterScreenState extends State<ProviderRegisterScreen> {
         "createdAt": DateTime.now(),
       });
 
+      await OneSignalService.loginUser(uid);
       if (!mounted) return;
 
       if (mounted) {
@@ -403,7 +436,10 @@ class _ProviderRegisterScreenState extends State<ProviderRegisterScreen> {
     emailController.dispose();
     passwordController.dispose();
     confirmController.dispose();
-    addressController.dispose();
+    unitNoController.dispose();
+    streetNameController.dispose();
+    postcodeController.dispose();
+    cityController.dispose();
     accountNumberController.dispose();
     super.dispose();
   }
@@ -900,13 +936,57 @@ class _ProviderRegisterScreenState extends State<ProviderRegisterScreen> {
               ),
             ),
             const SizedBox(height: 24),
-            _inputField(
-              controller: addressController,
-              label: "BUSINESS ADDRESS",
-              hint: "Search for your location...",
-              icon: Icons.location_on,
-              validator: (v) => v!.isEmpty ? "Address is required" : null,
+            Row(
+              children: [
+                Expanded(child: Divider(color: Colors.grey.shade300)),
+                const Padding(
+                  padding: EdgeInsets.symmetric(horizontal: 16),
+                  child: Text("or manually enter", style: TextStyle(color: Colors.black45, fontSize: 13, fontWeight: FontWeight.w400)),
+                ),
+                Expanded(child: Divider(color: Colors.grey.shade300)),
+              ],
             ),
+            const SizedBox(height: 24),
+            const SizedBox(height: 24),
+            _inputField(
+              controller: unitNoController,
+              label: "UNIT / HOUSE NO.",
+              hint: "e.g. 4B",
+              validator: (v) => null,
+            ),
+            const SizedBox(height: 20),
+            _inputField(
+              controller: streetNameController,
+              label: "STREET NAME",
+              hint: "e.g. Jalan Sultan Ismail",
+              validator: (v) => v!.isEmpty ? "Street is required" : null,
+            ),
+            const SizedBox(height: 20),
+            Row(
+              children: [
+                Expanded(
+                  flex: 2,
+                  child: _inputField(
+                    controller: postcodeController,
+                    label: "POSTCODE",
+                    hint: "e.g. 50450",
+                    keyboard: TextInputType.number,
+                    validator: (v) => v!.isEmpty ? "Required" : null,
+                  ),
+                ),
+                const SizedBox(width: 16),
+                Expanded(
+                  flex: 3,
+                  child: _inputField(
+                    controller: cityController,
+                    label: "CITY",
+                    hint: "e.g. Kuala Lumpur",
+                    validator: (v) => v!.isEmpty ? "Required" : null,
+                  ),
+                ),
+              ],
+            ),
+            const SizedBox(height: 80),
           ],
         ),
       ),

@@ -3,6 +3,7 @@ import 'package:google_fonts/google_fonts.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:intl/intl.dart';
+import '../../services/onesignal_service.dart';
 
 class SingleChatScreen extends StatefulWidget {
   final Map<String, dynamic> provider;
@@ -210,6 +211,23 @@ class _SingleChatScreenState extends State<SingleChatScreen> {
       'deletedBy': [], 
       'archivedBy': [],
     }, SetOptions(merge: true));
+
+    // 🔔 Send push notification to the receiver
+    try {
+      final senderName = currentUserName ?? currentUser!.displayName ?? 'User';
+      String messagePreview = text;
+      if (messagePreview.length > 50) {
+        messagePreview = '${messagePreview.substring(0, 47)}...';
+      }
+      
+      await OneSignalService.notifyNewMessage(
+        recipientUid: providerId,
+        senderName: senderName,
+        messagePreview: messagePreview,
+      );
+    } catch (e) {
+      debugPrint('Error sending chat push notification: $e');
+    }
 
     _scrollToBottom();
   }
