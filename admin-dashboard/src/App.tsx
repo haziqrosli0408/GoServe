@@ -11,12 +11,13 @@ import {
   orderBy,
   writeBatch,
   addDoc,
+  where,
+  getDocs,
 } from 'firebase/firestore';
 import {
   Users,
   Star,
   Briefcase,
-  BarChart3,
   LogOut,
   Calendar,
   TrendingUp,
@@ -41,11 +42,10 @@ import {
   ArrowLeft,
   DollarSign,
   Clock,
-  Bookmark,
   LayoutGrid,
   List,
   CreditCard,
-  Wallet, ShoppingBag, TrendingDown, Tag, RefreshCcw, Filter, AlertTriangle, Bell,
+  Wallet, ShoppingBag, TrendingDown, RefreshCcw,
 } from 'lucide-react';
 import {
   BarChart,
@@ -61,39 +61,9 @@ import {
   Pie,
   Cell,
 } from 'recharts';
-import { PDFDownloadLink, Page, Text, View, Document, StyleSheet } from '@react-pdf/renderer';
 
 // --- PDF COMPONENT ---
-const styles = StyleSheet.create({
-  page: { padding: 40, fontFamily: 'Helvetica', backgroundColor: '#ffffff' },
-  header: { marginBottom: 30, borderBottom: '2pt solid #f97316', paddingBottom: 10 },
-  title: { fontSize: 24, fontWeight: 'bold' },
-  subtitle: { fontSize: 10, color: '#6b7280', marginTop: 4 },
-  section: { marginTop: 20 },
-  sectionTitle: { fontSize: 14, fontWeight: 'bold', marginBottom: 10 },
-  table: { display: 'flex', width: 'auto', borderStyle: 'solid', borderWidth: 1, borderColor: '#e5e7eb' },
-  tableRow: { flexDirection: 'row', borderBottomWidth: 1, borderColor: '#e5e7eb' },
-  tableCell: { margin: 8, fontSize: 10 },
-});
 
-const ReportPDF = ({ users, services, reviews, bookings }: any) => (
-  <Document>
-    <Page size="A4" style={styles.page}>
-      <View style={styles.header}>
-        <Text style={styles.title}>GoServe Operational Report</Text>
-        <Text style={styles.subtitle}>Generated on {new Date().toLocaleDateString()}</Text>
-      </View>
-      <View style={styles.section}>
-        <Text style={styles.sectionTitle}>Overview Metrics</Text>
-        <Text style={{ fontSize: 12 }}>Total Community: {users.length}</Text>
-        <Text style={{ fontSize: 12 }}>Active Services: {services.length}</Text>
-        <Text style={{ fontSize: 12 }}>Reviews Moderated: {reviews.length}</Text>
-        <Text style={{ fontSize: 12 }}>Total Bookings: {bookings.length}</Text>
-        <Text style={{ fontSize: 12 }}>Total Revenue: RM {bookings.reduce((acc: number, b: any) => acc + (b.totalPrice || 0), 0).toFixed(2)}</Text>
-      </View>
-    </Page>
-  </Document>
-);
 
 // --- TYPES ---
 interface AppUser {
@@ -586,8 +556,8 @@ function BookingsPage({ bookings, users }: { bookings: Booking[], users: AppUser
           `"${b.serviceName || ''}"`,
           `"${b.providerName || ''}"`,
           `"${seeker?.name || ''}"`,
-          b.selectedDate || '',
-          b.selectedTime || '',
+          b.date || '',
+          b.time || '',
           b.status || '',
           b.totalPrice || '',
           b.chargeFee || ''
@@ -1079,7 +1049,7 @@ function VerificationPage({ requests }: { requests: VerificationRequest[] }) {
 }
 
 function DashboardPage({ data, setActiveTab }: any) {
-  const { users, services, reviews, bookings } = data;
+  const { users, bookings } = data;
 
   // Calculate actual Platform Revenue (GoServe's fees from Completed bookings)
   const totalRevenue = bookings
@@ -1295,7 +1265,7 @@ function DashboardPage({ data, setActiveTab }: any) {
                   paddingAngle={5}
                   dataKey="value"
                 >
-                  {categoryData.map((entry, index) => (
+                  {categoryData.map((_entry, index) => (
                     <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
                   ))}
                 </Pie>
@@ -2130,11 +2100,11 @@ function ReviewsPage({ reviews, bookings = [], users = [] }: any) {
           where('status', '==', 'Approved')
         );
         const snapshot = await getDocs(q);
-        const approvedReviews = snapshot.docs.map(doc => doc.data());
+        const approvedReviews = snapshot.docs.map((doc: any) => doc.data());
         
         const count = approvedReviews.length;
         const avg = count > 0 
-          ? approvedReviews.reduce((sum, r) => sum + (r.rating || 0), 0) / count 
+          ? approvedReviews.reduce((sum: number, r: any) => sum + (r.rating || 0), 0) / count 
           : 0;
 
         await updateDoc(doc(db, 'services', serviceId), {
