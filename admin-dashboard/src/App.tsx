@@ -1498,10 +1498,26 @@ function UsersPage({ users, bookings, reviews, pendingApprovalsCount, setActiveT
   }, [search, roleFilter, statusFilter]);
 
   // Growth Metrics (Derived from real data)
-  const now = new Date();
-  const last30Days = new Date(now.setDate(now.getDate() - 30));
-  const newRegistrationsCount = users.filter(u => u.createdAt && new Date(u.createdAt.seconds * 1000) > last30Days).length;
-  const providerOnboardingCount = users.filter(u => u.role === 'Professional' && u.createdAt && new Date(u.createdAt.seconds * 1000) > last30Days).length;
+  const nowForGrowth = new Date();
+  const thirtyDaysAgo = new Date(nowForGrowth.getTime() - 30 * 24 * 60 * 60 * 1000);
+  const sixtyDaysAgo = new Date(nowForGrowth.getTime() - 60 * 24 * 60 * 60 * 1000);
+
+  const newRegistrationsCount = users.filter(u => u.createdAt && new Date(u.createdAt.seconds * 1000) > thirtyDaysAgo).length;
+  const providerOnboardingCount = users.filter(u => (u.role === 'Professional' || u.role === 'provider') && u.createdAt && new Date(u.createdAt.seconds * 1000) > thirtyDaysAgo).length;
+
+  const prevRegistrationsCount = users.filter(u => {
+    if (!u.createdAt) return false;
+    const d = new Date(u.createdAt.seconds * 1000);
+    return d > sixtyDaysAgo && d <= thirtyDaysAgo;
+  }).length;
+
+  let monthlyGrowthPct = 0;
+  if (prevRegistrationsCount === 0) {
+    monthlyGrowthPct = newRegistrationsCount > 0 ? 100 : 0;
+  } else {
+    monthlyGrowthPct = ((newRegistrationsCount - prevRegistrationsCount) / prevRegistrationsCount) * 100;
+  }
+  const formattedGrowth = `${monthlyGrowthPct >= 0 ? '+' : ''}${monthlyGrowthPct.toFixed(0)}%`;
 
 
 
@@ -1800,7 +1816,7 @@ function UsersPage({ users, bookings, reviews, pendingApprovalsCount, setActiveT
               <p className="text-[10px] font-bold text-gray-400 uppercase tracking-widest">Provider Onboarding</p>
             </div>
             <div>
-              <p className="text-3xl font-extrabold text-emerald-500 mb-1">+12%</p>
+              <p className={`text-3xl font-extrabold mb-1 ${monthlyGrowthPct >= 0 ? 'text-emerald-500' : 'text-red-500'}`}>{formattedGrowth}</p>
               <p className="text-[10px] font-bold text-gray-400 uppercase tracking-widest">Monthly Growth</p>
             </div>
           </div>
