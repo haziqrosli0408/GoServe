@@ -1,4 +1,5 @@
 import 'dart:io';
+import 'dart:typed_data';
 import 'package:flutter/material.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
@@ -1001,7 +1002,7 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
   late TextEditingController phoneController;
   final user = FirebaseAuth.instance.currentUser;
 
-  File? _image;
+  Uint8List? _imageBytes;
   bool isUploading = false;
 
   @override
@@ -1032,8 +1033,9 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
       maxHeight: 600,
     );
     if (pickedFile != null) {
+      final bytes = await pickedFile.readAsBytes();
       setState(() {
-        _image = File(pickedFile.path);
+        _imageBytes = bytes;
       });
     }
   }
@@ -1084,8 +1086,8 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
                       radius: 55,
                       backgroundColor: const Color(0xFFF1F5F9),
                       backgroundImage:
-                          _image != null
-                              ? FileImage(_image!)
+                          _imageBytes != null
+                              ? MemoryImage(_imageBytes!)
                               : (widget.userData['profileUrl'] != null &&
                                   widget.userData['profileUrl']
                                       .toString()
@@ -1097,7 +1099,7 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
                               ? CircularProgressIndicator(
                                 color: widget.themeColor,
                               )
-                              : (_image == null &&
+                              : (_imageBytes == null &&
                                   (widget.userData['profileUrl'] == null ||
                                       widget.userData['profileUrl']
                                           .toString()
@@ -1197,13 +1199,13 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
                         try {
                           String? profileUrl = widget.userData['profileUrl'];
 
-                          if (_image != null) {
+                          if (_imageBytes != null) {
                             final ref = FirebaseStorage.instance
                                 .ref()
                                 .child('profile_pics')
                                 .child('${user!.uid}.jpg');
 
-                            await ref.putFile(_image!);
+                            await ref.putData(_imageBytes!);
                             profileUrl = await ref.getDownloadURL();
                           }
 

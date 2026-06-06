@@ -312,7 +312,7 @@ class _HomeScreenState extends State<HomeScreen> {
                 // 1. Orange Background Header
                 Container(
                   width: double.infinity,
-                  height: 240, // Fixed height for the orange part
+                  height: 210, // Fixed height for the orange part
                   decoration: const BoxDecoration(
                     color: Color(0xFFFF6B00),
                   ),
@@ -395,7 +395,7 @@ class _HomeScreenState extends State<HomeScreen> {
     return SizedBox(
       width: double.infinity,
       child: Padding(
-        padding: const EdgeInsets.fromLTRB(20, 80, 20, 60),
+        padding: EdgeInsets.fromLTRB(20, MediaQuery.of(context).padding.top > 0 ? MediaQuery.of(context).padding.top + 5 : 25, 20, 60),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [

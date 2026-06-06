@@ -74,14 +74,14 @@ class _ProviderDashboardState extends State<ProviderDashboard>
 
   Widget _buildBottomNav() {
     return SizedBox(
-      height: 65 + MediaQuery.of(context).padding.bottom,
+      height: 75 + MediaQuery.of(context).padding.bottom,
       child: Stack(
         clipBehavior: Clip.none,
         alignment: Alignment.bottomCenter,
         children: [
           // White Nav Bar
           Container(
-            height: 65 + MediaQuery.of(context).padding.bottom,
+            height: 75 + MediaQuery.of(context).padding.bottom,
             decoration: BoxDecoration(
               color: Colors.white,
               borderRadius: const BorderRadius.only(
@@ -99,7 +99,7 @@ class _ProviderDashboardState extends State<ProviderDashboard>
             child: SafeArea(
               top: false,
               child: Padding(
-                padding: const EdgeInsets.symmetric(horizontal: 10),
+                padding: const EdgeInsets.only(left: 10, right: 10, bottom: 10),
                 child: Row(
                   mainAxisAlignment: MainAxisAlignment.spaceAround,
                   crossAxisAlignment: CrossAxisAlignment.center,

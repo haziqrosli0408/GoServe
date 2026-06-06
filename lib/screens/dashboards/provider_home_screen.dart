@@ -185,14 +185,14 @@ class _ProviderHomeScreenState extends State<ProviderHomeScreen> {
               // Header Background
               Container(
                 width: double.infinity,
-                height: 240,
+                height: 210,
                 color: const Color(0xFF4F46E5),
               ),
               Column(
                 children: [
                   // Header Info Skeleton
                   Padding(
-                    padding: const EdgeInsets.fromLTRB(24, 80, 24, 60),
+                    padding: EdgeInsets.fromLTRB(24, MediaQuery.of(context).padding.top > 0 ? MediaQuery.of(context).padding.top + 5 : 25, 24, 60),
                     child: Row(
                       children: [
                         Expanded(
@@ -280,7 +280,7 @@ class _ProviderHomeScreenState extends State<ProviderHomeScreen> {
                       // 1. Purple Background Header
                       Container(
                         width: double.infinity,
-                        height: 280, // Fixed height for the purple part
+                        height: 210, // Fixed height for the purple part
                         decoration: const BoxDecoration(
                           color: Color(0xFF4F46E5),
                         ),
@@ -331,7 +331,7 @@ class _ProviderHomeScreenState extends State<ProviderHomeScreen> {
     return SizedBox(
       width: double.infinity,
       child: Padding(
-        padding: const EdgeInsets.fromLTRB(24, 80, 24, 60),
+        padding: EdgeInsets.fromLTRB(24, MediaQuery.of(context).padding.top > 0 ? MediaQuery.of(context).padding.top + 5 : 25, 24, 60),
         child: Row(
           children: [
             // Left: Profile Picture

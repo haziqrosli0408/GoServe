@@ -71,9 +71,7 @@ class _HelpCenterScreenState extends State<HelpCenterScreen> {
             _buildReportForm(),
             const SizedBox(height: 40),
 
-            // 📞 Contact Footer
-            _buildContactFooter(),
-            const SizedBox(height: 40),
+
           ],
         ),
       ),
@@ -323,44 +321,5 @@ class _HelpCenterScreenState extends State<HelpCenterScreen> {
     );
   }
 
-  Widget _buildContactFooter() {
-    return Column(
-      children: [
-        Row(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: [
-            _contactOption(Icons.email_outlined, 'Email Us'),
-            const SizedBox(width: 40),
-            _contactOption(Icons.phone_rounded, 'Contact us'),
-          ],
-        ),
-        const SizedBox(height: 16),
-        Text(
-          'We typically respond within 1 hour',
-          style: GoogleFonts.outfit(
-            fontSize: 12,
-            color: Colors.grey.shade400,
-            fontStyle: FontStyle.italic,
-          ),
-        ),
-      ],
-    );
-  }
 
-  Widget _contactOption(IconData icon, String label) {
-    return Column(
-      children: [
-        Icon(icon, color: Colors.grey.shade600, size: 24),
-        const SizedBox(height: 4),
-        Text(
-          label,
-          style: GoogleFonts.outfit(
-            fontSize: 12,
-            color: Colors.grey.shade600,
-            fontWeight: FontWeight.w500,
-          ),
-        ),
-      ],
-    );
-  }
 }

@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
+import 'package:geolocator/geolocator.dart';
 import 'service_details.dart';
 
 class TopRatedScreen extends StatefulWidget {
@@ -141,6 +142,21 @@ class _TopRatedScreenState extends State<TopRatedScreen> with TickerProviderStat
 
   Future<void> _fetchProviders() async {
     try {
+      Position? userPosition;
+      try {
+        LocationPermission permission = await Geolocator.checkPermission();
+        if (permission == LocationPermission.denied) {
+          permission = await Geolocator.requestPermission();
+        }
+        if (permission == LocationPermission.whileInUse || permission == LocationPermission.always) {
+          userPosition = await Geolocator.getCurrentPosition(
+            locationSettings: const LocationSettings(accuracy: LocationAccuracy.high),
+          );
+        }
+      } catch (e) {
+        debugPrint("Error getting location: $e");
+      }
+
       final snapshot = await FirebaseFirestore.instance
           .collection('services')
           .where('isActive', isEqualTo: true)
@@ -155,7 +171,7 @@ class _TopRatedScreenState extends State<TopRatedScreen> with TickerProviderStat
 
       if (mounted) {
         setState(() {
-          _allProviders = snapshot.docs.map((doc) {
+          var mappedProviders = snapshot.docs.map((doc) {
             final data = doc.data();
             data['serviceId'] = doc.id;
             
@@ -173,9 +189,31 @@ class _TopRatedScreenState extends State<TopRatedScreen> with TickerProviderStat
             }
             return data;
           }).toList();
+
+          if (userPosition != null) {
+            mappedProviders = mappedProviders.where((p) {
+              final dynamic rawLat = p['providerLat'] ?? p['latitude'] ?? p['lat'];
+              final dynamic rawLng = p['providerLng'] ?? p['longitude'] ?? p['lng'];
+              double? pLat;
+              double? pLng;
+              if (rawLat != null && rawLng != null) {
+                pLat = (rawLat is num) ? rawLat.toDouble() : double.tryParse(rawLat.toString());
+                pLng = (rawLng is num) ? rawLng.toDouble() : double.tryParse(rawLng.toString());
+              }
+              if (pLat != null && pLng != null && pLat != 0.0 && pLng != 0.0) {
+                double distanceMeters = Geolocator.distanceBetween(
+                  userPosition!.latitude, userPosition!.longitude,
+                  pLat, pLng,
+                );
+                return distanceMeters <= 50000; // 50km radius
+              }
+              return false; // Skip if no valid location
+            }).toList();
+          }
           
-          _allProviders.sort((a, b) => ((b['averageRating'] ?? 0).toDouble()).compareTo((a['averageRating'] ?? 0).toDouble()));
+          mappedProviders.sort((a, b) => ((b['averageRating'] ?? 0).toDouble()).compareTo((a['averageRating'] ?? 0).toDouble()));
           
+          _allProviders = mappedProviders;
           _filteredProviders = _allProviders;
           _isLoading = false;
         });

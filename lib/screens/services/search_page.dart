@@ -440,9 +440,17 @@ class _SearchPageState extends State<SearchPage> {
                           onTap: () async {
                             if (_userLocation == null) {
                               ScaffoldMessenger.of(context).showSnackBar(
-                                const SnackBar(content: Text('Fetching your location, please wait or ensure location services are enabled.')),
+                                const SnackBar(content: Text('Requesting location permissions...')),
                               );
-                              return;
+                              await _detectCurrentLocation();
+                              if (_userLocation == null) {
+                                if (mounted) {
+                                  ScaffoldMessenger.of(context).showSnackBar(
+                                    const SnackBar(content: Text('Failed to get location. Please enable location services in your browser.')),
+                                  );
+                                }
+                                return;
+                              }
                             }
                             
                             final result = await Navigator.push(

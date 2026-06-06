@@ -1051,10 +1051,10 @@ function VerificationPage({ requests }: { requests: VerificationRequest[] }) {
 function DashboardPage({ data, setActiveTab }: any) {
   const { users, bookings } = data;
 
-  // Calculate actual Platform Revenue (GoServe's fees from Completed bookings)
-  const totalRevenue = bookings
+  // Calculate Total Sales (Sum of all completed booking prices)
+  const totalSales = bookings
     .filter((b: any) => b.status === 'Completed')
-    .reduce((acc: number, b: any) => acc + (Number(b.chargeFee) || 0), 0);
+    .reduce((acc: number, b: any) => acc + (Number(b.totalPrice) || 0), 0);
     
   const totalBookings = bookings.length;
   const pendingBookings = bookings.filter((b: any) => b.status === 'Pending').length;
@@ -1172,8 +1172,8 @@ function DashboardPage({ data, setActiveTab }: any) {
           bgColor="bg-amber-50" 
         />
         <StatCard 
-          label="Total Revenue" 
-          value={`RM ${totalRevenue.toLocaleString()}`} 
+          label="Total Sales" 
+          value={`RM ${totalSales.toLocaleString()}`} 
           trend={calcTrend(currStats.revenue, prevStats.revenue)} 
           icon={<DollarSign size={18} />} 
           color="text-emerald-600" 
@@ -1294,11 +1294,11 @@ function DashboardPage({ data, setActiveTab }: any) {
       </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-        {/* Revenue Analytics (Bar Chart) */}
+        {/* Sales Analytics (Bar Chart) */}
         <div className="lg:col-span-2 bg-white p-6 rounded-3xl border border-slate-100 shadow-sm hover:shadow-md transition-all">
           <div className="flex items-center justify-between mb-6">
             <div>
-              <h3 className="font-black text-slate-900 text-base">Revenue Analytics</h3>
+              <h3 className="font-black text-slate-900 text-base">Sales Analytics</h3>
               <p className="text-[10px] text-slate-400 font-bold uppercase tracking-widest">Financial growth performance</p>
             </div>
           </div>
