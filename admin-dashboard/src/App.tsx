@@ -1085,7 +1085,7 @@ function DashboardPage({ data, setActiveTab }: any) {
     const mProviders = mUsers.filter((u: any) => u.role === 'Professional' || u.role === 'provider');
 
     return {
-      revenue: mBookings.reduce((sum: number, b: any) => sum + (Number(b.totalPrice) || 0), 0),
+      revenue: mBookings.filter((b: any) => b.status === 'Completed').reduce((sum: number, b: any) => sum + (Number(b.totalPrice) || 0), 0),
       bookings: mBookings.length,
       users: mUsers.length,
       providers: mProviders.length,
@@ -1121,7 +1121,7 @@ function DashboardPage({ data, setActiveTab }: any) {
     return {
       name: months[mIdx],
       bookings: mBookings.length,
-      revenue: mBookings.reduce((sum: number, b: any) => sum + (Number(b.totalPrice) || 0), 0),
+      revenue: mBookings.filter((b: any) => b.status === 'Completed').reduce((sum: number, b: any) => sum + (Number(b.totalPrice) || 0), 0),
     };
   });
 
