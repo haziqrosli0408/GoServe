@@ -455,7 +455,7 @@ class _TopRatedScreenState extends State<TopRatedScreen> with TickerProviderStat
                       fontWeight: FontWeight.w600,
                       color: const Color(0xFF1F2937),
                     ),
-                    maxLines: 2,
+                    maxLines: 1,
                     overflow: TextOverflow.ellipsis,
                   ),
                 ),

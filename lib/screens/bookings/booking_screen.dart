@@ -20,6 +20,9 @@ class BookingPage extends StatefulWidget {
   final List<dynamic>? addOns;
   final String serviceId;
   final String? providerProfileUrl;
+  final String? priceType;
+  final int? minHours;
+  final int? maxHours;
 
   const BookingPage({
     super.key,
@@ -32,6 +35,9 @@ class BookingPage extends StatefulWidget {
     this.addOns,
     required this.serviceId,
     this.providerProfileUrl,
+    this.priceType,
+    this.minHours,
+    this.maxHours,
   });
 
   @override
@@ -63,8 +69,21 @@ class _BookingPageState extends State<BookingPage> {
   final double platformRate = 0.15;
   Set<int> selectedAddOnIndices = {};
   
+  late int duration;
+
+  @override
+  void initState() {
+    super.initState();
+    duration = widget.minHours ?? 1;
+    _loadAvailability();
+    _fetchSavedAddresses();
+  }
+  
   double get currentSubtotal {
     double total = basePriceValue;
+    if (widget.priceType == 'per hour') {
+      total = basePriceValue * duration;
+    }
     final list = addOns;
     for (var index in selectedAddOnIndices) {
       final p = list[index]['price'];
@@ -96,13 +115,6 @@ class _BookingPageState extends State<BookingPage> {
 
   final Color primaryGreen = const Color(0xFFFF6B00);
   final Color bgCream = Colors.white;
-
-  @override
-  void initState() {
-    super.initState();
-    _loadAvailability();
-    _fetchSavedAddresses();
-  }
 
   Future<void> _fetchSavedAddresses() async {
     final user = FirebaseAuth.instance.currentUser;
@@ -358,6 +370,64 @@ class _BookingPageState extends State<BookingPage> {
             ),
           )
         else ...[
+          if (widget.priceType == 'per hour') ...[
+            Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text('Booking Duration', style: GoogleFonts.outfit(fontSize: 18, fontWeight: FontWeight.w600, color: const Color(0xFF1E293B))),
+                const SizedBox(height: 4),
+                Text('How many hours do you need?', style: GoogleFonts.outfit(fontSize: 14, color: const Color(0xFF64748B))),
+              ],
+            ),
+            const SizedBox(height: 16),
+            Container(
+              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+              decoration: BoxDecoration(
+                color: Colors.white,
+                borderRadius: BorderRadius.circular(12),
+                border: Border.all(color: Colors.grey.shade100),
+                boxShadow: [BoxShadow(color: Colors.black.withValues(alpha: 0.02), blurRadius: 10, offset: const Offset(0, 4))],
+              ),
+              child: Row(
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                children: [
+                  Text('Hours', style: GoogleFonts.outfit(fontSize: 16, fontWeight: FontWeight.w600, color: const Color(0xFF1E293B))),
+                  Row(
+                    children: [
+                      GestureDetector(
+                        onTap: () {
+                          if (duration > (widget.minHours ?? 1)) {
+                            setState(() => duration--);
+                          }
+                        },
+                        child: Container(
+                          padding: const EdgeInsets.all(8),
+                          decoration: BoxDecoration(color: const Color(0xFFF1F5F9), borderRadius: BorderRadius.circular(8)),
+                          child: const Icon(Icons.remove, size: 20, color: Color(0xFF64748B)),
+                        ),
+                      ),
+                      const SizedBox(width: 20),
+                      Text('$duration', style: GoogleFonts.outfit(fontSize: 18, fontWeight: FontWeight.w600, color: const Color(0xFF1E293B))),
+                      const SizedBox(width: 20),
+                      GestureDetector(
+                        onTap: () {
+                          if (duration < (widget.maxHours ?? 8)) {
+                            setState(() => duration++);
+                          }
+                        },
+                        child: Container(
+                          padding: const EdgeInsets.all(8),
+                          decoration: BoxDecoration(color: const Color(0xFFF1F5F9), borderRadius: BorderRadius.circular(8)),
+                          child: const Icon(Icons.add, size: 20, color: Color(0xFF64748B)),
+                        ),
+                      ),
+                    ],
+                  ),
+                ],
+              ),
+            ),
+            const SizedBox(height: 32),
+          ],
           Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
@@ -963,6 +1033,9 @@ class _BookingPageState extends State<BookingPage> {
 
     // Calculations
     double base = basePriceValue;
+    if (widget.priceType == 'per hour') {
+      base = basePriceValue * duration;
+    }
     double addOnsSum = 0;
     final list = addOns;
     for (var idx in selectedAddOnIndices) {
@@ -1035,7 +1108,7 @@ class _BookingPageState extends State<BookingPage> {
               const Divider(height: 1),
               const SizedBox(height: 32),
               
-              _summaryRow('Service Price', 'RM ${base.toStringAsFixed(2)}'),
+              _summaryRow(widget.priceType == 'per hour' ? 'Service Price ($duration hrs)' : 'Service Price', 'RM ${base.toStringAsFixed(2)}'),
               const SizedBox(height: 16),
               
               if (selectedAddOnIndices.isNotEmpty) ...[
@@ -1124,7 +1197,7 @@ class _BookingPageState extends State<BookingPage> {
                           category: widget.category,
                           selectedDate: selectedDate,
                           selectedTime: selectedTime ?? '',
-                          basePrice: basePriceValue,
+                          basePrice: base,
                           selectedAddOns: selectedAddOnIndices.map((idx) => addOns[idx]).toList(),
                           address: 'Unit $unitNo, $streetName, $postcode $city',
                           latitude: latitude,
@@ -1132,6 +1205,8 @@ class _BookingPageState extends State<BookingPage> {
                           totalPrice: finalTotal,
                           serviceId: widget.serviceId,
                           providerProfileUrl: widget.providerProfileUrl,
+                          durationHours: widget.priceType == 'per hour' ? duration : null,
+                          priceType: widget.priceType,
                         ),
                       ),
                     );

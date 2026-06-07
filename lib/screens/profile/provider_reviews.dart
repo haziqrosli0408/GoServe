@@ -433,8 +433,9 @@ class _ProviderReviewsPageState extends State<ProviderReviewsPage> {
   }
 
   Widget _buildReviewCard(String reviewId, Map<String, dynamic> review) {
-    final customerName = review['userName'] ?? 'Customer';
-    final customerImage = review['userProfileUrl'] ?? '';
+    final customerId = review['userId'] ?? '';
+    final fallbackCustomerName = review['userName'] ?? 'Customer';
+    final fallbackCustomerImage = review['userProfileUrl'] ?? '';
     final rating = (review['rating'] ?? 0).toInt();
     final service = review['serviceName'] ?? 'Service';
     final comment = review['comment'] ?? '';
@@ -446,28 +447,65 @@ class _ProviderReviewsPageState extends State<ProviderReviewsPage> {
     }
     final date = DateFormat('MMM d, yyyy').format(dt);
 
-    return Container(
-      margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-      padding: const EdgeInsets.all(16),
-      decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(20),
-        border: Border.all(color: Colors.grey.shade100),
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
+    return FutureBuilder<DocumentSnapshot>(
+      future: customerId.isNotEmpty ? FirebaseFirestore.instance.collection('users').doc(customerId).get() : null,
+      builder: (context, snapshot) {
+        String customerName = fallbackCustomerName;
+        String customerImage = fallbackCustomerImage;
+
+        if (snapshot.hasData && snapshot.data!.exists) {
+          final userData = snapshot.data!.data() as Map<String, dynamic>;
+          customerName = userData['name'] ?? customerName;
+          customerImage = userData['profileUrl'] ?? customerImage;
+        }
+
+        if (customerImage == 'null') {
+          customerImage = '';
+        }
+
+        return Container(
+          margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+          padding: const EdgeInsets.all(16),
+          decoration: BoxDecoration(
+            color: Colors.white,
+            borderRadius: BorderRadius.circular(20),
+            border: Border.all(color: Colors.grey.shade100),
+          ),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
           Row(
             children: [
-              CircleAvatar(
-                backgroundColor: Colors.grey.shade200,
-                backgroundImage: customerImage.isNotEmpty ? NetworkImage(customerImage) : null,
-                child: customerImage.isEmpty
-                    ? Text(
-                        customerName.isNotEmpty ? customerName[0].toUpperCase() : 'C',
-                        style: GoogleFonts.outfit(color: Colors.grey.shade700, fontWeight: FontWeight.w600),
+              ClipOval(
+                child: customerImage.isNotEmpty
+                    ? Image.network(
+                        customerImage,
+                        width: 40,
+                        height: 40,
+                        fit: BoxFit.cover,
+                        errorBuilder: (context, error, stackTrace) => Container(
+                          width: 40,
+                          height: 40,
+                          color: Colors.grey.shade200,
+                          child: Center(
+                            child: Text(
+                              customerName.isNotEmpty ? customerName[0].toUpperCase() : 'C',
+                              style: GoogleFonts.outfit(color: Colors.grey.shade700, fontWeight: FontWeight.w600),
+                            ),
+                          ),
+                        ),
                       )
-                    : null,
+                    : Container(
+                        width: 40,
+                        height: 40,
+                        color: Colors.grey.shade200,
+                        child: Center(
+                          child: Text(
+                            customerName.isNotEmpty ? customerName[0].toUpperCase() : 'C',
+                            style: GoogleFonts.outfit(color: Colors.grey.shade700, fontWeight: FontWeight.w600),
+                          ),
+                        ),
+                      ),
               ),
               const SizedBox(width: 12),
               Expanded(
@@ -575,6 +613,8 @@ class _ProviderReviewsPageState extends State<ProviderReviewsPage> {
             ),
         ],
       ),
+    );
+      }
     );
   }
 }

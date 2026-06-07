@@ -22,6 +22,8 @@ class PaymentPage extends StatefulWidget {
   final double totalPrice;
   final String serviceId;
   final String? providerProfileUrl;
+  final String? priceType;
+  final int? durationHours;
 
   const PaymentPage({
     super.key,
@@ -40,6 +42,8 @@ class PaymentPage extends StatefulWidget {
     required this.totalPrice,
     required this.serviceId,
     this.providerProfileUrl,
+    this.priceType,
+    this.durationHours,
   });
 
   @override
@@ -664,6 +668,8 @@ class _PaymentPageState extends State<PaymentPage> {
         'latitude': widget.latitude,
         'longitude': widget.longitude,
         'basePrice': widget.basePrice,
+        'priceType': widget.priceType ?? 'one-time',
+        'durationHours': widget.durationHours,
         'chargeFee': widget.totalPrice - widget.basePrice - widget.selectedAddOns.fold(0.0, (total, item) => total + ((item['price'] is String ? double.tryParse(item['price']) : (item['price'] as num).toDouble()) ?? 0.0)),
         'totalPrice': widget.totalPrice,
         'selectedAddOns': widget.selectedAddOns,
@@ -677,6 +683,49 @@ class _PaymentPageState extends State<PaymentPage> {
         'providerProfileUrl': widget.providerProfileUrl,
         'createdAt': FieldValue.serverTimestamp(),
       });
+      
+      // 🗓️ Update provider's availability (auto-blocking)
+      try {
+        final serviceRef = FirebaseFirestore.instance.collection('services').doc(widget.serviceId);
+        final serviceDoc = await serviceRef.get();
+        if (serviceDoc.exists) {
+          final rawMap = serviceDoc.data()?['availability'] as Map<String, dynamic>? ?? {};
+          final dateKey = DateFormat('yyyy-MM-dd').format(widget.selectedDate);
+          
+          if (rawMap.containsKey(dateKey)) {
+            final List<String> availableSlots = List<String>.from(rawMap[dateKey] as List);
+            
+            final List<String> allSlots = [
+              '08:00 AM', '09:30 AM', '11:00 AM',
+              '01:30 PM', '03:00 PM', '04:30 PM',
+              '06:00 PM', '07:30 PM', '09:00 PM',
+            ];
+            
+            int slotsToBlock = (widget.priceType == 'per hour' && widget.durationHours != null) 
+                ? (widget.durationHours! / 1.5).ceil() 
+                : 1;
+                
+            int startIndex = allSlots.indexOf(widget.selectedTime);
+            if (startIndex != -1) {
+              for (int i = 0; i < slotsToBlock; i++) {
+                if (startIndex + i < allSlots.length) {
+                  availableSlots.remove(allSlots[startIndex + i]);
+                }
+              }
+              
+              if (availableSlots.isEmpty) {
+                rawMap.remove(dateKey);
+              } else {
+                rawMap[dateKey] = availableSlots;
+              }
+              
+              await serviceRef.update({'availability': rawMap});
+            }
+          }
+        }
+      } catch (e) {
+        debugPrint('Error updating availability: $e');
+      }
       
       // 🔔 Send push notifications to provider
       try {

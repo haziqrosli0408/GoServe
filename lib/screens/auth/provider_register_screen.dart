@@ -400,7 +400,7 @@ class _ProviderRegisterScreenState extends State<ProviderRegisterScreen> {
         "createdAt": DateTime.now(),
       });
 
-      await OneSignalService.loginUser(uid);
+      OneSignalService.loginUser(uid);
       if (!mounted) return;
 
       if (mounted) {

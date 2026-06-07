@@ -67,7 +67,7 @@ class _SplashScreenState extends State<SplashScreen> with SingleTickerProviderSt
                     child: const Icon(
                       Icons.handshake_rounded,
                       size: 80,
-                      color: Color(0xFF000000),
+                      color: Color(0xFFFF6B00),
                     ),
                   ),
                 ),
@@ -86,7 +86,7 @@ class _SplashScreenState extends State<SplashScreen> with SingleTickerProviderSt
                   width: 140,
                   child: LinearProgressIndicator(
                     backgroundColor: Color(0xFFF1F5F9),
-                    valueColor: AlwaysStoppedAnimation<Color>(Color(0xFF000000)),
+                    valueColor: AlwaysStoppedAnimation<Color>(Color(0xFFFF6B00)),
                     minHeight: 2,
                   ),
                 ),

@@ -80,6 +80,8 @@ class _AddServiceScreenState extends State<AddServiceScreen> {
   final TextEditingController _detailController = TextEditingController();
   final TextEditingController _titleController = TextEditingController();
   final TextEditingController _priceController = TextEditingController();
+  final TextEditingController _minHoursController = TextEditingController(text: '1');
+  final TextEditingController _maxHoursController = TextEditingController(text: '8');
   final TextEditingController _descriptionController = TextEditingController();
   final TextEditingController _addOnNameController = TextEditingController();
   final TextEditingController _addOnPriceController = TextEditingController();
@@ -117,6 +119,8 @@ class _AddServiceScreenState extends State<AddServiceScreen> {
       _descriptionController.text = draft['description'] ?? '';
       _priceController.text = draft['price'] ?? '';
       _priceType = draft['priceType'] ?? 'per hour';
+      if (draft['minHours'] != null) _minHoursController.text = draft['minHours'].toString();
+      if (draft['maxHours'] != null) _maxHoursController.text = draft['maxHours'].toString();
       _mainImage = draft['mainImage'];
       
       if (widget.initialDraftData!['galleryUrls'] != null) {
@@ -157,6 +161,8 @@ class _AddServiceScreenState extends State<AddServiceScreen> {
       'description': _descriptionController.text,
       'price': _priceController.text,
       'priceType': _priceType,
+      'minHours': _priceType == 'per hour' ? int.tryParse(_minHoursController.text) : null,
+      'maxHours': _priceType == 'per hour' ? int.tryParse(_maxHoursController.text) : null,
       'mainImagePath': _mainImage?.path,
       'details': _serviceDetails,
       'galleryImagePaths': _galleryImages.map((e) => e.path).toList(),
@@ -237,6 +243,8 @@ class _AddServiceScreenState extends State<AddServiceScreen> {
     _detailController.dispose();
     _titleController.dispose();
     _priceController.dispose();
+    _minHoursController.dispose();
+    _maxHoursController.dispose();
     _descriptionController.dispose();
     _addOnNameController.dispose();
     _addOnPriceController.dispose();
@@ -648,6 +656,41 @@ class _AddServiceScreenState extends State<AddServiceScreen> {
             _priceOptionCard('one-time', Icons.receipt_long_rounded, 'Fixed rate for the entire job.'),
           ],
         ),
+        if (_priceType == 'per hour') ...[
+          const SizedBox(height: 32),
+          Text(
+            'Booking Duration Limits',
+            style: GoogleFonts.outfit(
+              fontSize: 16,
+              fontWeight: FontWeight.w600,
+              color: const Color(0xFF64748B),
+            ),
+          ),
+          const SizedBox(height: 12),
+          Row(
+            children: [
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text('Minimum Hours', style: GoogleFonts.outfit(fontSize: 13, color: Colors.grey.shade600, fontWeight: FontWeight.w500)),
+                    _buildTextField(_minHoursController, 'e.g., 1', isNumber: true),
+                  ],
+                ),
+              ),
+              const SizedBox(width: 16),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text('Maximum Hours', style: GoogleFonts.outfit(fontSize: 13, color: Colors.grey.shade600, fontWeight: FontWeight.w500)),
+                    _buildTextField(_maxHoursController, 'e.g., 8', isNumber: true),
+                  ],
+                ),
+              ),
+            ],
+          ),
+        ],
         const SizedBox(height: 40),
       ],
     );
@@ -1095,6 +1138,18 @@ class _AddServiceScreenState extends State<AddServiceScreen> {
       return;
     }
 
+    if (_priceType == 'per hour' && (int.tryParse(_minHoursController.text) == null || int.tryParse(_maxHoursController.text) == null)) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('Please enter valid minimum and maximum hours.',
+              style: GoogleFonts.outfit(color: Colors.white)),
+          backgroundColor: Colors.orangeAccent.shade700,
+          behavior: SnackBarBehavior.floating,
+        ),
+      );
+      return;
+    }
+
     setState(() => _isPublishing = true);
 
     try {
@@ -1108,6 +1163,7 @@ class _AddServiceScreenState extends State<AddServiceScreen> {
       final String providerName = providerData['name'] ?? 'Elite Pro';
       final String providerAddress = providerData['address'] ?? 'Kuala Lumpur, Malaysia';
       final String providerProfileUrl = providerData['profileUrl'] ?? '';
+      final String providerPhone = providerData['phone'] ?? providerData['phoneNumber'] ?? '';
 
       // Geocode providerAddress to LatLng (Priority: Profile Coordinates > Geocoding)
       double providerLat = (providerData['latitude'] is num) ? (providerData['latitude'] as num).toDouble() : 0.0;
@@ -1204,11 +1260,14 @@ class _AddServiceScreenState extends State<AddServiceScreen> {
         'providerLat': providerLat,
         'providerLng': providerLng,
         'providerProfileUrl': providerProfileUrl,
+        'providerPhone': providerPhone,
         'title': _titleController.text.trim(),
         'category': selectedCategory,
         'description': _descriptionController.text.trim(),
         'price': _priceController.text.trim(),
         'priceType': _priceType,
+        if (_priceType == 'per hour') 'minHours': int.tryParse(_minHoursController.text) ?? 1,
+        if (_priceType == 'per hour') 'maxHours': int.tryParse(_maxHoursController.text) ?? 8,
         'details': _serviceDetails,
         'addOns': _addOns,
         'isActive': true,

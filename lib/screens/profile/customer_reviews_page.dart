@@ -337,7 +337,11 @@ class _CustomerReviewsPageState extends State<CustomerReviewsPage> {
       builder: (context, providerSnapshot) {
         final providerInfo = providerSnapshot.data ?? {'name': 'Provider', 'profileUrl': ''};
         final providerName = providerInfo['name']!;
-        final providerImage = providerInfo['profileUrl']!;
+        String providerImage = providerInfo['profileUrl']!;
+
+        if (providerImage == 'null') {
+          providerImage = '';
+        }
 
         return Container(
           margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
@@ -352,22 +356,46 @@ class _CustomerReviewsPageState extends State<CustomerReviewsPage> {
             children: [
               Row(
                 children: [
-                  CircleAvatar(
-                    backgroundColor: Colors.grey.shade200,
-                    backgroundImage: providerImage.isNotEmpty
-                        ? NetworkImage(providerImage)
-                        : null,
-                    child: providerImage.isEmpty
-                        ? Text(
-                            providerName.isNotEmpty
-                                ? providerName[0].toUpperCase()
-                                : 'P',
-                            style: GoogleFonts.outfit(
-                              color: Colors.grey.shade700,
-                              fontWeight: FontWeight.w600,
+                  ClipOval(
+                    child: providerImage.isNotEmpty
+                        ? Image.network(
+                            providerImage,
+                            width: 40,
+                            height: 40,
+                            fit: BoxFit.cover,
+                            errorBuilder: (context, error, stackTrace) => Container(
+                              width: 40,
+                              height: 40,
+                              color: Colors.grey.shade200,
+                              child: Center(
+                                child: Text(
+                                  providerName.isNotEmpty
+                                      ? providerName[0].toUpperCase()
+                                      : 'P',
+                                  style: GoogleFonts.outfit(
+                                    color: Colors.grey.shade700,
+                                    fontWeight: FontWeight.w600,
+                                  ),
+                                ),
+                              ),
                             ),
                           )
-                        : null,
+                        : Container(
+                            width: 40,
+                            height: 40,
+                            color: Colors.grey.shade200,
+                            child: Center(
+                              child: Text(
+                                providerName.isNotEmpty
+                                    ? providerName[0].toUpperCase()
+                                    : 'P',
+                                style: GoogleFonts.outfit(
+                                  color: Colors.grey.shade700,
+                                  fontWeight: FontWeight.w600,
+                                ),
+                              ),
+                            ),
+                          ),
                   ),
                   const SizedBox(width: 12),
                   Expanded(

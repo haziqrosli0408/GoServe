@@ -127,6 +127,7 @@ exports.onBookingStatusChange = onDocumentUpdated("bookings/{bookingId}", async 
       await admin.firestore().collection("mail").add({
         to: provider.email,
         message: {
+          from: "GoServe <noreply@goserve.com>",
           subject: "Payment Received - GoServe",
           html: `
             <div style="font-family: Arial, sans-serif; color: #333;">
@@ -136,6 +137,31 @@ exports.onBookingStatusChange = onDocumentUpdated("bookings/{bookingId}", async 
               <p>Payment of <strong>RM ${after.totalPrice}</strong> has been successfully received.</p>
               <br/>
               <p>Thank you for using GoServe!</p>
+            </div>
+          `
+        }
+      });
+    }
+  }
+
+  // If status is "Cancelled", send email to provider
+  if (before.status !== "Cancelled" && after.status === "Cancelled") {
+    const provider = await getUserTokenAndEmail(after.providerId, true);
+    if (provider && provider.email && provider.emailNotificationsEnabled !== false) {
+      await admin.firestore().collection("mail").add({
+        to: provider.email,
+        message: {
+          from: "GoServe <noreply@goserve.com>",
+          subject: "Booking Cancelled - GoServe",
+          html: `
+            <div style="font-family: Arial, sans-serif; color: #333;">
+              <h2 style="color: #EF4444;">Booking Cancelled</h2>
+              <p>Hi ${provider.name || 'Provider'},</p>
+              <p>Unfortunately, the booking for <strong>${after.serviceName}</strong> has been cancelled by the customer.</p>
+              <p><strong>Order ID:</strong> ${after.orderId}</p>
+              <p><strong>Date & Time:</strong> ${after.date} at ${after.time}</p>
+              <br/>
+              <p>Please check your GoServe Provider App for more details.</p>
             </div>
           `
         }
@@ -164,6 +190,7 @@ exports.onNewBookingCreated = onDocumentCreated("bookings/{bookingId}", async (e
     await admin.firestore().collection("mail").add({
       to: customer.email,
       message: {
+        from: "GoServe <noreply@goserve.com>",
         subject: "Payment Confirmed & Booking Created - GoServe",
         html: `
           <div style="font-family: Arial, sans-serif; color: #333;">
@@ -175,6 +202,30 @@ exports.onNewBookingCreated = onDocumentCreated("bookings/{bookingId}", async (e
             <p><strong>Total Paid:</strong> RM ${booking.totalPrice}</p>
             <br/>
             <p>Thank you for using GoServe!</p>
+          </div>
+        `
+      }
+    });
+  }
+
+  // 3. Email Provider (New Booking Alert)
+  if (provider && provider.email && provider.emailNotificationsEnabled !== false) {
+    const customerName = customer ? (customer.name || 'a customer') : 'a customer';
+    await admin.firestore().collection("mail").add({
+      to: provider.email,
+      message: {
+        from: "GoServe <noreply@goserve.com>",
+        subject: "New Booking Received - GoServe",
+        html: `
+          <div style="font-family: Arial, sans-serif; color: #333;">
+            <h2 style="color: #4F46E5;">New Booking Request!</h2>
+            <p>Hi ${provider.name || 'Provider'},</p>
+            <p>You have received a new booking for <strong>${booking.serviceName}</strong> from ${customerName}.</p>
+            <p><strong>Order ID:</strong> ${booking.orderId}</p>
+            <p><strong>Date & Time:</strong> ${booking.date} at ${booking.time}</p>
+            <p><strong>Booking Amount:</strong> RM ${booking.totalPrice}</p>
+            <br/>
+            <p>Please check your GoServe Provider App for more details!</p>
           </div>
         `
       }

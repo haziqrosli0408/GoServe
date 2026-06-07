@@ -395,6 +395,26 @@ class _BookingsScreenState extends State<BookingsScreen> {
                               ),
                             ],
                           ),
+                          if (data['priceType'] == 'per hour' && data['durationHours'] != null) ...[
+                            const SizedBox(height: 2),
+                            Row(
+                              children: [
+                                Icon(
+                                  Icons.timer_outlined,
+                                  size: 10,
+                                  color: Colors.grey.shade400,
+                                ),
+                                const SizedBox(width: 4),
+                                Text(
+                                  '${data['durationHours']} Hours',
+                                  style: GoogleFonts.outfit(
+                                    fontSize: 11,
+                                    color: Colors.grey.shade600,
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ],
                         ],
                       ),
                     ],
@@ -801,6 +821,26 @@ class _BookingsScreenState extends State<BookingsScreen> {
                               ),
                             ],
                           ),
+                          if (data['priceType'] == 'per hour' && data['durationHours'] != null) ...[
+                            const SizedBox(height: 2),
+                            Row(
+                              children: [
+                                Icon(
+                                  Icons.timer_outlined,
+                                  size: 10,
+                                  color: Colors.grey.shade400,
+                                ),
+                                const SizedBox(width: 4),
+                                Text(
+                                  '${data['durationHours']} Hours',
+                                  style: GoogleFonts.outfit(
+                                    fontSize: 11,
+                                    color: Colors.grey.shade600,
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ],
                         ],
                       ),
                     ],
@@ -1292,6 +1332,12 @@ class _BookingsScreenState extends State<BookingsScreen> {
                             date,
                           ),
                           _detailRow(Icons.access_time_outlined, 'Time', time),
+                          if (data['priceType'] == 'per hour' && data['durationHours'] != null)
+                            _detailRow(
+                              Icons.timer_outlined,
+                              'Duration',
+                              '${data['durationHours']} Hours',
+                            ),
                           _detailRow(
                             Icons.location_on_outlined,
                             'Address',
@@ -1396,6 +1442,7 @@ class _BookingsScreenState extends State<BookingsScreen> {
                                           bookingId: bookingId,
                                           currentDate: date,
                                           currentTime: time,
+                                          serviceId: data['serviceId'] ?? '',
                                         ),
                                   );
                                 },

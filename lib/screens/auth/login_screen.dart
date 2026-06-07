@@ -47,7 +47,7 @@ class _LoginScreenState extends State<LoginScreen> {
       if (providerDoc.exists) {
         final data = providerDoc.data();
         if (data?['role'] == 'provider') {
-          await OneSignalService.loginUser(uid);
+          OneSignalService.loginUser(uid);
           if (!mounted) return;
           Navigator.pushReplacementNamed(context, "/provider");
           return;
@@ -58,7 +58,7 @@ class _LoginScreenState extends State<LoginScreen> {
       if (userDoc.exists) {
         final data = userDoc.data();
         if (data?['role'] == 'customer') {
-          await OneSignalService.loginUser(uid);
+          OneSignalService.loginUser(uid);
           if (!mounted) return;
           Navigator.pushReplacementNamed(context, "/customer");
           return;
@@ -67,7 +67,7 @@ class _LoginScreenState extends State<LoginScreen> {
 
       // Fallback: If in providers but role field is weird
       if (providerDoc.exists) {
-        await OneSignalService.loginUser(uid);
+        OneSignalService.loginUser(uid);
         if (!mounted) return;
         Navigator.pushReplacementNamed(context, "/provider");
         return;
@@ -75,7 +75,7 @@ class _LoginScreenState extends State<LoginScreen> {
 
       // Final Check for users
       if (userDoc.exists) {
-        await OneSignalService.loginUser(uid);
+        OneSignalService.loginUser(uid);
         if (!mounted) return;
         Navigator.pushReplacementNamed(context, "/customer");
         return;
@@ -133,7 +133,7 @@ class _LoginScreenState extends State<LoginScreen> {
       if (providerDoc.exists) {
         final data = providerDoc.data();
         if (data?['role'] == 'provider') {
-          await OneSignalService.loginUser(uid);
+          OneSignalService.loginUser(uid);
           if (!mounted) return;
           Navigator.pushReplacementNamed(context, "/provider");
           return;
@@ -144,7 +144,7 @@ class _LoginScreenState extends State<LoginScreen> {
       if (userDoc.exists) {
         final data = userDoc.data();
         if (data?['role'] == 'customer') {
-          await OneSignalService.loginUser(uid);
+          OneSignalService.loginUser(uid);
           if (!mounted) return;
           Navigator.pushReplacementNamed(context, "/customer");
           return;
@@ -153,11 +153,11 @@ class _LoginScreenState extends State<LoginScreen> {
 
       // Fallbacks
       if (providerDoc.exists) {
-        await OneSignalService.loginUser(uid);
+        OneSignalService.loginUser(uid);
         if (!mounted) return;
         Navigator.pushReplacementNamed(context, "/provider");
       } else if (userDoc.exists) {
-        await OneSignalService.loginUser(uid);
+        OneSignalService.loginUser(uid);
         if (!mounted) return;
         Navigator.pushReplacementNamed(context, "/customer");
       } else {

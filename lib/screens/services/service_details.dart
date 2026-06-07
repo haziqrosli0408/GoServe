@@ -6,6 +6,7 @@ import 'package:firebase_auth/firebase_auth.dart';
 import '../bookings/booking_screen.dart';
 import '../chat/single_chat_screen.dart';
 import '../profile/view_provider_screen.dart';
+import 'package:url_launcher/url_launcher.dart';
 
 class ServiceDetailsScreen extends StatefulWidget {
   final Map<String, dynamic> provider;
@@ -20,6 +21,7 @@ class _ServiceDetailsScreenState extends State<ServiceDetailsScreen> {
   int _activeTab = 0; // 0: About, 1: Add-ons, 2: Gallery, 3: Reviews
   bool _isSaved = false;
   String? _liveProfileUrl;
+  String? _livePhone;
   
   // Review Data
   List<Map<String, dynamic>> _reviews = [];
@@ -236,6 +238,7 @@ class _ServiceDetailsScreenState extends State<ServiceDetailsScreen> {
         if (doc.exists && mounted) {
           setState(() {
             _liveProfileUrl = doc.data()?['profileUrl'];
+            _livePhone = doc.data()?['phone'] ?? doc.data()?['phoneNumber'];
           });
         }
       }
@@ -806,7 +809,7 @@ class _ServiceDetailsScreenState extends State<ServiceDetailsScreen> {
 
   Widget _buildProviderSection(String profileUrl, String name) {
     final String address = widget.provider['address'] ?? widget.provider['providerAddress'] ?? 'Kuala Lumpur, Malaysia';
-    final String phone = widget.provider['phone'] ?? widget.provider['providerPhone'] ?? '';
+    final String phone = _livePhone ?? widget.provider['phone'] ?? widget.provider['providerPhone'] ?? '';
 
     return Container(
       padding: const EdgeInsets.all(16),
@@ -910,11 +913,18 @@ class _ServiceDetailsScreenState extends State<ServiceDetailsScreen> {
               const SizedBox(width: 8),
               // Compact Call Button
               GestureDetector(
-                onTap: () {
+                onTap: () async {
                   if (phone.isNotEmpty) {
-                    ScaffoldMessenger.of(context).showSnackBar(
-                      SnackBar(content: Text('Calling $name ($phone)...'))
-                    );
+                    final Uri launchUri = Uri(scheme: 'tel', path: phone);
+                    if (await canLaunchUrl(launchUri)) {
+                      await launchUrl(launchUri);
+                    } else {
+                      if (mounted) {
+                        ScaffoldMessenger.of(context).showSnackBar(
+                          const SnackBar(content: Text('Could not launch phone dialer'))
+                        );
+                      }
+                    }
                   } else {
                     ScaffoldMessenger.of(context).showSnackBar(
                       const SnackBar(content: Text('Phone number not available'))
@@ -1038,6 +1048,9 @@ class _ServiceDetailsScreenState extends State<ServiceDetailsScreen> {
                     price: price,
                     addOns: widget.provider['addOns'],
                     providerProfileUrl: profileUrl,
+                    priceType: widget.provider['priceType'],
+                    minHours: widget.provider['minHours'],
+                    maxHours: widget.provider['maxHours'],
                   )));
                 },
                 style: ElevatedButton.styleFrom(

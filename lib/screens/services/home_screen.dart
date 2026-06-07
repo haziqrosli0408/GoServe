@@ -231,6 +231,29 @@ class _HomeScreenState extends State<HomeScreen> {
     }
   }
 
+  bool _isNearby(Map<String, dynamic> service) {
+    final providerAddress = (service['providerAddress'] as String?)?.toLowerCase() ?? '';
+    
+    // Check against live location if available
+    if (_currentLocation != 'Detecting...') {
+      final locParts = _currentLocation.split(',');
+      for (var part in locParts) {
+        if (part.trim().isNotEmpty && providerAddress.contains(part.trim().toLowerCase())) {
+          return true;
+        }
+      }
+    }
+
+    // Fallback to user registered address
+    String userFullAddress = _userData?['address']?.toString() ?? 'Kuala Lumpur, Malaysia';
+    String userCityOrState = userFullAddress;
+    if (userFullAddress.contains(',')) {
+      userCityOrState = userFullAddress.split(',').last.trim(); // Last part is usually city/state
+    }
+    
+    return providerAddress.contains(userCityOrState.toLowerCase());
+  }
+
   List<Map<String, dynamic>> get _filteredServices {
     return _servicesList.where((s) {
       final query = searchQuery.toLowerCase();
@@ -247,15 +270,7 @@ class _HomeScreenState extends State<HomeScreen> {
 
       bool matchesCategory = true;
       if (selectedCategory == 'Nearby') {
-        String userFullAddress = _userData?['address']?.toString() ?? 'Kuala Lumpur, Malaysia';
-        String userState = userFullAddress;
-        if (userFullAddress.contains(',')) {
-          final parts = userFullAddress.split(',');
-          if (parts.length >= 2) {
-             userState = parts[parts.length - 2].trim();
-          }
-        }
-        matchesCategory = providerAddress.contains(userState.toLowerCase());
+        matchesCategory = _isNearby(s);
       } else if (selectedCategory != 'All') {
         matchesCategory = category.contains(selectedCategory.toLowerCase());
       }
@@ -265,7 +280,7 @@ class _HomeScreenState extends State<HomeScreen> {
   }
 
   List<Map<String, dynamic>> get _topRatedServices {
-    final list = List<Map<String, dynamic>>.from(_servicesList);
+    final list = _servicesList.where((s) => _isNearby(s)).toList();
     list.sort((a, b) {
       final rA = (a['averageRating'] ?? 0).toDouble();
       final rB = (b['averageRating'] ?? 0).toDouble();
@@ -275,25 +290,28 @@ class _HomeScreenState extends State<HomeScreen> {
   }
 
   List<Map<String, dynamic>> get recommendedServices {
-    if (_aiRecommendedServices.isNotEmpty) return _aiRecommendedServices;
-
-    if (_userData == null || _userData!['services'] == null) return [];
-    final List<dynamic> userPreferences = _userData!['services'] ?? [];
-    
-    final normalizedPrefs = userPreferences.map((e) => e.toString().toLowerCase()).toList();
-    
-    if (normalizedPrefs.isEmpty) return [];
-
-    return _servicesList.where((s) {
-      final category = (s['category'] as String?)?.toLowerCase() ?? '';
-      final title = (s['title'] as String?)?.toLowerCase() ?? '';
+    List<Map<String, dynamic>> recs = [];
+    if (_aiRecommendedServices.isNotEmpty) {
+      recs = _aiRecommendedServices;
+    } else if (_userData != null && _userData!['services'] != null) {
+      final List<dynamic> userPreferences = _userData!['services'] ?? [];
+      final normalizedPrefs = userPreferences.map((e) => e.toString().toLowerCase()).toList();
       
-      return normalizedPrefs.any((pref) => 
-        category.contains(pref) || 
-        title.contains(pref) || 
-        pref.contains(category)
-      );
-    }).toList();
+      if (normalizedPrefs.isNotEmpty) {
+        recs = _servicesList.where((s) {
+          final category = (s['category'] as String?)?.toLowerCase() ?? '';
+          final title = (s['title'] as String?)?.toLowerCase() ?? '';
+          
+          return normalizedPrefs.any((pref) => 
+            category.contains(pref) || 
+            title.contains(pref) || 
+            pref.contains(category)
+          );
+        }).toList();
+      }
+    }
+    
+    return recs.where((s) => _isNearby(s)).toList();
   }
 
   @override
@@ -913,7 +931,7 @@ class _HomeScreenState extends State<HomeScreen> {
       );
     }
 
-    final list = recommendedServices.isNotEmpty ? recommendedServices : _servicesList.take(5).toList();
+    final list = recommendedServices.isNotEmpty ? recommendedServices : _servicesList.where((s) => _isNearby(s)).take(5).toList();
     
     if (list.isEmpty) return const SizedBox.shrink();
 

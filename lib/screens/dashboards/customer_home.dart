@@ -7,6 +7,7 @@ import '../bookings/bookings_screen.dart';
 import '../chat/chat_screen.dart';
 import '../profile/profile_screen.dart';
 import '../../services/presence_service.dart';
+import '../../services/onesignal_service.dart';
 import '../chat/ai_chat_screen.dart';
 
 class CustomerHome extends StatefulWidget {
@@ -39,6 +40,11 @@ class _CustomerHomeState extends State<CustomerHome>
     _index = widget.initialIndex;
     WidgetsBinding.instance.addObserver(this);
     PresenceService.updatePresence(true);
+    
+    final user = FirebaseAuth.instance.currentUser;
+    if (user != null) {
+      OneSignalService.loginUser(user.uid);
+    }
   }
 
   @override

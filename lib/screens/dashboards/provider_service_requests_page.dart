@@ -452,6 +452,8 @@ class _ProviderServiceRequestsPageState extends State<ProviderServiceRequestsPag
                         _detailRow(Icons.add_box_outlined, 'Add-ons', (data['selectedAddOns'] as List).map((a) => a['name']).join(', '), isExpandable: true),
                       _detailRow(Icons.calendar_today_outlined, 'Date', data['date'] ?? 'No date'),
                       _detailRow(Icons.access_time_outlined, 'Time', data['time'] ?? 'No time'),
+                      if (data['priceType'] == 'per hour' && data['durationHours'] != null)
+                        _detailRow(Icons.timer_outlined, 'Duration', '${data['durationHours']} Hours'),
                     ]),
                     
                     const SizedBox(height: 16),

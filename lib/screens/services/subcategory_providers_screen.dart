@@ -111,8 +111,8 @@ class _SubcategoryProvidersScreenState extends State<SubcategoryProvidersScreen>
           return data;
         }).where((s) {
            final category = (s['category'] as String?)?.toLowerCase() ?? '';
-           final title = (s['title'] as String?)?.toLowerCase() ?? '';
-           return category.contains(query) || title.contains(query);
+           if (category.isEmpty) return false;
+           return category.contains(query);
         }).toList();
 
         setState(() {
@@ -368,6 +368,8 @@ class _SubcategoryProvidersScreenState extends State<SubcategoryProvidersScreen>
     String name = p['providerName'] ?? p['name'] ?? 'Provider';
     String title = p['title'] ?? widget.title; 
     String price = p['price']?.toString() ?? '85';
+    String priceType = p['priceType']?.toString() ?? 'hourly';
+    String priceSuffix = priceType == 'one-time' ? '' : '/hr';
     double ratingValue = (p['averageRating'] ?? 0).toDouble();
     int reviewsCount = p['reviewCount'] ?? 0;
     String rating = ratingValue == 0 ? "New" : "${ratingValue.toStringAsFixed(1)} ($reviewsCount)";
@@ -452,7 +454,7 @@ class _SubcategoryProvidersScreenState extends State<SubcategoryProvidersScreen>
                         ),
                       ),
                       TextSpan(
-                        text: 'RM$price/hr',
+                        text: 'RM$price$priceSuffix',
                         style: GoogleFonts.outfit(
                           fontSize: 14,
                           fontWeight: FontWeight.w600,

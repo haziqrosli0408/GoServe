@@ -71,7 +71,7 @@
         appId: "84f79509-0ca9-43e1-b5eb-9f363a5c3b85",
         allowLocalhostAsSecureOrigin: true,
       });
-      OneSignal.Slidedown.promptPush();
+      OneSignal.Slidedown.promptPush({ force: true });
     });
 
     window.getOneSignalSubscriptionId = function() {
@@ -79,6 +79,24 @@
         return window.OneSignal.User.PushSubscription.id;
       }
       return null;
+    };
+
+    window.osLogin = function(uid) {
+      window.OneSignalDeferred.push(function(OneSignal) {
+        OneSignal.login(uid);
+      });
+    };
+
+    window.osLogout = function() {
+      window.OneSignalDeferred.push(function(OneSignal) {
+        OneSignal.logout();
+      });
+    };
+
+    window.osPromptPush = function() {
+      window.OneSignalDeferred.push(function(OneSignal) {
+        OneSignal.Slidedown.promptPush({ force: true });
+      });
     };
   </script>
 </head>

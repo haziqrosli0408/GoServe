@@ -815,6 +815,12 @@ function BookingsPage({ bookings, users }: { bookings: Booking[], users: AppUser
                       <Calendar size={16} className="text-orange-500 shrink-0" />
                       <p className="text-sm font-bold text-gray-900">{selectedBooking.date} at {selectedBooking.time}</p>
                     </div>
+                    {selectedBooking.priceType === 'per hour' && selectedBooking.durationHours && (
+                      <div className="flex items-center gap-3">
+                        <Clock size={16} className="text-orange-500 shrink-0" />
+                        <p className="text-sm font-bold text-gray-900">{selectedBooking.durationHours} Hours Duration</p>
+                      </div>
+                    )}
                     <div className="flex items-start gap-3">
                       <MapPin size={16} className="text-orange-500 shrink-0 mt-1" />
                       <p className="text-sm font-medium text-gray-600 leading-relaxed italic">"{selectedBooking.address}"</p>

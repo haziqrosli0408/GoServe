@@ -250,17 +250,21 @@ class _SearchPageState extends State<SearchPage> {
 
       // Base Location Filter (State level) - ONLY apply if NO specific range is set
       if (_locationRangeKm == 0) {
-        String userAddress = _userData?['address']?.toString() ?? 'Kuala Lumpur, Malaysia';
-        String userState = userAddress;
-        if (userAddress.contains(',')) {
-          final parts = userAddress.split(',');
-          if (parts.length >= 2) {
-            userState = parts[parts.length - 2].trim();
-          }
+        String userAddress = _userData?['address']?.toString() ?? 'Kuala Lumpur';
+        bool isNearby = false;
+        
+        final locParts = userAddress.split(',');
+        for (var part in locParts) {
+            String p = part.trim().toLowerCase();
+            if (p.isNotEmpty && p != 'malaysia') {
+                if (providerAddress.contains(p)) {
+                    isNearby = true;
+                    break;
+                }
+            }
         }
-        if (!providerAddress.contains(userState.toLowerCase())) {
-          return false;
-        }
+        
+        if (!isNearby) return false;
       }
 
 
@@ -325,10 +329,9 @@ class _SearchPageState extends State<SearchPage> {
         return priceB.compareTo(priceA);
       });
     } else if (_selectedSort == 'Nearest') {
-      String userAddress = _userData?['address']?.toString() ?? 'Kuala Lumpur, Malaysia';
-      String userState = userAddress.split(',').length >= 2 
-          ? userAddress.split(',')[userAddress.split(',').length - 2].trim().toLowerCase() 
-          : userAddress.toLowerCase();
+      String userAddress = _userData?['address']?.toString() ?? 'Kuala Lumpur';
+      final parts = userAddress.split(',').map((e) => e.trim().toLowerCase()).where((e) => e != 'malaysia' && e.isNotEmpty).toList();
+      String userState = parts.isNotEmpty ? parts.last : userAddress.toLowerCase();
       
       results.sort((a, b) {
         bool aMatches = (a['providerAddress'] as String?)?.toLowerCase().contains(userState) ?? false;
@@ -728,9 +731,9 @@ class _SearchPageState extends State<SearchPage> {
     
     String userState = userAddress;
     if (userAddress.contains(',')) {
-      final parts = userAddress.split(',');
-      if (parts.length >= 2) {
-        userState = parts[parts.length - 2].trim();
+      final parts = userAddress.split(',').map((e) => e.trim()).where((e) => e.toLowerCase() != 'malaysia' && e.isNotEmpty).toList();
+      if (parts.isNotEmpty) {
+        userState = parts.last;
       }
     }
 

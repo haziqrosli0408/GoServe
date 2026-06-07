@@ -70,7 +70,7 @@ class _GoogleRoleSelectScreenState extends State<GoogleRoleSelectScreen> {
         if (role == "provider") "services": [],
       });
 
-      await OneSignalService.loginUser(widget.user.uid);
+      OneSignalService.loginUser(widget.user.uid);
 
       if (!mounted) return;
       Navigator.pushReplacementNamed(context, role == "customer" ? "/customer" : "/provider");

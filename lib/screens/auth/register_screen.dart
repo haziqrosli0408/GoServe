@@ -358,7 +358,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
         "createdAt": DateTime.now(),
       });
 
-      await OneSignalService.loginUser(uid);
+      OneSignalService.loginUser(uid);
       if (!mounted) return;
 
       if (mounted) {

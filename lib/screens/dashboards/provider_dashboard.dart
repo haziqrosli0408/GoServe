@@ -9,6 +9,7 @@ import '../chat/chat_screen.dart';
 import '../provider/service_selector.dart';
 import '../provider/verification_screen.dart';
 import '../../services/presence_service.dart';
+import '../../services/onesignal_service.dart';
 
 class ProviderDashboard extends StatefulWidget {
   final int initialIndex;
@@ -28,6 +29,11 @@ class _ProviderDashboardState extends State<ProviderDashboard>
     _index = widget.initialIndex;
     WidgetsBinding.instance.addObserver(this);
     PresenceService.updatePresence(true);
+    
+    final user = FirebaseAuth.instance.currentUser;
+    if (user != null) {
+      OneSignalService.loginUser(user.uid);
+    }
   }
 
   @override

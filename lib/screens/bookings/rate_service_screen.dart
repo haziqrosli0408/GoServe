@@ -5,6 +5,7 @@ import 'dart:io';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:firebase_storage/firebase_storage.dart';
+import 'package:flutter/foundation.dart';
 import '../dashboards/customer_home.dart';
 
 class RateServiceScreen extends StatefulWidget {
@@ -20,7 +21,7 @@ class _RateServiceScreenState extends State<RateServiceScreen> {
   int _rating = 0;
   final TextEditingController _reviewController = TextEditingController();
   final List<String> _selectedTags = [];
-  final List<File> _selectedImages = [];
+  final List<XFile> _selectedImages = [];
   final ImagePicker _picker = ImagePicker();
   
   final List<String> _tags = [
@@ -34,7 +35,7 @@ class _RateServiceScreenState extends State<RateServiceScreen> {
     final XFile? image = await _picker.pickImage(source: ImageSource.gallery);
     if (image != null) {
       setState(() {
-        _selectedImages.add(File(image.path));
+        _selectedImages.add(image);
       });
     }
   }
@@ -125,27 +126,37 @@ class _RateServiceScreenState extends State<RateServiceScreen> {
           Stack(
             alignment: Alignment.bottomRight,
             children: [
-              Container(
-                width: 64,
-                height: 64,
-                decoration: BoxDecoration(
-                  color: const Color(0xFFE2E8F0),
-                  borderRadius: BorderRadius.circular(20),
-                  image: photoUrl.isNotEmpty 
-                    ? DecorationImage(
-                        image: NetworkImage(photoUrl),
+              ClipRRect(
+                borderRadius: BorderRadius.circular(20),
+                child: photoUrl.isNotEmpty
+                    ? Image.network(
+                        photoUrl,
+                        width: 64,
+                        height: 64,
                         fit: BoxFit.cover,
+                        errorBuilder: (context, error, stackTrace) => Container(
+                          width: 64,
+                          height: 64,
+                          color: const Color(0xFFE2E8F0),
+                          child: Center(
+                            child: Text(
+                              providerName.isNotEmpty ? providerName[0].toUpperCase() : 'P',
+                              style: GoogleFonts.outfit(color: const Color(0xFF1F212C), fontSize: 24, fontWeight: FontWeight.w600),
+                            ),
+                          ),
+                        ),
                       )
-                    : null,
-                ),
-                child: photoUrl.isEmpty 
-                  ? Center(
-                      child: Text(
-                        providerName.isNotEmpty ? providerName[0].toUpperCase() : 'P',
-                        style: GoogleFonts.outfit(color: const Color(0xFF1F212C), fontSize: 24, fontWeight: FontWeight.w600),
+                    : Container(
+                        width: 64,
+                        height: 64,
+                        color: const Color(0xFFE2E8F0),
+                        child: Center(
+                          child: Text(
+                            providerName.isNotEmpty ? providerName[0].toUpperCase() : 'P',
+                            style: GoogleFonts.outfit(color: const Color(0xFF1F212C), fontSize: 24, fontWeight: FontWeight.w600),
+                          ),
+                        ),
                       ),
-                    )
-                  : null,
               ),
               Container(
                 padding: const EdgeInsets.all(3),
@@ -363,12 +374,19 @@ class _RateServiceScreenState extends State<RateServiceScreen> {
                 children: [
                   ClipRRect(
                     borderRadius: BorderRadius.circular(15),
-                    child: Image.file(
-                      _selectedImages[index],
-                      height: 70,
-                      width: 100,
-                      fit: BoxFit.cover,
-                    ),
+                    child: kIsWeb
+                      ? Image.network(
+                          _selectedImages[index].path,
+                          height: 70,
+                          width: 100,
+                          fit: BoxFit.cover,
+                        )
+                      : Image.file(
+                          File(_selectedImages[index].path),
+                          height: 70,
+                          width: 100,
+                          fit: BoxFit.cover,
+                        ),
                   ),
                   Positioned(
                     top: 8,
@@ -413,9 +431,16 @@ class _RateServiceScreenState extends State<RateServiceScreen> {
       // 1. Upload Images to Storage
       List<String> imageUrls = [];
       for (var imageFile in _selectedImages) {
-        String fileName = '${DateTime.now().millisecondsSinceEpoch}_${imageFile.path.split('/').last}';
+        String fileName = '${DateTime.now().millisecondsSinceEpoch}_${imageFile.name}';
         Reference ref = FirebaseStorage.instance.ref().child('reviews').child(fileName);
-        await ref.putFile(imageFile);
+        
+        if (kIsWeb) {
+          final bytes = await imageFile.readAsBytes();
+          await ref.putData(bytes, SettableMetadata(contentType: 'image/jpeg'));
+        } else {
+          await ref.putFile(File(imageFile.path));
+        }
+        
         String downloadUrl = await ref.getDownloadURL();
         imageUrls.add(downloadUrl);
       }

@@ -529,7 +529,16 @@ class _ProviderEarningsPageState extends State<ProviderEarningsPage> {
                             if (t['type'] == 'booking' && t['status'] == 'Completed') {
                               if (t['payoutStatus'] == 'transferred') {
                                 final priceStr = (t['totalPrice'] ?? t['price'] ?? '0').toString().replaceAll('RM', '').trim();
-                                calculatedTotal += double.tryParse(priceStr) ?? 0.0;
+                                final totalPrice = double.tryParse(priceStr) ?? 0.0;
+                                
+                                double chargeFee = 0.0;
+                                if (t['chargeFee'] != null) {
+                                  chargeFee = (t['chargeFee'] as num).toDouble();
+                                } else {
+                                  chargeFee = totalPrice - (totalPrice / 1.15);
+                                }
+                                
+                                calculatedTotal += (totalPrice - chargeFee);
                               }
                             } else if (t['type'] == 'withdrawal') {
                               // Subtract withdrawals from available balance

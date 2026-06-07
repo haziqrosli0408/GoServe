@@ -247,27 +247,7 @@ class _SettingsPageState extends State<SettingsPage> {
             ],
             const SizedBox(height: 24),
 
-            // --- GENERAL SECTION ---
-            Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 24.0),
-              child: _buildSectionHeader('GENERAL'),
-            ),
-            const SizedBox(height: 8),
-            _buildSettingTile(
-              icon: Icons.notifications_outlined,
-              iconColor: widget.themeColor,
-              title: 'Notifications',
-              subtitle: 'App alerts and updates',
-              onTap: () => Navigator.push(
-                context,
-                MaterialPageRoute(
-                  builder: (context) => NotificationSettingsScreen(
-                    themeColor: widget.themeColor,
-                  ),
-                ),
-              ),
-            ),
-            const SizedBox(height: 24),
+
 
             // --- ACCOUNT & SESSION SECTION ---
             Padding(

@@ -23,6 +23,7 @@ class OneSignalService {
 
     try {
       jsOneSignalLogin(firebaseUid);
+      promptPermission(); // Trigger native permission prompt
       debugPrint('✅ OneSignal: logged in user $firebaseUid');
 
       // Wait a moment for OneSignal to register, then save subscription ID
@@ -44,13 +45,33 @@ class OneSignalService {
     }
   }
 
+  /// Manually prompt for push notification permissions
+  static void promptPermission() {
+    if (!kIsWeb) return;
+    try {
+      jsOneSignalPromptPush();
+      debugPrint('✅ OneSignal: Prompted for push permission');
+    } catch (e) {
+      debugPrint('❌ OneSignal prompt error: $e');
+    }
+  }
+
   // ─── Save Subscription ID to Firestore ────────────────────────────────
 
   /// Fetches the OneSignal Subscription ID (formerly Player ID) and saves it
   /// to the user's Firestore document for targeted notifications.
   static Future<void> _saveSubscriptionId(String uid) async {
     try {
-      final subscriptionId = jsGetSubscriptionId();
+      String? subscriptionId;
+      // Retry up to 5 times (10 seconds total) to allow user to accept prompt
+      for (int i = 0; i < 5; i++) {
+        subscriptionId = jsGetSubscriptionId();
+        if (subscriptionId != null && subscriptionId.isNotEmpty) {
+          break;
+        }
+        await Future.delayed(const Duration(seconds: 2));
+      }
+      
       if (subscriptionId == null || subscriptionId.isEmpty) {
         debugPrint('⚠️ OneSignal: No subscription ID yet (user may not have allowed notifications)');
         return;

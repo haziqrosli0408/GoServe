@@ -155,10 +155,11 @@ class _CategoryDetailScreenState extends State<CategoryDetailScreen> with Single
             return data;
           }).where((s) {
              final serviceCategory = (s['category'] as String?)?.toLowerCase() ?? '';
+             if (serviceCategory.isEmpty) return false;
              
              // Match if service category matches parent category OR any subcategory name
              bool matchesParent = serviceCategory.contains(categoryQuery);
-             bool matchesSubcat = subcatNames.any((name) => serviceCategory.contains(name) || name.contains(serviceCategory));
+             bool matchesSubcat = subcatNames.any((name) => serviceCategory.contains(name));
              
              return matchesParent || matchesSubcat;
           }).toList();
@@ -438,6 +439,8 @@ class _CategoryDetailScreenState extends State<CategoryDetailScreen> with Single
     String name = p['providerName'] ?? p['name'] ?? 'Provider';
     String title = p['title'] ?? 'Service'; 
     String price = p['price']?.toString() ?? '85';
+    String priceType = p['priceType']?.toString() ?? 'hourly';
+    String priceSuffix = priceType == 'one-time' ? '' : '/hr';
     double ratingValue = (p['averageRating'] ?? 0).toDouble();
     int reviewsCount = p['reviewCount'] ?? 0;
     String rating = ratingValue == 0 ? "New" : "${ratingValue.toStringAsFixed(1)} ($reviewsCount)";
@@ -519,7 +522,7 @@ class _CategoryDetailScreenState extends State<CategoryDetailScreen> with Single
                         ),
                       ),
                       TextSpan(
-                        text: 'RM$price/hr',
+                        text: 'RM$price$priceSuffix',
                         style: GoogleFonts.outfit(
                           fontSize: 14,
                           fontWeight: FontWeight.w600,

@@ -164,7 +164,16 @@ class _ProfileScreenState extends State<ProfileScreen> {
               final priceStr = bData['totalPrice'] ?? bData['price'] ?? '0';
               final cleanPrice =
                   priceStr.toString().replaceAll('RM', '').trim();
-              totalCompleted += double.tryParse(cleanPrice) ?? 0.0;
+              final totalPrice = double.tryParse(cleanPrice) ?? 0.0;
+              
+              double chargeFee = 0.0;
+              if (bData['chargeFee'] != null) {
+                chargeFee = (bData['chargeFee'] as num).toDouble();
+              } else {
+                chargeFee = totalPrice - (totalPrice / 1.15);
+              }
+              
+              totalCompleted += (totalPrice - chargeFee);
             }
           }
 

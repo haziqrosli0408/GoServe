@@ -674,6 +674,22 @@ class _TrackingScreenState extends State<TrackingScreen> {
               ),
             ],
           ),
+          if (data['priceType'] == 'per hour' && data['durationHours'] != null) ...[
+            const SizedBox(height: 12),
+            Row(
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              children: [
+                Text(
+                  'Duration',
+                  style: GoogleFonts.outfit(fontSize: 13, color: Colors.grey.shade500),
+                ),
+                Text(
+                  '${data['durationHours']} Hours',
+                  style: GoogleFonts.outfit(fontSize: 13, color: Colors.grey.shade600),
+                ),
+              ],
+            ),
+          ],
           if (addOns.isNotEmpty) ...[
             const SizedBox(height: 12),
             const Divider(height: 1, color: Color(0xFFF1F5F9)),

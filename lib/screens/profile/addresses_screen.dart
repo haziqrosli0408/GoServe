@@ -75,12 +75,27 @@ class _AddressesScreenState extends State<AddressesScreen> {
   }
 
   Future<void> _deleteAddress(String id, bool isDefault) async {
-    if (isDefault && _addresses.length > 1) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text("Cannot delete default address. Set another one as default first.")),
-      );
-      return;
-    }
+    final confirm = await showDialog<bool>(
+      context: context,
+      builder: (context) => AlertDialog(
+        backgroundColor: Colors.white,
+        surfaceTintColor: Colors.transparent,
+        title: Text("Delete Address", style: GoogleFonts.outfit(fontWeight: FontWeight.bold)),
+        content: Text("Are you sure you want to delete this address?", style: GoogleFonts.outfit()),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context, false),
+            child: Text("Cancel", style: GoogleFonts.outfit(color: Colors.grey)),
+          ),
+          TextButton(
+            onPressed: () => Navigator.pop(context, true),
+            child: Text("Delete", style: GoogleFonts.outfit(color: Colors.red, fontWeight: FontWeight.bold)),
+          ),
+        ],
+      ),
+    );
+
+    if (confirm != true) return;
 
     try {
       await FirebaseFirestore.instance
@@ -89,9 +104,52 @@ class _AddressesScreenState extends State<AddressesScreen> {
           .collection('addresses')
           .doc(id)
           .delete();
+          
+      if (isDefault && _addresses.length > 1) {
+        final remaining = _addresses.where((a) => a['id'] != id).toList();
+        if (remaining.isNotEmpty) {
+          final newDefaultId = remaining.first['id'];
+          await FirebaseFirestore.instance
+              .collection('users')
+              .doc(user!.uid)
+              .collection('addresses')
+              .doc(newDefaultId)
+              .update({'isDefault': true});
+              
+          await FirebaseFirestore.instance
+              .collection('users')
+              .doc(user!.uid)
+              .update({'address': remaining.first['address']});
+        }
+      }
+      
       _fetchAddresses();
     } catch (e) {
       debugPrint("Error deleting address: $e");
+    }
+  }
+
+  Future<void> _setAsDefault(String id, String addressText) async {
+    try {
+      final batch = FirebaseFirestore.instance.batch();
+      final query = await FirebaseFirestore.instance
+          .collection('users')
+          .doc(user!.uid)
+          .collection('addresses')
+          .get();
+          
+      for (var doc in query.docs) {
+        batch.update(doc.reference, {'isDefault': doc.id == id});
+      }
+      
+      batch.update(FirebaseFirestore.instance.collection('users').doc(user!.uid), {
+        'address': addressText,
+      });
+      
+      await batch.commit();
+      _fetchAddresses();
+    } catch (e) {
+      debugPrint("Error setting default: $e");
     }
   }
 
@@ -259,13 +317,28 @@ class _AddressesScreenState extends State<AddressesScreen> {
                 ),
               ),
               PopupMenuButton<String>(
+                color: Colors.white,
+                surfaceTintColor: Colors.transparent,
                 icon: Icon(Icons.more_vert_rounded, color: Colors.grey.shade400, size: 20),
                 onSelected: (val) {
                   if (val == 'delete') {
                     _deleteAddress(address['id'], isDefault);
+                  } else if (val == 'default') {
+                    _setAsDefault(address['id'], address['address']);
                   }
                 },
                 itemBuilder: (context) => [
+                  if (!isDefault)
+                    const PopupMenuItem(
+                      value: 'default',
+                      child: Row(
+                        children: [
+                          Icon(Icons.check_circle_outline, color: Colors.green, size: 18),
+                          SizedBox(width: 8),
+                          Text("Set as Default", style: TextStyle(color: Colors.green)),
+                        ],
+                      ),
+                    ),
                   const PopupMenuItem(
                     value: 'delete',
                     child: Row(
