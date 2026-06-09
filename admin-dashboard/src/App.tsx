@@ -126,6 +126,8 @@ interface Booking {
   status: 'Pending' | 'Confirmed' | 'In Progress' | 'Completed' | 'Cancelled';
   createdAt: any;
   selectedAddOns?: { name: string; price: string | number }[];
+  priceType?: string;
+  durationHours?: number;
 }
 
 interface Report {
