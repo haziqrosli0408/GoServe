@@ -693,6 +693,8 @@ class _ProfileScreenState extends State<ProfileScreen> {
         'Elite Pro';
     String title = service['title'] ?? 'Elite Service';
     String price = service['price']?.toString() ?? '0';
+    String priceType = service['priceType']?.toString() ?? 'hourly';
+    String priceSuffix = priceType == 'one-time' ? '' : '/hr';
     double avgRating =
         (service['averageRating'] ?? 0).toDouble();
     int reviewCount = service['reviewCount'] ?? 0;
@@ -807,7 +809,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
                         ),
                       ),
                       TextSpan(
-                        text: 'RM$price/hr',
+                        text: 'RM$price$priceSuffix',
                         style: GoogleFonts.outfit(
                           fontSize: 15,
                           fontWeight: FontWeight.w600,
@@ -1218,20 +1220,44 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
                             profileUrl = await ref.getDownloadURL();
                           }
 
+                          final newName = nameController.text.trim();
+                          final newEmail = emailController.text.trim();
+                          final newPhone = phoneController.text.trim();
+
+                          final updateData = {
+                            "name": newName,
+                            "email": newEmail,
+                            "phone": newPhone,
+                            if (profileUrl != null) "profileUrl": profileUrl,
+                          };
+
                           await FirebaseFirestore.instance
-                              .collection(
-                                widget.userData['role'] == 'provider'
-                                    ? "providers"
-                                    : "users",
-                              )
+                              .collection("users")
                               .doc(user!.uid)
-                              .update({
-                                "name": nameController.text.trim(),
-                                "email": emailController.text.trim(),
-                                "phone": phoneController.text.trim(),
-                                if (profileUrl != null)
-                                  "profileUrl": profileUrl,
-                              });
+                              .update(updateData);
+
+                          if (widget.userData['role'] == 'provider') {
+                            await FirebaseFirestore.instance
+                                .collection("providers")
+                                .doc(user!.uid)
+                                .update(updateData);
+
+                            final servicesQuery = await FirebaseFirestore.instance
+                                .collection('services')
+                                .where('providerId', isEqualTo: user!.uid)
+                                .get();
+                                
+                            if (servicesQuery.docs.isNotEmpty) {
+                              final batch = FirebaseFirestore.instance.batch();
+                              for (var doc in servicesQuery.docs) {
+                                batch.update(doc.reference, {
+                                  'providerName': newName,
+                                  if (profileUrl != null) 'providerProfileUrl': profileUrl,
+                                });
+                              }
+                              await batch.commit();
+                            }
+                          }
 
                           widget.onSave();
                           if (!context.mounted) return;

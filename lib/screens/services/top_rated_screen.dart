@@ -409,6 +409,8 @@ class _TopRatedScreenState extends State<TopRatedScreen> with TickerProviderStat
     String name = p['providerName'] ?? 'Provider';
     String title = p['title'] ?? 'Service'; 
     String price = p['price']?.toString() ?? '0';
+    String priceType = p['priceType']?.toString() ?? 'hourly';
+    String priceSuffix = priceType == 'one-time' ? '' : '/hr';
     double ratingValue = (p['averageRating'] ?? 0).toDouble();
     int reviewsCount = p['reviewCount'] ?? 0;
     String rating = ratingValue == 0 ? "New" : "${ratingValue.toStringAsFixed(1)} ($reviewsCount)";
@@ -476,7 +478,7 @@ class _TopRatedScreenState extends State<TopRatedScreen> with TickerProviderStat
                   text: TextSpan(
                     children: [
                       TextSpan(
-                        text: 'RM$price',
+                        text: 'RM$price$priceSuffix',
                         style: GoogleFonts.outfit(
                           fontSize: 16,
                           fontWeight: FontWeight.w600,

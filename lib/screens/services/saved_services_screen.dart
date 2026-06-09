@@ -191,6 +191,8 @@ class _SavedServicesScreenState extends State<SavedServicesScreen> {
     String name = provider['providerName'] ?? provider['name'] ?? 'Elite Pro';
     String title = provider['title'] ?? 'Elite Service';
     String price = provider['price']?.toString() ?? '85';
+    String priceType = provider['priceType']?.toString() ?? 'hourly';
+    String priceSuffix = priceType == 'one-time' ? '' : '/hr';
     double ratingValue = (provider['averageRating'] ?? 0).toDouble();
     int reviewsCount = provider['reviewCount'] ?? 0;
     String rating = ratingValue == 0 ? "New" : "${ratingValue.toStringAsFixed(1)} ($reviewsCount)";
@@ -266,7 +268,7 @@ class _SavedServicesScreenState extends State<SavedServicesScreen> {
                         ),
                       ),
                       TextSpan(
-                        text: 'RM$price/hr',
+                        text: 'RM$price$priceSuffix',
                         style: GoogleFonts.outfit(
                           fontSize: 15, 
                           fontWeight: FontWeight.w600,

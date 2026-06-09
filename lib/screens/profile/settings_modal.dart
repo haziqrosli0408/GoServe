@@ -176,6 +176,34 @@ class _SettingsModalState extends State<SettingsModal>
           'profileVisibility': _profileVisibility,
         }, SetOptions(merge: true));
 
+        // Update services if the user is a provider
+        final userDoc = await _firestore.collection('users').doc(user.uid).get();
+        if (userDoc.exists && userDoc.data()?['role'] == 'provider') {
+          // Update providers collection as well to keep in sync
+          await _firestore.collection('providers').doc(user.uid).set({
+            'name': _nameController.text,
+            'email': _emailController.text,
+            'phone': _phoneController.text,
+            'businessName': _businessNameController.text,
+            'address': _addressController.text,
+          }, SetOptions(merge: true));
+
+          final servicesQuery = await _firestore.collection('services')
+              .where('providerId', isEqualTo: user.uid)
+              .get();
+              
+          if (servicesQuery.docs.isNotEmpty) {
+            final batch = _firestore.batch();
+            for (var doc in servicesQuery.docs) {
+              batch.update(doc.reference, {
+                'providerName': _nameController.text.trim(),
+                'providerAddress': _addressController.text.trim(),
+              });
+            }
+            await batch.commit();
+          }
+        }
+
         widget.onClose();
       } catch (e) {
         if (!mounted) return;

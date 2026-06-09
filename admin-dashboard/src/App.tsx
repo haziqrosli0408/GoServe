@@ -150,6 +150,7 @@ interface VerificationRequest {
   name: string;
   email: string;
   selfieUrl: string;
+  profileUrl?: string;
   icFrontUrl?: string;
   icBackUrl?: string;
   icUrl?: string; // Legacy field
@@ -934,9 +935,15 @@ function VerificationPage({ requests }: { requests: VerificationRequest[] }) {
             {/* COMPACT VIEW */}
             <div className="p-6 flex flex-col lg:flex-row items-start lg:items-center justify-between gap-4">
               <div className="flex items-center gap-4">
-                <div className="w-12 h-12 bg-orange-100 text-orange-600 rounded-lg flex items-center justify-center font-bold text-lg">
-                  {req.name?.[0]?.toUpperCase()}
-                </div>
+                {req.profileUrl ? (
+                  <div className="w-12 h-12 rounded-lg overflow-hidden shrink-0 border border-gray-100">
+                    <img src={req.profileUrl} alt={req.name} className="w-full h-full object-cover" />
+                  </div>
+                ) : (
+                  <div className="w-12 h-12 bg-orange-100 text-orange-600 rounded-lg flex items-center justify-center font-bold text-lg shrink-0">
+                    {req.name?.[0]?.toUpperCase()}
+                  </div>
+                )}
                 <div>
                   <h3 className="font-bold text-gray-900 leading-tight">{req.name}</h3>
                   <p className="text-xs text-gray-500">{req.email}</p>

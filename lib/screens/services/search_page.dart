@@ -18,7 +18,7 @@ class SearchPage extends StatefulWidget {
 
 class _SearchPageState extends State<SearchPage> {
   String searchQuery = "";
-  String _selectedSort = 'Popular';
+  String _selectedSort = '';
   final TextEditingController _searchController = TextEditingController();
   List<Map<String, dynamic>> _allServices = [];
   Map<String, dynamic>? _userData;
@@ -272,9 +272,9 @@ class _SearchPageState extends State<SearchPage> {
       double price = double.tryParse(s['price']?.toString() ?? '0') ?? 0.0;
       if (price < _priceRange.start || price > _priceRange.end) return false;
 
-      // Rating Filter (Placeholder rating 4.9 for now, replace with actual if available)
-      double rating = 4.9; 
-      if (rating < _minRating) return false;
+      // Rating Filter
+      double ratingValue = (s['averageRating'] ?? 0).toDouble();
+      if (ratingValue < _minRating) return false;
 
       // Pricing Option Filter
       if (_pricingOption != 'All') {
@@ -417,10 +417,6 @@ class _SearchPageState extends State<SearchPage> {
                           ),
                           child: Column(
                             children: [
-                              _buildSortItem('Popular', setModalState),
-                              const Divider(height: 1, thickness: 0.5, color: Color(0xFFF1F5F9), indent: 16, endIndent: 16),
-                              _buildSortItem('Rating', setModalState),
-                              const Divider(height: 1, thickness: 0.5, color: Color(0xFFF1F5F9), indent: 16, endIndent: 16),
                               _buildSortItem('Price: Low to High', setModalState),
                               const Divider(height: 1, thickness: 0.5, color: Color(0xFFF1F5F9), indent: 16, endIndent: 16),
                               _buildSortItem('Price: High to Low', setModalState),
@@ -599,7 +595,7 @@ class _SearchPageState extends State<SearchPage> {
                             child: OutlinedButton(
                               onPressed: () {
                                 setModalState(() {
-                                  _selectedSort = 'Popular';
+                                  _selectedSort = '';
                                   _priceRange = const RangeValues(0, 500);
                                   _minRating = 0.0;
                                   _pricingOption = 'All';
@@ -935,6 +931,8 @@ class _SearchPageState extends State<SearchPage> {
     String title = s['title'] ?? 'Elite Service';
     String providerName = s['providerName'] ?? 'Pro Provider';
     String price = s['price']?.toString() ?? '85';
+    String priceType = s['priceType']?.toString() ?? 'hourly';
+    String priceSuffix = priceType == 'one-time' ? '' : '/hr';
     double ratingValue = (s['averageRating'] ?? 0).toDouble();
     int reviewsCount = s['reviewCount'] ?? 0;
     String rating = ratingValue == 0 ? "New" : "${ratingValue.toStringAsFixed(1)} ($reviewsCount)";
@@ -1016,7 +1014,7 @@ class _SearchPageState extends State<SearchPage> {
                         ),
                       ),
                       TextSpan(
-                        text: 'RM$price/hr',
+                        text: 'RM$price$priceSuffix',
                         style: GoogleFonts.outfit(
                           fontSize: 14,
                           fontWeight: FontWeight.w600,
