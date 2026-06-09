@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:intl/intl.dart';
 import 'booking_cancelled_screen.dart';
 import '../../services/onesignal_service.dart';
 
@@ -127,17 +128,41 @@ class _CancelBookingSheetState extends State<CancelBookingSheet> {
   Widget build(BuildContext context) {
     // Determine if it's safe to cancel
     final String currentStatus = widget.bookingData['status'] ?? '';
-    final bool canCancel = ['Pending', 'Confirmed', 'Awaiting Confirmation'].contains(currentStatus);
+    bool canCancel = ['Pending', 'Confirmed', 'Awaiting Confirmation'].contains(currentStatus);
+    String rejectReason = 'This booking can no longer be cancelled as the provider has already started the service.';
+
+    if (canCancel && currentStatus != 'Pending') {
+      try {
+        String dateStr = widget.bookingData['date'] ?? '';
+        String timeStr = widget.bookingData['time'] ?? '';
+        DateTime? bookingTime;
+        try {
+          // Add DateFormat parsing support
+          bookingTime = DateFormat('yyyy-MM-dd h:mm a').parse('$dateStr $timeStr');
+        } catch (_) {
+          try {
+            bookingTime = DateFormat('MMM dd, yyyy h:mm a').parse('$dateStr $timeStr');
+          } catch (_) {}
+        }
+        
+        if (bookingTime != null) {
+          if (bookingTime.difference(DateTime.now()).inHours < 24) {
+            canCancel = false;
+            rejectReason = 'This booking cannot be cancelled because it is less than 24 hours before the scheduled service time.';
+          }
+        }
+      } catch (_) {}
+    }
 
     if (!canCancel) {
       return Container(
-        height: 250,
         decoration: const BoxDecoration(
           color: Colors.white,
           borderRadius: BorderRadius.vertical(top: Radius.circular(32)),
         ),
         padding: const EdgeInsets.all(24),
         child: Column(
+          mainAxisSize: MainAxisSize.min,
           children: [
             Container(
               width: 40,
@@ -160,14 +185,14 @@ class _CancelBookingSheetState extends State<CancelBookingSheet> {
             ),
             const SizedBox(height: 8),
             Text(
-              'This booking can no longer be cancelled as the provider has already started the service.',
+              rejectReason,
               textAlign: TextAlign.center,
               style: GoogleFonts.outfit(
                 fontSize: 14,
                 color: Colors.grey.shade600,
               ),
             ),
-            const Spacer(),
+            const SizedBox(height: 32),
             SizedBox(
               width: double.infinity,
               height: 50,

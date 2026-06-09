@@ -278,8 +278,12 @@ class _SearchPageState extends State<SearchPage> {
 
       // Pricing Option Filter
       if (_pricingOption != 'All') {
-        final type = (s['priceType'] as String?) ?? 'By Hour';
-        if (type != _pricingOption) return false;
+        final type = (s['priceType'] as String?)?.toLowerCase() ?? 'hourly';
+        if (_pricingOption == 'By Hour') {
+          if (!['hourly', 'per hour'].contains(type)) return false;
+        } else if (_pricingOption == 'One Time') {
+          if (!['one-time', 'fixed', 'per session'].contains(type)) return false;
+        }
       }
 
       // Location Range Filter

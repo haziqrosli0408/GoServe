@@ -4,6 +4,7 @@ import 'tracking_screen.dart';
 import 'rate_service_screen.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:google_fonts/google_fonts.dart';
+import 'package:intl/intl.dart';
 import '../services/service_details.dart';
 import 'package:url_launcher/url_launcher.dart';
 import '../chat/single_chat_screen.dart';
@@ -1469,35 +1470,80 @@ class _BookingsScreenState extends State<BookingsScreen> {
                         
                         // Cancel Booking Button (if eligible)
                         if (['Pending', 'Confirmed', 'Awaiting Confirmation'].contains(data['status'])) ...[
-                          const SizedBox(height: 16),
-                          SizedBox(
-                            width: double.infinity,
-                            child: OutlinedButton(
-                              onPressed: () {
-                                showModalBottomSheet(
-                                  context: context,
-                                  isScrollControlled: true,
-                                  backgroundColor: Colors.transparent,
-                                  builder: (context) => CancelBookingSheet(
-                                    bookingId: bookingId,
-                                    bookingData: data,
+                          Builder(
+                            builder: (context) {
+                              bool canCancel = true;
+                              String cancelMessage = '';
+                              
+                              if (data['status'] != 'Pending') {
+                                try {
+                                  String dateStr = data['date'] ?? '';
+                                  String timeStr = data['time'] ?? '';
+                                  DateTime? bookingTime;
+                                  try {
+                                    bookingTime = DateFormat('yyyy-MM-dd h:mm a').parse('$dateStr $timeStr');
+                                  } catch (_) {
+                                    try {
+                                      bookingTime = DateFormat('MMM dd, yyyy h:mm a').parse('$dateStr $timeStr');
+                                    } catch (_) {}
+                                  }
+                                  
+                                  if (bookingTime != null) {
+                                    if (bookingTime.difference(DateTime.now()).inHours < 24) {
+                                      canCancel = false;
+                                      cancelMessage = 'Cannot cancel within 24 hours of service';
+                                    }
+                                  }
+                                } catch (_) {}
+                              }
+
+                              return Column(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: [
+                                  const SizedBox(height: 16),
+                                  SizedBox(
+                                    width: double.infinity,
+                                    child: OutlinedButton(
+                                      onPressed: canCancel ? () {
+                                        showModalBottomSheet(
+                                          context: context,
+                                          isScrollControlled: true,
+                                          backgroundColor: Colors.transparent,
+                                          builder: (context) => CancelBookingSheet(
+                                            bookingId: bookingId,
+                                            bookingData: data,
+                                          ),
+                                        );
+                                      } : null,
+                                      style: OutlinedButton.styleFrom(
+                                        padding: const EdgeInsets.symmetric(vertical: 16),
+                                        side: BorderSide(color: canCancel ? Colors.red.shade200 : Colors.grey.shade300),
+                                        foregroundColor: canCancel ? Colors.red.shade500 : Colors.grey.shade400,
+                                        textStyle: GoogleFonts.outfit(
+                                          fontWeight: FontWeight.w600,
+                                          fontSize: 14,
+                                        ),
+                                        shape: RoundedRectangleBorder(
+                                          borderRadius: BorderRadius.circular(16),
+                                        ),
+                                      ),
+                                      child: const Text('Cancel Booking'),
+                                    ),
                                   ),
-                                );
-                              },
-                              style: OutlinedButton.styleFrom(
-                                padding: const EdgeInsets.symmetric(vertical: 16),
-                                side: BorderSide(color: Colors.red.shade200),
-                                foregroundColor: Colors.red.shade500,
-                                textStyle: GoogleFonts.outfit(
-                                  fontWeight: FontWeight.w600,
-                                  fontSize: 14,
-                                ),
-                                shape: RoundedRectangleBorder(
-                                  borderRadius: BorderRadius.circular(16),
-                                ),
-                              ),
-                              child: const Text('Cancel Booking'),
-                            ),
+                                  if (!canCancel)
+                                    Padding(
+                                      padding: const EdgeInsets.only(top: 8, left: 4),
+                                      child: Text(
+                                        cancelMessage,
+                                        style: GoogleFonts.outfit(
+                                          fontSize: 11,
+                                          color: Colors.red.shade400,
+                                        ),
+                                      ),
+                                    ),
+                                ],
+                              );
+                            }
                           ),
                         ],
                         const SizedBox(height: 48),

@@ -444,17 +444,15 @@ class _TrackingScreenState extends State<TrackingScreen> {
         border: Border.all(color: const Color(0xFFF1F5F9)),
       ),
       child: FutureBuilder<DocumentSnapshot>(
-        future: FirebaseFirestore.instance.collection('providers').doc(providerId).get(),
+        future: FirebaseFirestore.instance.collection('services').doc(widget.bookingData['serviceId']).get(),
         builder: (context, snapshot) {
           String rating = '0.0';
           String reviews = '0';
-          String? phone;
           
           if (snapshot.hasData && snapshot.data!.exists) {
-            final pData = snapshot.data!.data() as Map<String, dynamic>;
-            rating = (pData['rating'] ?? 0.0).toStringAsFixed(1);
-            reviews = (pData['reviews'] ?? 0).toString();
-            phone = pData['phone'];
+            final sData = snapshot.data!.data() as Map<String, dynamic>;
+            rating = (sData['averageRating'] ?? 0.0).toStringAsFixed(1);
+            reviews = (sData['reviewCount'] ?? 0).toString();
           }
 
           return Row(
@@ -508,7 +506,19 @@ class _TrackingScreenState extends State<TrackingScreen> {
                 ),
               ),
               GestureDetector(
-                onTap: () => _makeCall(phone ?? data?['providerPhone'] ?? widget.bookingData['providerPhone'] ?? '011-23456789'),
+                onTap: () async {
+                  String finalPhone = data?['providerPhone'] ?? widget.bookingData['providerPhone'] ?? '011-23456789';
+                  if (finalPhone == '011-23456789') {
+                    // Try to fetch from providers collection as a fallback
+                    try {
+                      final pDoc = await FirebaseFirestore.instance.collection('providers').doc(providerId).get();
+                      if (pDoc.exists) {
+                        finalPhone = pDoc.data()?['phone'] ?? finalPhone;
+                      }
+                    } catch (_) {}
+                  }
+                  _makeCall(finalPhone);
+                },
                 child: _actionIcon(Icons.phone_rounded),
               ),
               const SizedBox(width: 12),

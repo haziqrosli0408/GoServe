@@ -1892,7 +1892,11 @@ function UserProfilePage({ user, bookings, reviews, onClose, getStatus }: any) {
   
   const totalEarnings = completedBookings
     .filter((b: any) => b.providerId === user.id)
-    .reduce((sum: number, b: any) => sum + (parseFloat(b.totalPrice || b.price || '0')), 0);
+    .reduce((sum: number, b: any) => {
+      const price = parseFloat(b.totalPrice || b.price || '0');
+      const fee = parseFloat(b.chargeFee || (price * 0.15).toString());
+      return sum + (price - fee);
+    }, 0);
 
   const isProvider = user.role?.toLowerCase() === 'provider';
 

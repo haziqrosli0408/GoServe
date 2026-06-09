@@ -398,7 +398,7 @@ class _ProviderHomeScreenState extends State<ProviderHomeScreen> {
               onTap: () {
                 Navigator.push(
                   context,
-                  MaterialPageRoute(builder: (context) => const NotificationsScreen()),
+                  MaterialPageRoute(builder: (context) => const NotificationsScreen(isProvider: true)),
                 );
               },
               child: Container(

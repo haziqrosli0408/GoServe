@@ -6,7 +6,8 @@ import 'package:intl/intl.dart';
 
 class NotificationsScreen extends StatefulWidget {
   final Color themeColor;
-  const NotificationsScreen({super.key, this.themeColor = const Color(0xFFFF6B00)});
+  final bool isProvider;
+  const NotificationsScreen({super.key, this.themeColor = const Color(0xFFFF6B00), this.isProvider = false});
 
   @override
   State<NotificationsScreen> createState() => _NotificationsScreenState();
@@ -14,22 +15,10 @@ class NotificationsScreen extends StatefulWidget {
 
 class _NotificationsScreenState extends State<NotificationsScreen> {
   final String? userId = FirebaseAuth.instance.currentUser?.uid;
-  bool isProvider = false;
 
   @override
   void initState() {
     super.initState();
-    _checkUserType();
-  }
-
-  Future<void> _checkUserType() async {
-    if (userId == null) return;
-    final providerDoc = await FirebaseFirestore.instance.collection('providers').doc(userId).get();
-    if (mounted) {
-      setState(() {
-        isProvider = providerDoc.exists;
-      });
-    }
   }
 
   @override
@@ -56,32 +45,46 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
       body: userId == null 
         ? _buildEmptyState() 
         : StreamBuilder<QuerySnapshot>(
-            stream: isProvider 
+            stream: widget.isProvider 
               ? FirebaseFirestore.instance
                   .collection('bookings')
                   .where('providerId', isEqualTo: userId)
-                  .where('status', isEqualTo: 'Pending')
                   .snapshots()
               : FirebaseFirestore.instance
                   .collection('bookings')
                   .where('customerId', isEqualTo: userId)
                   .snapshots(),
             builder: (context, snapshot) {
+              if (snapshot.hasError) {
+                return Center(child: Text("Error: ${snapshot.error}"));
+              }
               if (snapshot.connectionState == ConnectionState.waiting) {
                 return const Center(child: CircularProgressIndicator());
               }
 
               final docs = snapshot.data?.docs ?? [];
-
+              
               if (docs.isEmpty) {
                 return _buildEmptyState();
               }
 
+              // Sort docs locally by createdAt descending
+              final sortedDocs = docs.toList();
+              sortedDocs.sort((a, b) {
+                final Map<String, dynamic> dataA = a.data() as Map<String, dynamic>;
+                final Map<String, dynamic> dataB = b.data() as Map<String, dynamic>;
+                final Timestamp? tA = dataA['createdAt'] as Timestamp?;
+                final Timestamp? tB = dataB['createdAt'] as Timestamp?;
+                if (tA == null) return 1;
+                if (tB == null) return -1;
+                return tB.compareTo(tA);
+              });
+
               return ListView.builder(
                 padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 16),
-                itemCount: docs.length,
+                itemCount: sortedDocs.length,
                 itemBuilder: (context, index) {
-                  final data = docs[index].data() as Map<String, dynamic>;
+                  final data = sortedDocs[index].data() as Map<String, dynamic>;
                   return _buildNotificationItem(data);
                 },
               );
@@ -104,7 +107,7 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
     String title = "";
     String body = "";
 
-    if (isProvider) {
+    if (widget.isProvider) {
       if (status == 'Pending') {
         iconData = Icons.new_releases;
         iconColor = Colors.red;
