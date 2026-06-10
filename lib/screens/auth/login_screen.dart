@@ -21,6 +21,24 @@ class _LoginScreenState extends State<LoginScreen> {
   bool hidePassword = true;
   bool isLoading = false;
 
+  void _showSuspendDeleteDialog(String title, String message) {
+    showDialog(
+      context: context,
+      barrierDismissible: false,
+      builder: (context) => AlertDialog(
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+        title: Text(title, style: const TextStyle(color: Colors.red, fontWeight: FontWeight.bold)),
+        content: Text(message, style: const TextStyle(fontSize: 15)),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context),
+            child: const Text('OK', style: TextStyle(color: Color(0xFFFF6B00), fontWeight: FontWeight.bold)),
+          ),
+        ],
+      ),
+    );
+  }
+
   Future<void> _googleLogin() async {
     setState(() => isLoading = true);
     try {
@@ -46,6 +64,13 @@ class _LoginScreenState extends State<LoginScreen> {
       // Priority 1: Check if actually a Provider
       if (providerDoc.exists) {
         final data = providerDoc.data();
+        if (data?['status'] == 'Suspended') {
+          await FirebaseAuth.instance.signOut();
+          if (!mounted) return;
+          _showSuspendDeleteDialog("Account Suspended", "Your account has been suspended.");
+          setState(() => isLoading = false);
+          return;
+        }
         if (data?['role'] == 'provider') {
           OneSignalService.loginUser(uid);
           if (!mounted) return;
@@ -57,6 +82,13 @@ class _LoginScreenState extends State<LoginScreen> {
       // Priority 2: Check if Customer
       if (userDoc.exists) {
         final data = userDoc.data();
+        if (data?['status'] == 'Suspended') {
+          await FirebaseAuth.instance.signOut();
+          if (!mounted) return;
+          _showSuspendDeleteDialog("Account Suspended", "Your account has been suspended.");
+          setState(() => isLoading = false);
+          return;
+        }
         if (data?['role'] == 'customer') {
           OneSignalService.loginUser(uid);
           if (!mounted) return;
@@ -132,6 +164,12 @@ class _LoginScreenState extends State<LoginScreen> {
       // Priority 1: Provider Role
       if (providerDoc.exists) {
         final data = providerDoc.data();
+        if (data?['status'] == 'Suspended') {
+          await FirebaseAuth.instance.signOut();
+          if (!mounted) return;
+          _showSuspendDeleteDialog("Account Suspended", "Your account has been suspended.");
+          return;
+        }
         if (data?['role'] == 'provider') {
           OneSignalService.loginUser(uid);
           if (!mounted) return;
@@ -143,6 +181,12 @@ class _LoginScreenState extends State<LoginScreen> {
       // Priority 2: Customer Role
       if (userDoc.exists) {
         final data = userDoc.data();
+        if (data?['status'] == 'Suspended') {
+          await FirebaseAuth.instance.signOut();
+          if (!mounted) return;
+          _showSuspendDeleteDialog("Account Suspended", "Your account has been suspended.");
+          return;
+        }
         if (data?['role'] == 'customer') {
           OneSignalService.loginUser(uid);
           if (!mounted) return;
@@ -161,12 +205,19 @@ class _LoginScreenState extends State<LoginScreen> {
         if (!mounted) return;
         Navigator.pushReplacementNamed(context, "/customer");
       } else {
-        throw Exception("Account not registered in database");
+        await FirebaseAuth.instance.signOut();
+        if (!mounted) return;
+        _showSuspendDeleteDialog("Account Deleted", "Your account no longer can be used.");
+        return;
       }
     } on FirebaseAuthException catch (e) {
+      if (!mounted) return;
+      if (e.code == "user-not-found" || e.code == "invalid-credential" || e.code == "wrong-password") {
+         _showSuspendDeleteDialog("Login Failed", "Your account no longer can be used, or the credentials are incorrect.");
+         return;
+      }
+
       String msg = "Login failed";
-      if (e.code == "user-not-found") msg = "User not registered";
-      if (e.code == "wrong-password") msg = "Wrong password!";
       if (e.code == "invalid-email") msg = "Invalid email format";
 
       if (!mounted) return;

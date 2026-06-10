@@ -1419,7 +1419,8 @@ function UsersPage({ users, bookings, reviews, pendingApprovalsCount, setActiveT
   const [selectedUser, setSelectedUser] = useState<any | null>(null);
 
   const handleAction = async (uid: string, role: string, action: 'delete' | 'suspend' | 'activate') => {
-    const roleMapping = role === 'Professional' ? 'Professional' : 'Seeker';
+    const roleStr = (role || '').toLowerCase();
+    const roleMapping = (roleStr === 'provider' || roleStr === 'professional') ? 'Professional' : 'Seeker';
     const actionText = action === 'delete' ? 'DELETE' : action === 'suspend' ? 'SUSPEND' : 'ACTIVATE';
     
     if (!window.confirm(`⚠️ CRITICAL ACTION\n\nAre you sure you want to ${actionText} this account?\nThis action will take effect immediately.`)) return;
